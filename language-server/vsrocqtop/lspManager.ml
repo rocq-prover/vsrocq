@@ -525,7 +525,12 @@ let workspaceDidChangeConfiguration params =
   | Continuous -> run_documents ()
   | Manual -> reset_observe_ids (); ([] : events)
 
-let handle_interrupt () = []
+let handle_interrupt params =
+  let Notification.Client.InterruptParams.{ textDocument } = params in
+  let uri = textDocument.uri in
+  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
+  | None -> log (fun () -> "[interrupt] ignoring event on non existent document"); []
+  | Some { st } -> Dm.DocumentManager.cancel_ongoing_execution st; []
 
 let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a, error) result * events =
   fun id req ->
@@ -582,7 +587,7 @@ let dispatch_notification =
   | InterpretToEnd params -> log (fun () -> "Received notification: prover/interpretToEnd"); rocqtopInterpretToEnd params
   | StepBackward params -> log (fun () -> "Received notification: prover/stepBackward"); rocqtopStepBackward params
   | StepForward params -> log (fun () -> "Received notification: prover/stepForward"); rocqtopStepForward params
-  | Interrupt -> log (fun () -> "Received notification: prover/interrupt"); handle_interrupt ()
+  | Interrupt params -> log (fun () -> "Received notification: prover/interrupt"); handle_interrupt params
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function
