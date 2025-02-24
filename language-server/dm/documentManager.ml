@@ -322,6 +322,8 @@ let install_feedback_listener doc_id send =
   Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
     if lvl != Feedback.Debug && doc = doc_id then send (route,span,(lvl,loc, qf, msg)))
 
+let cancel_ongoing_execution _ = ()
+
 let init_feedback_pipe () =
   let doc_id = Utilities.fresh_doc_id () in
   let sel_feedback_queue = Queue.create () in

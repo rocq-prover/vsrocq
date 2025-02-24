@@ -208,7 +208,7 @@ export function activate(context: ExtensionContext) {
         registerVsrocqTextCommand('addQueryTab', () => searchProvider.addTab());
         registerVsrocqTextCommand('collapseAllQueries', () => searchProvider.collapseAll());
         registerVsrocqTextCommand('expandAllQueries', () => searchProvider.expandAll());
-        registerVsrocqTextCommand('interrupt', () => sendInterrupt(client));
+        registerVsrocqTextCommand('interrupt', (editor) => sendInterrupt(editor, client));
         registerVsrocqTextCommand('interpretToPoint', (editor) => sendInterpretToPoint(editor, client));
         registerVsrocqTextCommand('interpretToEnd', (editor) => sendInterpretToEnd(editor, client));
         registerVsrocqTextCommand('stepForward', (editor) => sendStepForward(editor, client));
