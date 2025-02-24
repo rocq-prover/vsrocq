@@ -525,6 +525,8 @@ let workspaceDidChangeConfiguration params =
   | Continuous -> run_documents ()
   | Manual -> reset_observe_ids (); ([] : events)
 
+let handle_interrupt () = []
+
 let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a, error) result * events =
   fun id req ->
   match req with
@@ -580,6 +582,7 @@ let dispatch_notification =
   | InterpretToEnd params -> log (fun () -> "Received notification: prover/interpretToEnd"); rocqtopInterpretToEnd params
   | StepBackward params -> log (fun () -> "Received notification: prover/stepBackward"); rocqtopStepBackward params
   | StepForward params -> log (fun () -> "Received notification: prover/stepForward"); rocqtopStepForward params
+  | Interrupt -> log (fun () -> "Received notification: prover/interrupt"); handle_interrupt ()
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function
