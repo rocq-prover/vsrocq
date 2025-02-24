@@ -81,6 +81,9 @@ val interpret_in_background : state -> (state * events)
 val reset : state -> state * events 
 (** resets Rocq *)
 
+val cancel_ongoing_execution : state -> unit
+(** [cancel_ongoing_execution st] cancels any ongoing execution on [st]*)
+
 val executed_ranges : state -> exec_overview
 (** [executes_ranges doc] returns the ranges corresponding to the sentences
     that have been executed. [settings.check_mode] allows to send a "cut" range that only goes
