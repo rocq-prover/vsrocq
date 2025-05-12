@@ -13,6 +13,11 @@
 (**************************************************************************)
 open Protocol.LspWrapper
 
+module Loc = struct
+  include Loc
+end
+[@@deprecated "use a proxy in host/"]
+
 type sentence_id = Stateid.t
 type sentence_id_set = Stateid.Set.t
 
