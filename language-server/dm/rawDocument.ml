@@ -12,6 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 open Lsp.Types
+open Types
 
 type text_edit = Range.t * string
 
