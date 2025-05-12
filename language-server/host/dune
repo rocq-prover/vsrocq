@@ -1,0 +1,6 @@
+(library
+ (name host)
+ (public_name vscoq-language-server.host)
+ (wrapped true)
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~coq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (libraries coq-core.gramlib coq-core.boot coq-core.sysinit coq-core.vernac coq-core.kernel coq-core.engine coq-core.pretyping coq-core.printing coq-core.parsing coq-core.interp coq-core.lib coq-core.clib coq-core.library coq-core.proofs coq-core.tactics protocol sel lsp))
