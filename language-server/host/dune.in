@@ -1,0 +1,6 @@
+(library
+ (name host)
+ (public_name vscoq-language-server.host)
+ (wrapped true)
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~coq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (libraries @@ROCQ_RUNTIME@@.gramlib @@ROCQ_RUNTIME@@.boot @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.kernel @@ROCQ_RUNTIME@@.engine @@ROCQ_RUNTIME@@.pretyping @@ROCQ_RUNTIME@@.printing @@ROCQ_RUNTIME@@.parsing @@ROCQ_RUNTIME@@.interp @@ROCQ_RUNTIME@@.lib @@ROCQ_RUNTIME@@.clib @@ROCQ_RUNTIME@@.library @@ROCQ_RUNTIME@@.proofs @@ROCQ_RUNTIME@@.tactics protocol sel lsp))
