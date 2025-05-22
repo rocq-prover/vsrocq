@@ -16,6 +16,7 @@ open Protocol
 open Protocol.LspWrapper
 open Scheduler
 open Types
+open Host
 
 let Log log = Log.mk_log "executionManager"
 
@@ -30,7 +31,7 @@ let error loc qf msg vernac_st = Error ((loc,msg), qf, (Some vernac_st))
 
 type sentence_id = Stateid.t
 
-type errored_sentence = (sentence_id * Loc.t option) option
+type errored_sentence = (sentence_id * HLoc.t option) option
 
 module SM = Map.Make (Stateid)
 
@@ -78,7 +79,7 @@ type delegated_task = {
 
 type prepared_task =
   | PSkip of { id: sentence_id; error: Pp.t option }
-  | PBlock of { id: sentence_id; error: Pp.t Loc.located }
+  | PBlock of { id: sentence_id; error: Pp.t HLoc.located }
   | PExec of executable_sentence
   | PQuery of executable_sentence
   | PDelegate of delegated_task
@@ -131,7 +132,7 @@ let get_options () = !options
 module ProofJob = struct
   type update_request =
     | UpdateExecStatus of sentence_id * execution_status
-    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
+    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * HLoc.t option * Quickfix.t list * Pp.t)
   let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
 
   type t = {
@@ -220,7 +221,7 @@ let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
       (*
         log (fun () -> "Failed to execute: " ^ Stateid.to_string state_id ^ "  " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
         *)
-        let loc = Loc.get_loc info in
+        let loc = HLoc.get_loc info in
         let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
         let msg = CErrors.iprint (e, info) in
         let status = error loc (Some qf) msg st in
@@ -588,7 +589,7 @@ let worker_ensure_proof_is_over vs send_back terminator_id =
       try let _ = f ~opaque:Vernacexpr.Opaque ~keep_body_ucst_separate:false proof in ()
       with e ->
         let e, info = Exninfo.capture e in
-        let loc = Loc.get_loc info in
+        let loc = HLoc.get_loc info in
         let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
         let msg = CErrors.iprint (e, info) in
         let status = error loc (Some qf) msg vs in
@@ -668,7 +669,7 @@ let execute_task st (vs, events, interrupted) task =
                 Vernacstate.LemmaStack.with_top (Option.get @@ vernac_st.Vernacstate.interp.lemmas) ~f
               | Error ((loc,err),_,_) ->
                   log (fun () -> "Aborted future");
-                  assign (`Exn (CErrors.UserError err, Option.fold_left Loc.add_loc Exninfo.null loc))
+                  assign (`Exn (CErrors.UserError err, Option.fold_left HLoc.add_loc Exninfo.null loc))
               with exn when CErrors.noncritical exn ->
                 assign (`Exn (CErrors.UserError(Pp.str "error closing proof"), Exninfo.null))
             in
@@ -795,9 +796,9 @@ let shift_overview st ~before ~after ~start ~offset =
 
 let shift_diagnostics_locs st ~start ~offset =
   let shift_loc loc =
-    let (loc_start, loc_stop) = Loc.unloc loc in
-    if loc_start >= start then Loc.shift_loc offset offset loc
-    else if loc_stop > start then Loc.shift_loc 0 offset loc
+    let (loc_start, loc_stop) = HLoc.unloc loc in
+    if loc_start >= start then HLoc.shift_loc offset offset loc
+    else if loc_stop > start then HLoc.shift_loc 0 offset loc
     else loc
   in
   let shift_feedback (level, oloc, qf, msg as feedback) =
