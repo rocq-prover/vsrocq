@@ -13,7 +13,6 @@
 (**************************************************************************)
 open Lsp.Types
 open Host
-open Types
 
 type text_edit = Range.t * string
 

@@ -13,6 +13,7 @@
 (**************************************************************************)
 
 open Types
+open Host
 
 val mk_log : string -> (?force:bool -> (unit -> string) -> unit) log
 val logs : unit -> string list
@@ -30,7 +31,7 @@ val worker_initialization_done : fwd_event:(event -> unit) -> unit
 val debug : event Sel.Event.t
 
 [%% if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" ]
-val feedback_add_feeder_on_Message : (Feedback.route_id -> Stateid.t -> Feedback.doc_id -> Feedback.level -> Loc.t option -> 'a list -> Pp.t -> unit) -> int
+val feedback_add_feeder_on_Message : (Feedback.route_id -> Stateid.t -> Feedback.doc_id -> Feedback.level -> HLoc.t option -> 'a list -> Hpp.t -> unit) -> int
 [%%else]
-val feedback_add_feeder_on_Message : (Feedback.route_id -> Stateid.t  -> Feedback.doc_id -> Feedback.level -> Loc.t option -> Quickfix.t list -> Pp.t -> unit) -> int
+val feedback_add_feeder_on_Message : (Feedback.route_id -> Stateid.t  -> Feedback.doc_id -> Feedback.level -> HLoc.t option -> Quickfix.t list -> Hpp.t -> unit) -> int
 [%%endif]

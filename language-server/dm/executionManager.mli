@@ -14,6 +14,7 @@
 
 open Types
 open Protocol
+open Host
 
 (** The event manager is in charge of the actual event of tasks (as
     defined by the scheduler), caching event states and invalidating
@@ -36,11 +37,11 @@ val is_diagnostics_enabled: unit -> bool
 type state
 type event
 type events = event Sel.Event.t list
-type errored_sentence = (sentence_id * Loc.t option) option
+type errored_sentence = (sentence_id * HLoc.t option) option
 
-type feedback_message = Feedback.level * Loc.t option * Quickfix.t list * Pp.t
+type feedback_message = Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t
 
-val pr_event : event -> Pp.t
+val pr_event : event -> Hpp.t
 val init : Vernacstate.t -> state * event Sel.Event.t
 val destroy : state -> unit
 
@@ -49,9 +50,9 @@ val set_options : options -> unit
 val set_default_options : unit -> unit
 val invalidate : Document.document -> Scheduler.schedule -> sentence_id -> state -> state
 
-val error : state -> sentence_id -> (Loc.t option * Pp.t) option
+val error : state -> sentence_id -> (HLoc.t option * Hpp.t) option
 val feedback :  state -> sentence_id -> feedback_message list
-val all_errors : state -> (sentence_id * (Loc.t option * Pp.t * Quickfix.t list option)) list
+val all_errors : state -> (sentence_id * (HLoc.t option * Hpp.t * Quickfix.t list option)) list
 val all_feedback : state -> (sentence_id * feedback_message) list
 
 val reset_overview : state -> Document.document -> state

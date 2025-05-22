@@ -21,6 +21,7 @@ open Protocol
 open Protocol.LspWrapper
 open Protocol.ExtProtocol
 open Dm.Types
+open Host
 
 module CompactedDecl = Context.Compacted.Declaration
 
@@ -28,7 +29,7 @@ let init_state : Vernacstate.t option ref = ref None
 let get_init_state () =
   match !init_state with
   | Some st -> st
-  | None -> CErrors.anomaly Pp.(str "Initial state not available")
+  | None -> CErrors.anomaly (Hpp.str "Initial state not available")
 
 type tab = { st : Dm.DocumentManager.state; visible : bool }
 
@@ -504,7 +505,7 @@ let rocqtopSearch id params =
       Ok(()), inject_notifications notifications
     with e ->
       let e, info = Exninfo.capture e in
-      let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
+      let message = Hpp.string_of_ppcmds @@ CErrors.iprint (e, info) in
       Error({message; code=None}), []
 
 let sendDocumentState id params = 
@@ -570,7 +571,7 @@ let dispatch_std_notification =
   | TextDocumentDidOpen params -> log (fun () -> "Received notification: textDocument/didOpen");
     begin try textDocumentDidOpen params with
       exn -> let info = Exninfo.capture exn in
-      let message = "Error while opening document. " ^ Pp.string_of_ppcmds @@ CErrors.iprint_no_report info in
+      let message = "Error while opening document. " ^ Hpp.string_of_ppcmds @@ CErrors.iprint_no_report info in
       send_error_notification message; []
     end
   | TextDocumentDidChange params -> log (fun () -> "Received notification: textDocument/didChange");

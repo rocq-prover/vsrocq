@@ -13,6 +13,7 @@
 (**************************************************************************)
 
 open Types
+open Host
 
 let lsp_initialization_done = ref false
 let initialization_feedback_queue = Queue.create ()
@@ -59,7 +60,7 @@ let mk_log name =
         Exninfo.iraise e
       | e ->
         let e = Exninfo.capture e in
-        let message = Pp.string_of_ppcmds @@ CErrors.iprint e in
+        let message = Hpp.string_of_ppcmds @@ CErrors.iprint e in
         Format.asprintf "Error while printing: %s" message in
     let should_print_log = force || flag || (flag_init && not !lsp_initialization_done) in
     if should_print_log then begin
@@ -93,7 +94,7 @@ let feedback_add_feeder_on_Message f =
 let install_debug_feedback f =
   feedback_add_feeder_on_Message (fun _route _span _doc lvl loc _qf m ->
     match lvl, loc with
-    | Feedback.Debug,None -> f Pp.(string_of_ppcmds m)
+    | Feedback.Debug,None -> f Hpp.(string_of_ppcmds m)
     | _ -> ())
 
 (* We go through a queue in case we receive a debug feedback from Rocq before we
