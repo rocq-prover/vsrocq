@@ -13,6 +13,7 @@
 (**************************************************************************)
 
 open Types
+open Host
 
 let Log log = Log.mk_log "delegationManager"
 
@@ -49,7 +50,7 @@ module type Job = sig
   val binary_name : string
   val initial_pool_size : int
   type update_request
-  val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * Loc.t option * Quickfix.t list * Pp.t) -> update_request
+  val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * HLoc.t option * Quickfix.t list * Pp.t) -> update_request
 end
 
 (* One typically created a job id way before the worker is spawned, so we

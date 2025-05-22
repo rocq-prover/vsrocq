@@ -15,6 +15,7 @@ open Gramlib
 open Types
 open Lsp.Types
 open Scheduler
+open Host
 
 let Log log = Log.mk_log "document"
 
@@ -63,7 +64,7 @@ type comment = {
 type parsing_error = {
   start: int;
   stop: int;
-  msg: Pp.t Loc.located;
+  msg: Pp.t HLoc.located;
   qf: Quickfix.t list option;
   str: string;
 }
@@ -113,7 +114,7 @@ type parse_state = {
   started: float;
   stop: int;
   top_id: sentence_id option;
-  loc: Loc.t option;
+  loc: HLoc.t option;
   synterp_state : Vernacstate.Synterp.t;
   stream: (unit, char) Gramlib.Stream.t;
   raw: RawDocument.t;
@@ -541,7 +542,7 @@ let get_loc_from_info_or_exn e info =
   match e with
   | Synterp.UnmappedLibrary (_, qid) -> qid.loc
   | Synterp.NotFoundLibrary (_, qid) -> qid.loc
-  | _ -> Loc.get_loc @@ info
+  | _ -> HLoc.get_loc @@ info
 [%%else]
 let get_loc_from_info_or_exn _ info =
   Loc.get_loc info
@@ -622,7 +623,7 @@ let handle_parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments
       handle_parse_error start start (loc,CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
     | exception exn ->
       let e, info = Exninfo.capture exn in
-      let loc = Loc.get_loc @@ info in
+      let loc = HLoc.get_loc @@ info in
       let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
       junk_sentence_end stream;
       handle_parse_error start start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state

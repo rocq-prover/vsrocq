@@ -12,6 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 open Protocol.LspWrapper
+open Host
 
 module Loc = struct
   include Loc
@@ -24,7 +25,7 @@ type sentence_id_set = Stateid.Set.t
 module RangeList = struct
 
   type t = Range.t list
-  
+
   let insert_or_merge_range r ranges =
     let ranges = List.sort Range.compare (r :: ranges) in
     let rec insert_or_merge_sorted_ranges r1 = function
@@ -84,7 +85,7 @@ let empty_overview = {processing = []; processed = []; prepared = []}
     type t = unit
     let from_exception _ = Ok([])
     let pp = Pp.mt
-    let loc _ = Loc.make_loc (0,0)
+    let loc _ = HLoc.make_loc (0,0)
   end
 [%%endif]
 
