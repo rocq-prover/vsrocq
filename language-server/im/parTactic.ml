@@ -12,9 +12,9 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
+open Common.Types
 
-let Log log = Log.mk_log "parTactic"
+let Log log = Common.Log.mk_log "parTactic"
 
 type sentence_id = Stateid.t
 

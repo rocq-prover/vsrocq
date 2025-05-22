@@ -16,7 +16,7 @@
 
 open Dm
 open Base
-open Types
+open Bridge
 open Protocol.LspWrapper
 
 [%%if lsp < (1,19,0) ]
