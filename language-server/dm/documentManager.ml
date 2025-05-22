@@ -20,6 +20,7 @@ open Protocol.LspWrapper
 open Protocol.ExtProtocol
 open Protocol.Printing
 open Types
+open Host
 
 let Log log = Log.mk_log "documentManager"
 
@@ -172,7 +173,7 @@ let mk_diag st (id,(lvl,oloc,qf,msg)) =
         (`String "quickfix-replace",
         qf |> yojson_of_list
         (fun qf ->
-            let s = Pp.string_of_ppcmds @@ Quickfix.pp qf in
+            let s = Hpp.string_of_ppcmds @@ Quickfix.pp qf in
             let loc = Quickfix.loc qf in
             let range = RawDocument.range_of_loc (Document.raw_document st.document) loc in
             QuickFixData.yojson_of_t (QuickFixData.{range; text = s})
@@ -181,7 +182,7 @@ let mk_diag st (id,(lvl,oloc,qf,msg)) =
       Some code
     in
     let lvl = DiagnosticSeverity.of_feedback_level lvl in
-    make_diagnostic st.document (Document.range_of_id st.document id) oloc (Pp.string_of_ppcmds msg) lvl code
+    make_diagnostic st.document (Document.range_of_id st.document id) oloc (Hpp.string_of_ppcmds msg) lvl code
 
 let mk_error_diag st (id,(oloc,msg,qf)) = (* mk_diag st (id,(Feedback.Error,oloc, msg)) *)
   let code = 
@@ -193,7 +194,7 @@ let mk_error_diag st (id,(oloc,msg,qf)) = (* mk_diag st (id,(Feedback.Error,oloc
         (`String "quickfix-replace",
         qf |> yojson_of_list
         (fun qf ->
-            let s = Pp.string_of_ppcmds @@ Quickfix.pp qf in
+            let s = Hpp.string_of_ppcmds @@ Quickfix.pp qf in
             let loc = Quickfix.loc qf in
             let range = RawDocument.range_of_loc (Document.raw_document st.document) loc in
             QuickFixData.yojson_of_t (QuickFixData.{range; text = s})
@@ -202,7 +203,7 @@ let mk_error_diag st (id,(oloc,msg,qf)) = (* mk_diag st (id,(Feedback.Error,oloc
       Some code
   in
   let lvl = DiagnosticSeverity.of_feedback_level Feedback.Error in
-  make_diagnostic st.document (Document.range_of_id st.document id) oloc (Pp.string_of_ppcmds msg) lvl code
+  make_diagnostic st.document (Document.range_of_id st.document id) oloc (Hpp.string_of_ppcmds msg) lvl code
 
 
 let mk_parsing_error_diag st Document.{ msg = (oloc,msg); start; stop; qf } =
@@ -220,7 +221,7 @@ let mk_parsing_error_diag st Document.{ msg = (oloc,msg); start; stop; qf } =
         (`String "quickfix-replace",
          qf |> yojson_of_list
          (fun qf ->
-            let s = Pp.string_of_ppcmds @@ Quickfix.pp qf in
+            let s = Hpp.string_of_ppcmds @@ Quickfix.pp qf in
             let loc = Quickfix.loc qf in
             let range = RawDocument.range_of_loc (Document.raw_document st.document) loc in
             QuickFixData.yojson_of_t (QuickFixData.{range; text = s})
@@ -228,7 +229,7 @@ let mk_parsing_error_diag st Document.{ msg = (oloc,msg); start; stop; qf } =
         in
       Some code
   in
-  make_diagnostic st.document range oloc (Pp.string_of_ppcmds msg) severity code
+  make_diagnostic st.document range oloc (Hpp.string_of_ppcmds msg) severity code
 
 let all_diagnostics st =
   let parse_errors = Document.parse_errors st.document in
@@ -792,7 +793,7 @@ let about st pos ~pattern =
       Ok (pp_of_rocqpp @@ Prettyp.print_about env sigma ref_or_by_not udecl)
     with e ->
       let e, info = Exninfo.capture e in
-      let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
+      let message = Hpp.string_of_ppcmds @@ CErrors.iprint (e, info) in
       Error ({message; code=None})
 
 let search st ~id pos pattern =
@@ -813,7 +814,7 @@ let hover_of_sentence st loc pattern sentence =
       Language.Hover.get_hover_contents env sigma ref_or_by_not
     with e ->
       let e, info = Exninfo.capture e in
-      log (fun () -> "Exception while handling hover: " ^ (Pp.string_of_ppcmds @@ CErrors.iprint (e, info)));
+      log (fun () -> "Exception while handling hover: " ^ (Hpp.string_of_ppcmds @@ CErrors.iprint (e, info)));
       None
 
 let hover st pos =
@@ -893,7 +894,7 @@ let jump_to_definition st pos =
             end
         with e ->
           let e, info = Exninfo.capture e in
-          log (fun () -> Pp.string_of_ppcmds @@ CErrors.iprint (e, info)); None
+          log (fun () -> Hpp.string_of_ppcmds @@ CErrors.iprint (e, info)); None
 
 [%%endif]
 
@@ -908,7 +909,7 @@ let check st pos ~pattern =
       Ok (pp_of_rocqpp @@ Vernacentries.check_may_eval env sigma redexpr rc)
     with e ->
       let e, info = Exninfo.capture e in
-      let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
+      let message = Hpp.string_of_ppcmds @@ CErrors.iprint (e, info) in
       Error ({message; code=None})
 
 [%%if rocq ="8.18" || rocq ="8.19"]
@@ -951,7 +952,7 @@ let print st pos ~pattern =
 
 let warn_nested_proofs_opt =
   CWarnings.create ~name:"vsrocq-nested-proofs-flag"
-    Pp.(fun () -> str "Flag \"Nested Proofs Allowed\" is ignored by VsRocq.")
+    (fun () -> Hpp.str "Flag \"Nested Proofs Allowed\" is ignored by VsRocq.")
 
 let () =
   Goptions.declare_bool_option

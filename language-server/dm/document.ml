@@ -64,7 +64,7 @@ type comment = {
 type parsing_error = {
   start: int;
   stop: int;
-  msg: Pp.t HLoc.located;
+  msg: Hpp.t HLoc.located;
   qf: Quickfix.t list option;
   str: string;
 }
@@ -160,17 +160,17 @@ let range_of_sentence_with_blank_space raw (sentence : sentence) =
 
 let string_of_id document id =
   match SM.find_opt id document.sentences_by_id with
-  | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
   | Some sentence -> string_of_sentence document.raw_doc sentence
 
 let range_of_id document id =
   match SM.find_opt id document.sentences_by_id with
-  | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
   | Some sentence -> range_of_sentence document.raw_doc sentence
 
 let range_of_id_with_blank_space document id =
   match SM.find_opt id document.sentences_by_id with
-  | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
   | Some sentence -> range_of_sentence_with_blank_space document.raw_doc sentence
 
 let push_proof_step_in_outline document id (outline : outline) =
@@ -591,7 +591,7 @@ let handle_parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments
       let tokens = stream_tok 0 [] lex begin_line begin_char in
       begin
         try
-          log (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
+          log (fun () -> "Parsed: " ^ (Hpp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
           let entry = get_entry ast in
           let classification = Vernac_classifier.classify_vernac ast in
           let synterp_state = Vernacstate.Synterp.freeze () in
@@ -770,7 +770,7 @@ module Internal = struct
   let string_of_error error =
     let (_, pp) = error.msg in
     Format.sprintf "[parsing error] [%s] (%i -> %i)"
-    (Pp.string_of_ppcmds pp)
+    (Hpp.string_of_ppcmds pp)
     error.start
     error.stop
 

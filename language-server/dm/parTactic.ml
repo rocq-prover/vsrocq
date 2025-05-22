@@ -12,6 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open Host
 open Types
 
 let Log log = Log.mk_log "parTactic"
@@ -22,10 +23,10 @@ module TacticJob = struct
   type solution =
     | Solved of Constr.t * UState.t
     | NoProgress
-    | Error of Pp.t
+    | Error of Hpp.t
   type update_request =
     | UpdateSolution of Evar.t * solution
-    | AppendFeedback of Feedback.route_id * sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
+    | AppendFeedback of Feedback.route_id * sentence_id * (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t)
   let appendFeedback (rid,id) fb = AppendFeedback(rid,id,fb)
 
   type t =  {
@@ -56,7 +57,7 @@ let assign_tac ~abstract res : unit Proofview.tactic =
       (if abstract then Abstract.tclABSTRACT None else (fun x -> x))
           (push_state uc <*> Tactics.exact_no_check (EConstr.of_constr pt))
     with Not_found ->
-      log (fun () -> "nothing for " ^ Pp.string_of_ppcmds @@ Evar.print gid);
+      log (fun () -> "nothing for " ^ Hpp.string_of_ppcmds @@ Evar.print gid);
       tclUNIT ()
   end)
 
@@ -95,12 +96,12 @@ let worker_solve_one_goal { TacticJob.state; ast; goalno; goal } ~send_back =
           send_back (TacticJob.UpdateSolution (goal,TacticJob.Solved(t, get_ustate sigma)))
         else
           CErrors.user_err
-            Pp.(str"The par: selector requires a tactic that makes no progress or fully" ++
+            Hpp.(str"The par: selector requires a tactic that makes no progress or fully" ++
                 str" solves the goal and leaves no unresolved existential variables. The following" ++
                 str" existentials remain unsolved: " ++ prlist (Termops.pr_existential_key (Global.env ()) sigma) (Evar.Set.elements evars))
     )
   with e when CErrors.noncritical e ->
-    send_back (TacticJob.UpdateSolution (goal, TacticJob.Error Pp.(CErrors.print e ++ spc() ++ str "(for subgoal "++int goalno ++ str ")")))
+    send_back (TacticJob.UpdateSolution (goal, TacticJob.Error Hpp.(CErrors.print e ++ spc() ++ str "(for subgoal "++int goalno ++ str ")")))
 
 let feedback_id = ref (0,Stateid.dummy)
 let set_id_for_feedback rid sid = feedback_id := (rid,sid)
@@ -133,16 +134,16 @@ let interp_par ~pstate ~info ast ~abstract ~with_end_tac : Declare.Proof.t =
       match result with
       | None -> wait acc evs
       | Some(TacticJob.UpdateSolution(ev,TacticJob.Solved(c,u))) ->
-          log (fun () -> "got solution for evar " ^ Pp.string_of_ppcmds @@ Evar.print ev);
+          log (fun () -> "got solution for evar " ^ Hpp.string_of_ppcmds @@ Evar.print ev);
           wait acc evs
       | Some(TacticJob.AppendFeedback _) ->
           log (fun () -> "got feedback");
           wait acc evs
       | Some(TacticJob.UpdateSolution(ev,TacticJob.NoProgress)) ->
-          log (fun () -> "got no progress for " ^ Pp.string_of_ppcmds @@ Evar.print ev);
+          log (fun () -> "got no progress for " ^ Hpp.string_of_ppcmds @@ Evar.print ev);
           wait acc evs
       | Some(TacticJob.UpdateSolution(ev,TacticJob.Error err)) ->
-          log (fun () -> "got error for " ^ Pp.string_of_ppcmds @@ Evar.print ev);
+          log (fun () -> "got error for " ^ Hpp.string_of_ppcmds @@ Evar.print ev);
           List.iter DelegationManager.cancel_job job_ids;
           CErrors.user_err err in
   let results = wait [] Sel.Todo.(add empty events) in

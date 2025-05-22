@@ -20,11 +20,11 @@ open Host
 
 let Log log = Log.mk_log "executionManager"
 
-type feedback_message = Feedback.level * Loc.t option * Quickfix.t list * Pp.t
+type feedback_message = Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t
 
 type execution_status =
   | Success of Vernacstate.t option
-  | Error of Pp.t Loc.located * Quickfix.t list option * Vernacstate.t option (* State to use for resiliency *)
+  | Error of Hpp.t HLoc.located * Quickfix.t list option * Vernacstate.t option (* State to use for resiliency *)
 
 let success vernac_st = Success (Some vernac_st)
 let error loc qf msg vernac_st = Error ((loc,msg), qf, (Some vernac_st))
@@ -78,8 +78,8 @@ type delegated_task = {
 }
 
 type prepared_task =
-  | PSkip of { id: sentence_id; error: Pp.t option }
-  | PBlock of { id: sentence_id; error: Pp.t HLoc.located }
+  | PSkip of { id: sentence_id; error: Hpp.t option }
+  | PBlock of { id: sentence_id; error: Hpp.t HLoc.located }
   | PExec of executable_sentence
   | PQuery of executable_sentence
   | PDelegate of delegated_task
@@ -132,7 +132,7 @@ let get_options () = !options
 module ProofJob = struct
   type update_request =
     | UpdateExecStatus of sentence_id * execution_status
-    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * HLoc.t option * Quickfix.t list * Pp.t)
+    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t)
   let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
 
   type t = {
@@ -155,7 +155,7 @@ type event =
 
 type events = event Sel.Event.t list
 let pr_event = function
-  | LocalFeedback _ -> Pp.str "LocalFeedback"
+  | LocalFeedback _ -> Hpp.str "LocalFeedback"
   | ProofWorkerEvent event -> ProofWorker.pr_event event
 
 let inject_proof_event = Sel.Event.map (fun x -> ProofWorkerEvent x)
@@ -248,7 +248,7 @@ let add_using proof proof_using lemmas =
       Names.Id.Set.iter (fun id ->
           if not (List.exists Util.(Context.Named.Declaration.get_id %> Names.Id.equal id) vars) then
             CErrors.user_err
-              Pp.(str "Unknown variable: " ++ Names.Id.print id ++ str "."))
+              Hpp.(str "Unknown variable: " ++ Names.Id.print id ++ str "."))
         using;
       let _, pstate = Declare.Proof.set_used_variables proof ~using in
       pstate
@@ -465,7 +465,7 @@ let handle_feedback state (_,id, fb) =
     begin match SM.find id state.of_sentence with
     | (s,fl) -> update_all id s (fl @ [fb]) state
     | exception Not_found -> 
-        log (fun () -> "Received feedback on non-existing state id " ^ Stateid.to_string id ^ ": " ^ Pp.string_of_ppcmds msg);
+        log (fun () -> "Received feedback on non-existing state id " ^ Stateid.to_string id ^ ": " ^ Hpp.string_of_ppcmds msg);
         state
     end 
 
@@ -513,7 +513,7 @@ let get_vs_and_exec_error st id =
   match fst @@ SM.find id st.of_sentence with
   | Done (Success (Some vs) as es) -> vs, exec_error_of_execution_status id es
   | Done (Error (_,_,Some vs) as es) -> vs, exec_error_of_execution_status id es
-  | _ -> CErrors.anomaly Pp.(str "get_vs_and_exec_error call should be protected with is_locally_executed")
+  | _ -> CErrors.anomaly (Hpp.str "get_vs_and_exec_error call should be protected with is_locally_executed")
   | exception Not_found -> assert false
 
 let is_locally_executed st id =
@@ -604,14 +604,14 @@ let worker_main { ProofJob.tasks; initial_vernac_state = vs; doc_id; terminator_
   with e ->
     let e, info = Exninfo.capture e in
     let message = CErrors.iprint_no_report (e, info) in
-    Feedback.msg_debug @@ Pp.str "======================= worker ===========================";
+    Feedback.msg_debug @@ Hpp.str "======================= worker ===========================";
     Feedback.msg_debug message;
-    Feedback.msg_debug @@ Pp.str "==========================================================";
+    Feedback.msg_debug @@ Hpp.str "==========================================================";
     exit 1
 
 let execute_task st (vs, events, interrupted) task =
   if interrupted then begin
-    let st = update st (id_of_prepared_task task) (Error ((None,Pp.str "interrupted"),None,None)) in
+    let st = update st (id_of_prepared_task task) (Error ((None,Hpp.str "interrupted"),None,None)) in
     let todo = [] in
     ({st with todo}, vs, events, true, None)
   end else
@@ -671,7 +671,7 @@ let execute_task st (vs, events, interrupted) task =
                   log (fun () -> "Aborted future");
                   assign (`Exn (CErrors.UserError err, Option.fold_left HLoc.add_loc Exninfo.null loc))
               with exn when CErrors.noncritical exn ->
-                assign (`Exn (CErrors.UserError(Pp.str "error closing proof"), Exninfo.null))
+                assign (`Exn (CErrors.UserError(Hpp.str "error closing proof"), Exninfo.null))
             in
             let st = update st terminator_id (success last_vs) in
             let st = List.fold_left (fun st id ->
@@ -693,7 +693,7 @@ let execute_task st (vs, events, interrupted) task =
             (st, vs,events,false, None)
           end
     with Sys.Break ->
-      let st = update st (id_of_prepared_task task) (Error ((None,Pp.str "interrupted"),None,None)) in
+      let st = update st (id_of_prepared_task task) (Error ((None,Hpp.str "interrupted"),None,None)) in
       (st, vs, events, true, None)
 
 let execute st document (vs, events, interrupted) task block_on_first_error =

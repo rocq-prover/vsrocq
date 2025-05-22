@@ -50,7 +50,7 @@ module type Job = sig
   val binary_name : string
   val initial_pool_size : int
   type update_request
-  val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * HLoc.t option * Quickfix.t list * Pp.t) -> update_request
+  val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t) -> update_request
 end
 
 (* One typically created a job id way before the worker is spawned, so we
@@ -78,7 +78,7 @@ module type Worker = sig
 
   (** Event for the main loop *)
   type delegation
-  val pr_event : delegation -> Pp.t
+  val pr_event : delegation -> Hpp.t
   type events = delegation Sel.Event.t list
   
   (** handling an event may require an update to a sentence in the exec state,
@@ -137,10 +137,10 @@ type delegation =
  | WorkerEnd of (int * Unix.process_status)
  | WorkerIOError of exn
 let pr_event = function
-  | WorkerEnd _ -> Pp.str "WorkerEnd"
-  | WorkerIOError _ -> Pp.str "WorkerIOError"
-  | WorkerProgress _ -> Pp.str "WorkerProgress"
-  | WorkerStart _ -> Pp.str "WorkerStart"
+  | WorkerEnd _ -> Hpp.str "WorkerEnd"
+  | WorkerIOError _ -> Hpp.str "WorkerIOError"
+  | WorkerProgress _ -> Hpp.str "WorkerProgress"
+  | WorkerStart _ -> Hpp.str "WorkerStart"
 
 let install_debug_worker link =
   Log.worker_initialization_done
@@ -306,7 +306,7 @@ let handle_event = function
         exit 0
       | Error(msg, cleanup_events) ->
         log (fun () -> "worker did not spawn: " ^ msg);
-        (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
+        (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Hpp.str msg)), cleanup_events)
     else
       match create_process_worker procname cancellation_handle job with
       | Ok events ->
@@ -314,7 +314,7 @@ let handle_event = function
           (None, events)
       | Error(msg, cleanup_events) ->
           log (fun () -> "worker did not spawn: " ^ msg);
-          (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
+          (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Hpp.str msg)), cleanup_events)
 
 
 (* the only option is the socket port *)

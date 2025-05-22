@@ -13,6 +13,7 @@
 (**************************************************************************)
 
 open Types
+open Host
 
 let Log log = Log.mk_log "scheduler"
 
@@ -31,8 +32,8 @@ type executable_sentence = {
 }
 
 type task =
-  | Skip of { id: sentence_id; error: Pp.t option }
-  | Block of { id: sentence_id; error: Pp.t Loc.located }
+  | Skip of { id: sentence_id; error: Hpp.t option }
+  | Block of { id: sentence_id; error: Hpp.t HLoc.located }
   | Exec of executable_sentence
   | OpaqueProof of { terminator: executable_sentence;
                      opener_id: sentence_id;
@@ -206,8 +207,8 @@ let push_state id ast synterp classif st =
     base_id st, push_ex_sentence ex_sentence st, Exec ex_sentence
   | VtSideff _ ->
     base_id st, extrude_side_effect ex_sentence st, Exec ex_sentence
-  | VtMeta -> base_id st, push_ex_sentence ex_sentence st, Skip { id; error = Some (Pp.str "Unsupported command") }
-  | VtProofMode _ -> base_id st, push_ex_sentence ex_sentence st, Skip { id; error = Some (Pp.str "Unsupported command") }
+  | VtMeta -> base_id st, push_ex_sentence ex_sentence st, Skip { id; error = Some (Hpp.str "Unsupported command") }
+  | VtProofMode _ -> base_id st, push_ex_sentence ex_sentence st, Skip { id; error = Some (Hpp.str "Unsupported command") }
 
 let string_of_task (task_id,(base_id,task)) =
   let s = match task with
@@ -261,12 +262,12 @@ let schedule_sentence (id, (ast, classif, synterp_st)) st schedule =
 let task_for_sentence schedule id =
   match SM.find_opt id schedule.tasks with
   | Some x -> x
-  | None -> CErrors.anomaly Pp.(str "cannot find schedule for sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str "cannot find schedule for sentence " ++ Stateid.print id)
 
 let dependents schedule id =
   match SM.find_opt id schedule.dependencies with
   | Some x -> x
-  | None -> CErrors.anomaly Pp.(str "cannot find dependents for sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str "cannot find dependents for sentence " ++ Stateid.print id)
 
 (** Dependency computation algo *)
 (*

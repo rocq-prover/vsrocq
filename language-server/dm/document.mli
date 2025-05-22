@@ -13,6 +13,7 @@
 (**************************************************************************)
 
 open Types
+open Host
 open Lsp.Types
 
 (** This file defines operations on the content of a document (text, parsing
@@ -88,7 +89,7 @@ type parsed_ast = {
 type parsing_error = {
   start: int; 
   stop: int; 
-  msg: Pp.t Loc.located;
+  msg: Hpp.t HLoc.located;
   qf: Quickfix.t list option;
   str: string;
 }

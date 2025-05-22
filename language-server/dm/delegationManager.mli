@@ -13,11 +13,12 @@
 (**************************************************************************)
 
 open Types
+open Host
 
 (* This component handles delegation to workers. It gathers all the code for
    process management across supported OSes (fork on Unix, create_process +
    marshall on Windows).
-   
+
    For each job to delegate one has to instantiaet the MakeWorker functor
    passin a Job description. Since on Windows we can't fork, one has to
    provide a Job.binary_name to invoke. That process must be a Rocq toplevel
@@ -42,7 +43,7 @@ module type Job = sig
   type update_request
 
   (** Called to handle feedback sent by the worker process *)
-  val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * Loc.t option * Quickfix.t list * Pp.t) -> update_request
+  val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t) -> update_request
 end
 
 type job_handle
@@ -60,7 +61,7 @@ module type Worker = sig
 
    (** Event for the main loop *)
    type delegation
-   val pr_event : delegation -> Pp.t
+   val pr_event : delegation -> Hpp.t
    type events = delegation Sel.Event.t list
    
    (** handling an event may require an update to a sentence in the exec state,

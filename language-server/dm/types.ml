@@ -19,6 +19,11 @@ module Loc = struct
 end
 [@@deprecated "use a proxy in host/"]
 
+module Pp = struct
+  include Pp
+end
+[@@deprecated "use [Host.Hpp]"]
+
 type sentence_id = Stateid.t
 type sentence_id_set = Stateid.Set.t
 
@@ -84,7 +89,7 @@ let empty_overview = {processing = []; processed = []; prepared = []}
   module Quickfix = struct
     type t = unit
     let from_exception _ = Ok([])
-    let pp = Pp.mt
+    let pp = Hpp.mt
     let loc _ = HLoc.make_loc (0,0)
   end
 [%%endif]

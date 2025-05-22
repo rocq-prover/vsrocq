@@ -18,6 +18,7 @@ open Printer
 open EConstr
 open Names
 open Types
+open Host
 
 let Log log = Log.mk_log "completionSuggester"
 
@@ -281,10 +282,10 @@ module SelectiveUnification = struct
           | Cast (c,_,_) -> aux iterations c
           | _            -> ({lemma with completes = Some No_completion}, worst_value)
         in
-      try 
+      try
         aux 0 (of_constr lemma.typ)
       with e ->
-        log (fun () -> Printf.sprintf "Error in Split Unification: %s for %s\n%!" (Printexc.to_string e) (Pp.string_of_ppcmds (pr_global lemma.ref)));
+        log (fun () -> Printf.sprintf "Error in Split Unification: %s for %s\n%!" (Printexc.to_string e) (Hpp.string_of_ppcmds (pr_global lemma.ref)));
         ({lemma with completes = Some No_completion}, worst_value)
      in
     lemmas
