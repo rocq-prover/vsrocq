@@ -132,7 +132,7 @@ let get_options () = !options
 module ProofJob = struct
   type update_request =
     | UpdateExecStatus of sentence_id * execution_status
-    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t)
+    | AppendFeedback of Feedback.route_id * Common.Types.sentence_id * (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t)
 
   let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
 

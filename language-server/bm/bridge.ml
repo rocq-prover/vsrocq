@@ -182,7 +182,7 @@ let mk_diag st (id,(lvl,oloc,qf,msg)) =
       Some code
     in
     let lvl = DiagnosticSeverity.of_feedback_level lvl in
-    make_diagnostic st.document (Document.range_of_id st.document id) oloc (Hpp.string_of_ppcmds msg) lvl code
+    make_diagnostic st.document (Dm.Document.range_of_id st.document id) oloc (Hpp.string_of_ppcmds msg) lvl code
 
 let mk_error_diag st (id,(oloc,msg,qf)) = (* mk_diag st (id,(Feedback.Error,oloc, msg)) *)
   let code = 
@@ -203,7 +203,7 @@ let mk_error_diag st (id,(oloc,msg,qf)) = (* mk_diag st (id,(Feedback.Error,oloc
       Some code
   in
   let lvl = DiagnosticSeverity.of_feedback_level Feedback.Error in
-  make_diagnostic st.document (Document.range_of_id st.document id) oloc (Hpp.string_of_ppcmds msg) lvl code
+  make_diagnostic st.document (Dm.Document.range_of_id st.document id) oloc (Hpp.string_of_ppcmds msg) lvl code
 
 let mk_parsing_error_diag st Dm.Document.{ msg = (oloc,msg); start; stop; qf } =
   let doc = Dm.Document.raw_document st.document in
