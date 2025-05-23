@@ -4,4 +4,4 @@
  (name language)
  (public_name vsrocq-language-server.language)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
- (libraries coq-core.sysinit lsp))
+ (libraries rocq-runtime.sysinit lsp))

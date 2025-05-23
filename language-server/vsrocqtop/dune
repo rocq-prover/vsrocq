@@ -6,4 +6,4 @@
  (flags -linkall)
  (package vsrocq-language-server)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
- (libraries coq-core.sysinit coq-core.tactics sel yojson dm lsp))
+ (libraries rocq-runtime.sysinit rocq-runtime.tactics sel yojson bridge lsp))

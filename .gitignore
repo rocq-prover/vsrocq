@@ -1,6 +1,13 @@
 client/node_modules
 client/dist/
 client/out/
+language-server/dm/dune
+language-server/im/dune
+language-server/bm/dune
+language-server/common/dune
+language-server/language/dune
+language-server/protocol/dune
+language-server/vsrocqtop/dune
 language-server/_build
 language-server/dm/dune
 language-server/language/dune
