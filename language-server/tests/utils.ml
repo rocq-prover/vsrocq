@@ -99,10 +99,10 @@ let dm_parse st spec =
   let doc = Bridge.Internal.document st in
   st, d_sentences doc spec
 
-let sentence_id_of_sexp s = Stateid.of_int (Sexplib.Std.int_of_sexp s)
-let sexp_of_sentence_id i = Sexplib.Std.sexp_of_int (Stateid.to_int i)
+let sentence_id_of_sexp s = State.Id.of_int (Sexplib.Std.int_of_sexp s)
+let sexp_of_sentence_id i = Sexplib.Std.sexp_of_int (State.Id.to_int i)
 
-let compare_sentence_id = Stateid.compare
+let compare_sentence_id = State.Id.compare
 
 type (_,'a) count =
   | O : (unit,'a) count

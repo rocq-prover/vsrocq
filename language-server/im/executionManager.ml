@@ -29,11 +29,11 @@ type execution_status =
 let success vernac_st = Success (Some vernac_st)
 let error loc qf msg vernac_st = Error ((loc,msg), qf, (Some vernac_st))
 
-type sentence_id = Stateid.t
+type sentence_id = State.Id.t
 
 type errored_sentence = (sentence_id * HLoc.t option) option
 
-module SM = Map.Make (Stateid)
+module SM = Map.Make (State.Id)
 
 type sentence_state =
   | Done of execution_status
@@ -208,7 +208,7 @@ let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
     match result with
     | Ok (interp, events) ->
       (*
-        log fun () -> "Executed: " ^ Stateid.to_string state_id ^ "  " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast) ^
+        log fun () -> "Executed: " ^ State.Id.to_string state_id ^ "  " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast) ^
           " (" ^ (if Option.is_empty vernac_st.State.lemmas then "no proof" else "proof")  ^ ")";
           *)
         let st = { st with interp } in
@@ -220,7 +220,7 @@ let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
         Exninfo.iraise exn
     | Error (e, info) ->
       (*
-        log (fun () -> "Failed to execute: " ^ Stateid.to_string state_id ^ "  " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
+        log (fun () -> "Failed to execute: " ^ State.Id.to_string state_id ^ "  " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
         *)
         let loc = HLoc.get_loc info in
         let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
@@ -312,7 +312,7 @@ let update_processed id state document =
     | _ -> assert false (* delegated sentences born as such, cannot become it later *)
     end
   | exception Not_found ->
-    log (fun () -> "Trying to get overview with non-existing state id " ^ Stateid.to_string id);
+    log (fun () -> "Trying to get overview with non-existing state id " ^ State.Id.to_string id);
     state
 
 let id_of_first_task ~default = function
@@ -466,7 +466,7 @@ let handle_feedback state (_,id, fb) =
     begin match SM.find id state.of_sentence with
     | (s,fl) -> update_all id s (fl @ [fb]) state
     | exception Not_found -> 
-        log (fun () -> "Received feedback on non-existing state id " ^ Stateid.to_string id ^ ": " ^ Hpp.string_of_ppcmds msg);
+        log (fun () -> "Received feedback on non-existing state id " ^ State.Id.to_string id ^ ": " ^ Hpp.string_of_ppcmds msg);
         state
     end 
 
@@ -571,7 +571,7 @@ let purge_state = function
 (* TODO move to proper place *)
 let worker_execute ~doc_id ~send_back (vs,events) { id; ast; synterp; error_recovery } =
   let vs:State.t = { vs with synterp } in
-  log (fun () -> "worker interp " ^ Stateid.to_string id);
+  log (fun () -> "worker interp " ^ State.Id.to_string id);
   let vs, v, ev = interp_ast ~doc_id ~state_id:id ~st:vs ~error_recovery ast in
   send_back (ProofJob.UpdateExecStatus (id,purge_state v));
   (vs, events @ ev)
@@ -636,7 +636,7 @@ let execute_task st (vs, events, interrupted) task =
           let vs, st, ev, exec_error =
             if is_locally_executed st id then
               let vs, exec_error = get_vs_and_exec_error st id in
-              log (fun () -> Format.asprintf "skipping execution of already executed %s" (Stateid.to_string id));
+              log (fun () -> Format.asprintf "skipping execution of already executed %s" (State.Id.to_string id));
               vs, st, [], exec_error
             else
               let vs, v, ev = interp_ast ~doc_id:st.doc_id ~state_id:id ~st:vs ~error_recovery ast in
@@ -676,7 +676,7 @@ let execute_task st (vs, events, interrupted) task =
             in
             let st = update st terminator_id (success last_vs) in
             let st = List.fold_left (fun st id ->
-               if Option.equal Stateid.equal (Some id) last_step_id then
+               if Option.equal State.Id.equal (Some id) last_step_id then
                  update_all id (Delegated (job_id,Some complete_job)) [] st
                else
                  update_all id (Delegated (job_id,None)) [] st)
@@ -718,14 +718,14 @@ let build_tasks_for document sch st id block =
     begin match find_fulfilled_opt id st.of_sentence with
     | Some (Success (Some vs)) ->
       (* We reached an already computed state *)
-      log (fun () -> "Reached computed state " ^ Stateid.to_string id);
+      log (fun () -> "Reached computed state " ^ State.Id.to_string id);
       vs, tasks, st, None
     | Some (Error((loc, _),_,Some vs)) ->
       (* We try to be resilient to an error *)
-      log (fun () -> "Error resiliency on state " ^ Stateid.to_string id);
+      log (fun () -> "Error resiliency on state " ^ State.Id.to_string id);
       vs, tasks, st, Some (id, loc)
     | _ ->
-      log (fun () -> "Non (locally) computed state " ^ Stateid.to_string id);
+      log (fun () -> "Non (locally) computed state " ^ State.Id.to_string id);
       let (base_id, task) = task_for_sentence sch id in
       begin match base_id with
       | None -> (* task should be executed in initial state *)
@@ -841,13 +841,13 @@ let invalidate1 of_sentence id =
 
 let cancel1 todo invalid_id =
   let task_of_id = function
-    | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } -> Stateid.equal id invalid_id
+    | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } -> State.Id.equal id invalid_id
     | PDelegate _ -> false
   in
   List.filter task_of_id todo
 
 let rec invalidate document schedule id st =
-  log (fun () -> "Invalidating: " ^ Stateid.to_string id);
+  log (fun () -> "Invalidating: " ^ State.Id.to_string id);
   let of_sentence = invalidate1 st.of_sentence id in
   let todo = cancel1 st.todo id in
   let old_jobs = Queue.copy jobs in
@@ -864,7 +864,7 @@ let rec invalidate document schedule id st =
     List.(concat (map (fun tasks -> map id_of_prepared_task tasks) !removed)) in
   if of_sentence == st.of_sentence then st else
   let deps = Common.Scheduler.dependents schedule id in
-  Stateid.Set.fold (invalidate document schedule) deps { st with of_sentence; todo }
+  State.Id.Set.fold (invalidate document schedule) deps { st with of_sentence; todo }
 
 let context_of_state st =
     State.Interp.unfreeze_interp_state st;

@@ -21,7 +21,7 @@ let Log log = Common.Log.mk_log "document"
 
 module LM = Map.Make (Int)
 
-module SM = Map.Make (Stateid)
+module SM = Map.Make (State.Id)
 
 type proof_block_type =
   | TheoremKind
@@ -160,17 +160,17 @@ let range_of_sentence_with_blank_space raw (sentence : sentence) =
 
 let string_of_id document id =
   match SM.find_opt id document.sentences_by_id with
-  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ State.Id.print id)
   | Some sentence -> string_of_sentence document.raw_doc sentence
 
 let range_of_id document id =
   match SM.find_opt id document.sentences_by_id with
-  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ State.Id.print id)
   | Some sentence -> range_of_sentence document.raw_doc sentence
 
 let range_of_id_with_blank_space document id =
   match SM.find_opt id document.sentences_by_id with
-  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str"Trying to get range of non-existing sentence " ++ State.Id.print id)
   | Some sentence -> range_of_sentence_with_blank_space document.raw_doc sentence
 
 let push_proof_step_in_outline document id (outline : outline) =
@@ -255,7 +255,7 @@ let parse_errors parsed =
   List.map snd (LM.bindings parsed.parsing_errors_by_end)
 
 let add_sentence parsed parsing_start start stop (ast: sentence_state) synterp_state scheduler_state_before =
-  let id = Stateid.fresh () in
+  let id = State.Id.fresh () in
   let scheduler_state_after, schedule = 
     match ast with
     | Error {msg} ->
@@ -405,7 +405,7 @@ let string_of_parsed_ast = function
 
 let patch_sentence parsed scheduler_state_before id ({ parsing_start; ast; start; stop; synterp_state } : pre_sentence) =
   let old_sentence = SM.find id parsed.sentences_by_id in
-  log (fun () -> Format.sprintf "Patching sentence %s , %s" (Stateid.to_string id) (string_of_parsed_ast old_sentence.ast));
+  log (fun () -> Format.sprintf "Patching sentence %s , %s" (State.Id.to_string id) (string_of_parsed_ast old_sentence.ast));
   let scheduler_state_after, schedule =
     match ast with
     | Error {msg} ->
@@ -417,7 +417,7 @@ let patch_sentence parsed scheduler_state_before id ({ parsing_start; ast; start
   let new_sentence = { old_sentence with ast; parsing_start; start; stop; scheduler_state_before; scheduler_state_after } in
   let sentences_by_id = SM.add id new_sentence parsed.sentences_by_id in
   let sentences_by_end = match LM.find_opt old_sentence.stop parsed.sentences_by_end with
-  | Some { id } when Stateid.equal id new_sentence.id ->
+  | Some { id } when State.Id.equal id new_sentence.id ->
     LM.remove old_sentence.stop parsed.sentences_by_end 
   | _ -> parsed.sentences_by_end
   in
@@ -468,11 +468,11 @@ let rec diff old_sentences new_sentences =
 
 let string_of_diff_item doc = function
   | Deleted ids ->
-       ids |> List.map (fun id -> Printf.sprintf "- (id: %d) %s" (Stateid.to_int id) (string_of_parsed_ast (Option.get (get_sentence doc id)).ast))
+       ids |> List.map (fun id -> Printf.sprintf "- (id: %d) %s" (State.Id.to_int id) (string_of_parsed_ast (Option.get (get_sentence doc id)).ast))
   | Added sentences ->
        sentences |> List.map (fun (s : pre_sentence) -> Printf.sprintf "+ %s" (string_of_parsed_ast s.ast))
   | Equal l ->
-       l |> List.map (fun (id, (s : pre_sentence)) -> Printf.sprintf "= (id: %d) %s" (Stateid.to_int id) (string_of_parsed_ast s.ast))
+       l |> List.map (fun (id, (s : pre_sentence)) -> Printf.sprintf "= (id: %d) %s" (State.Id.to_int id) (string_of_parsed_ast s.ast))
 
 let string_of_diff doc l =
   String.concat "\n" (List.flatten (List.map (string_of_diff_item doc) l))
@@ -662,7 +662,7 @@ let invalidate top_edit top_id parsed_doc new_sentences =
   let rec remove_old parsed_doc invalid_ids = function
     | [] -> parsed_doc, invalid_ids
     | Deleted ids :: diffs ->
-      let invalid_ids = List.fold_left (fun ids id -> Stateid.Set.add id ids) invalid_ids ids in
+      let invalid_ids = List.fold_left (fun ids id -> State.Id.Set.add id ids) invalid_ids ids in
       let parsed_doc = List.fold_left remove_sentence parsed_doc ids in
       (* FIXME update scheduler state, maybe invalidate after diff zone *)
       remove_old parsed_doc invalid_ids diffs
@@ -678,7 +678,7 @@ let invalidate top_edit top_id parsed_doc new_sentences =
   log (fun () -> Format.sprintf "Top edit: %i, Doc: %s, Doc by id: %s" top_edit sentence_string sentence_string_id);
   let old_sentences = sentences_after parsed_doc top_edit in
   let diff = diff old_sentences new_sentences in
-  let parsed_doc, invalid_ids = remove_old parsed_doc Stateid.Set.empty diff in
+  let parsed_doc, invalid_ids = remove_old parsed_doc State.Id.Set.empty diff in
   let parsed_doc = add_new_or_patch parsed_doc scheduler_state diff in
   let unchanged_id = unchanged_id top_id diff in
   log (fun () -> "diff:\n" ^ string_of_diff parsed_doc diff);
@@ -762,7 +762,7 @@ let apply_text_edits document edits =
 module Internal = struct
 
   let string_of_sentence sentence =
-    Format.sprintf "[%s] %s (%i -> %i)" (Stateid.to_string sentence.id)
+    Format.sprintf "[%s] %s (%i -> %i)" (State.Id.to_string sentence.id)
     (string_of_parsed_ast sentence.ast)
     sentence.start
     sentence.stop

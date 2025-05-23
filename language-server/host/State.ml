@@ -20,3 +20,5 @@ module LemmaStack = Vernacstate.LemmaStack
 module Declare = Vernacstate.Declare
 
 module Stm = Vernacstate.Stm
+
+module Id = Stateid

@@ -17,7 +17,7 @@ open Host
 
 let Log log = Log.mk_log "scheduler"
 
-module SM = CMap.Make (Stateid)
+module SM = CMap.Make (State.Id)
 
 type error_recovery_strategy =
   | RSkip
@@ -67,7 +67,7 @@ let initial_state = {
 
 type schedule = {
   tasks : (sentence_id option * task) SM.t;
-  dependencies : Stateid.Set.t SM.t;
+  dependencies : State.Id.Set.t SM.t;
 }
 
 let initial_schedule = {
@@ -212,22 +212,22 @@ let push_state id ast synterp classif st =
 
 let string_of_task (task_id,(base_id,task)) =
   let s = match task with
-  | Skip { id } -> Format.sprintf "Skip %s" (Stateid.to_string id)
-  | Exec { id } -> Format.sprintf "Exec %s" (Stateid.to_string id)
-  | OpaqueProof { terminator; tasks } -> Format.sprintf "OpaqueProof [%s | %s]" (Stateid.to_string terminator.id) (String.concat "," (List.map (fun task -> Stateid.to_string task.id) tasks))
-  | Query { id } -> Format.sprintf "Query %s" (Stateid.to_string id)
-  | Block { id } -> Format.sprintf "Block %s" (Stateid.to_string id)
+  | Skip { id } -> Format.sprintf "Skip %s" (State.Id.to_string id)
+  | Exec { id } -> Format.sprintf "Exec %s" (State.Id.to_string id)
+  | OpaqueProof { terminator; tasks } -> Format.sprintf "OpaqueProof [%s | %s]" (State.Id.to_string terminator.id) (String.concat "," (List.map (fun task -> State.Id.to_string task.id) tasks))
+  | Query { id } -> Format.sprintf "Query %s" (State.Id.to_string id)
+  | Block { id } -> Format.sprintf "Block %s" (State.Id.to_string id)
   in
-  Format.sprintf "[%s] : [%s] -> %s" (Stateid.to_string task_id) (Option.cata Stateid.to_string "init" base_id) s
+  Format.sprintf "[%s] : [%s] -> %s" (State.Id.to_string task_id) (Option.cata State.Id.to_string "init" base_id) s
 
 let _string_of_state st =
   let scopes = (List.map (fun b -> List.map (fun x -> x.id) b.proof_sentences) st.proof_blocks) @ [st.document_scope] in
-  String.concat "|" (List.map (fun l -> String.concat " " (List.map Stateid.to_string l)) scopes)
+  String.concat "|" (List.map (fun l -> String.concat " " (List.map State.Id.to_string l)) scopes)
 
 let schedule_errored_sentence id error schedule =
   let task = Block {id; error} in
   let tasks = SM.add id (None, task) schedule.tasks in
-  let dependencies = SM.add id Stateid.Set.empty schedule.dependencies in
+  let dependencies = SM.add id State.Id.Set.empty schedule.dependencies in
   {tasks; dependencies}
 
 let schedule_sentence (id, (ast, classif, synterp_st)) st schedule =
@@ -243,31 +243,31 @@ let schedule_sentence (id, (ast, classif, synterp_st)) st schedule =
       end
   in
 (*
-  log (fun () -> "Scheduled " ^ (Stateid.to_string id) ^ " based on " ^ (match base with Some id -> Stateid.to_string id | None -> "no state"));
+  log (fun () -> "Scheduled " ^ (State.Id.to_string id) ^ " based on " ^ (match base with Some id -> State.Id.to_string id | None -> "no state"));
   log (fun () -> "New scheduler state: " ^ string_of_state st);
   *)
   let tasks = SM.add id (base, task) schedule.tasks in
   let add_dep deps x id =
     let upd = function
-    | Some deps -> Some (Stateid.Set.add id deps)
-    | None -> Some (Stateid.Set.singleton id)
+    | Some deps -> Some (State.Id.Set.add id deps)
+    | None -> Some (State.Id.Set.singleton id)
     in
     SM.update x upd deps
   in
   let dependencies = Option.cata (fun x -> add_dep schedule.dependencies x id) schedule.dependencies base in
   (* This new sentence impacts no sentence (yet) *)
-  let dependencies = SM.add id Stateid.Set.empty dependencies in
+  let dependencies = SM.add id State.Id.Set.empty dependencies in
   st, { tasks; dependencies }
 
 let task_for_sentence schedule id =
   match SM.find_opt id schedule.tasks with
   | Some x -> x
-  | None -> CErrors.anomaly Hpp.(str "cannot find schedule for sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str "cannot find schedule for sentence " ++ State.Id.print id)
 
 let dependents schedule id =
   match SM.find_opt id schedule.dependencies with
   | Some x -> x
-  | None -> CErrors.anomaly Hpp.(str "cannot find dependents for sentence " ++ Stateid.print id)
+  | None -> CErrors.anomaly Hpp.(str "cannot find dependents for sentence " ++ State.Id.print id)
 
 (** Dependency computation algo *)
 (*

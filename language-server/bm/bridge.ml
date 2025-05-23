@@ -79,17 +79,17 @@ type handled_event = {
 let pp_event fmt = function
   | Execute { id; started; _ } ->
       let time = Unix.gettimeofday () -. started in 
-      Stdlib.Format.fprintf fmt "ExecuteToLoc %d (started %2.3f ago)" (Stateid.to_int id) time
+      Stdlib.Format.fprintf fmt "ExecuteToLoc %d (started %2.3f ago)" (State.Id.to_int id) time
   | ExecutionManagerEvent _ -> Stdlib.Format.fprintf fmt "ExecutionManagerEvent"
   | ParseBegin ->
     Stdlib.Format.fprintf fmt "ParseBegin"
   | Observe id ->
-    Stdlib.Format.fprintf fmt "Observe %d" (Stateid.to_int id)
+    Stdlib.Format.fprintf fmt "Observe %d" (State.Id.to_int id)
   | SendProofView id_opt ->
-    Stdlib.Format.fprintf fmt "SendProofView %s" @@ (Option.cata Stateid.to_string "None" id_opt)
+    Stdlib.Format.fprintf fmt "SendProofView %s" @@ (Option.cata State.Id.to_string "None" id_opt)
   | DocumentEvent event -> Stdlib.Format.fprintf fmt "DocumentEvent event: "; Dm.Document.pp_event fmt event
   | SendBlockOnError id ->
-    Stdlib.Format.fprintf fmt "SendBlockOnError %d" @@ (Stateid.to_int id)
+    Stdlib.Format.fprintf fmt "SendBlockOnError %d" @@ (State.Id.to_int id)
   | SendMoveCursor range ->
     Stdlib.Format.fprintf fmt "SendBlockOnError %s" @@ (Range.to_string range)
 
@@ -509,13 +509,13 @@ let interpret_to_end st check_mode =
   match Dm.Document.get_last_sentence st.document with
   | None -> (st, [])
   | Some {id} -> 
-    log (fun () -> "interpret_to_end id = " ^ Stateid.to_string id);
+    log (fun () -> "interpret_to_end id = " ^ State.Id.to_string id);
     interpret_to st id check_mode
 
 let interpret_in_background st ~should_block_on_error =
   match Dm.Document.get_last_sentence st.document with
   | None -> (st, [])
-  | Some {id} -> log (fun () -> "interpret_to_end id = " ^ Stateid.to_string id); observe ~background:true st id ~should_block_on_error
+  | Some {id} -> log (fun () -> "interpret_to_end id = " ^ State.Id.to_string id); observe ~background:true st id ~should_block_on_error
 
 let is_above st id1 id2 =
   let range1 = Dm.Document.range_of_id st id1 in
@@ -532,7 +532,7 @@ let validate_document state (Dm.Document.{unchanged_id; invalid_ids; previous_do
   let execution_state =
     List.fold_left (fun st id ->
       Im.ExecutionManager.invalidate previous_document (Dm.Document.schedule previous_document) id st
-      ) state.execution_state (Stateid.Set.elements invalid_ids) in
+      ) state.execution_state (State.Id.Set.elements invalid_ids) in
   let execution_state = Im.ExecutionManager.reset_overview execution_state previous_document in
   { state with  execution_state; observe_id; document_state = Parsed }
 
@@ -594,7 +594,7 @@ let apply_text_edits state edits =
 
 let execution_finished st id started =
   let time = Unix.gettimeofday () -. started in
-  log (fun () -> Printf.sprintf "ExecuteToLoc %d ends after %2.3f" (Stateid.to_int id) time);
+  log (fun () -> Printf.sprintf "ExecuteToLoc %d ends after %2.3f" (State.Id.to_int id) time);
   (* We update the state to trigger a publication of diagnostics *)
   let update_view = true in
   let state = Some st in
@@ -617,10 +617,10 @@ let execute st id vst_for_next_todo started task background block =
   in
   match Dm.Document.get_sentence st.document id with
   | None ->
-    log (fun () -> Printf.sprintf "ExecuteToLoc %d stops after %2.3f, sentences invalidated" (Stateid.to_int id) time);
+    log (fun () -> Printf.sprintf "ExecuteToLoc %d stops after %2.3f, sentences invalidated" (State.Id.to_int id) time);
     {state=Some st; events=[]; update_view=true; notification=None} (* Sentences have been invalidate, probably because the user edited while executing *)
   | Some _ ->
-    log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
+    log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (State.Id.to_int id) time);
     let (next, execution_state,vst_for_next_todo,events, exec_error) =
       Im.ExecutionManager.execute st.execution_state st.document (vst_for_next_todo, [], false) task block in
     let st, block_events =

@@ -17,7 +17,7 @@ open Host
 
 let Log log = Common.Log.mk_log "parTactic"
 
-type sentence_id = Stateid.t
+type sentence_id = State.Id.t
 
 module TacticJob = struct
   type solution =
@@ -103,7 +103,7 @@ let worker_solve_one_goal { TacticJob.state; ast; goalno; goal } ~send_back =
   with e when CErrors.noncritical e ->
     send_back (TacticJob.UpdateSolution (goal, TacticJob.Error Hpp.(CErrors.print e ++ spc() ++ str "(for subgoal "++int goalno ++ str ")")))
 
-let feedback_id = ref (0,Stateid.dummy)
+let feedback_id = ref (0,State.Id.dummy)
 let set_id_for_feedback rid sid = feedback_id := (rid,sid)
 
 let interp_par ~pstate ~info ast ~abstract ~with_end_tac : Declare.Proof.t =
