@@ -12,6 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 open Protocol.LspWrapper
+open Host
 
 module Loc = struct
   include Loc
