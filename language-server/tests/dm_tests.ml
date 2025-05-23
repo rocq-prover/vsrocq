@@ -129,10 +129,10 @@ let%test_unit "step_forward.delete_observe_id" =
   let st, events = Bridge.interpret_to_next st Settings.Mode.Manual in
   let todo = Sel.Todo.(add todo events) in
   let st = handle_dm_events todo st in
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s2.id)) (Bridge.Internal.observe_id st);
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s2.id)) (Bridge.Internal.observe_id st);
   let doc = Bridge.Internal.document st in
   let st = apply_text_edits st [Document.range_of_id doc s2.id,""] in
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s1.id)) (Bridge.Internal.observe_id st)
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s1.id)) (Bridge.Internal.observe_id st)
 
 let%test_unit "step_forward.expand_sentence_observe_id" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 3. P." in 
@@ -143,12 +143,12 @@ let%test_unit "step_forward.expand_sentence_observe_id" =
   let st, events = Bridge.interpret_to_next st Settings.Mode.Manual in
   let todo = Sel.Todo.(add todo events) in
   let st = handle_dm_events todo st in
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s2.id)) (Bridge.Internal.observe_id st);
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s2.id)) (Bridge.Internal.observe_id st);
   let doc = Bridge.Internal.document st in
   let range = Document.range_of_id doc s2.id in
   let new_range = Lsp.Types.Range.{ start = range.end_; end_ = range.end_ } in
   let st = apply_text_edits st [new_range,"bar."] in
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s1.id)) (Bridge.Internal.observe_id st)
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s1.id)) (Bridge.Internal.observe_id st)
 
 let%test_unit "step_forward.insert_space_after_sentence_observe_id" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 3. P." in 
@@ -159,12 +159,12 @@ let%test_unit "step_forward.insert_space_after_sentence_observe_id" =
   let st, events = Bridge.interpret_to_next st Settings.Mode.Manual in
   let todo = Sel.Todo.(add todo events) in
   let st = handle_dm_events todo st in
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s2.id)) (Bridge.Internal.observe_id st);
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s2.id)) (Bridge.Internal.observe_id st);
   let doc = Bridge.Internal.document st in
   let range = Document.range_of_id doc s2.id in
   let new_range = Lsp.Types.Range.{ start = range.end_; end_ = range.end_ } in
   let st = apply_text_edits st [new_range," "] in
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s2.id)) (Bridge.Internal.observe_id st)
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s2.id)) (Bridge.Internal.observe_id st)
 
 let%test_unit "step_forward.proof_view" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 3. Lemma foo : x = 3." in 
@@ -178,13 +178,13 @@ let%test_unit "step_forward.proof_view" =
   let st, events = Bridge.interpret_to_next st Settings.Mode.Manual in
   let todo = Sel.Todo.(add todo events) in
   let st = handle_dm_events todo st in
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s2.id)) (Bridge.Internal.observe_id st);
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s2.id)) (Bridge.Internal.observe_id st);
   let data = Bridge.get_proof st Protocol.Settings.Goals.Diff.Mode.Off None in
   [%test_eq: bool] (Option.is_some data) true
   (* 
   let doc = Bridge.Internal.document st in
   let st = Bridge.apply_text_edits st [Document.range_of_id doc s2.id,""] in 
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s1.id)) (Bridge.Internal.observe_id st) *)
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s1.id)) (Bridge.Internal.observe_id st) *)
 
 let%test_unit "step_forward.document_begin" =
   let st, init_events = em_init_test_doc ~text:"(* Some comment *)\nLemma foo : x = 3." in
@@ -192,7 +192,7 @@ let%test_unit "step_forward.document_begin" =
   let st, events = Bridge.interpret_to_next st Settings.Mode.Manual in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in 
-  [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s1.id)) (Bridge.Internal.observe_id st)
+  [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s1.id)) (Bridge.Internal.observe_id st)
 
 let%test_unit "step_backward.document_begin" =
   let st, init_events = em_init_test_doc ~text:"(* Some comment *)\nLemma foo : x = 3." in
@@ -314,7 +314,7 @@ let%test_unit "edit.edit_non_root_observe_id_top" =
   let st = handle_dm_events todo st in
   let st = edit_text st ~start:0 ~stop:18 ~text:"Definition x := 3." in
   [%test_eq: bool] (ExecutionManager.is_locally_executed (Bridge.Internal.execution_state st) s2.id) false;
-  [%test_eq: int option] (Option.map ~f:Stateid.to_int (Bridge.Internal.observe_id st)) None
+  [%test_eq: int option] (Option.map ~f:State.Id.to_int (Bridge.Internal.observe_id st)) None
 
 let%test_unit "edit.edit_non_root_observe_id" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 1. Definition y := 2. Definition z := 3." in
@@ -324,5 +324,5 @@ let%test_unit "edit.edit_non_root_observe_id" =
   let st = handle_dm_events todo st in
   let st = edit_text st ~start:19 ~stop:37 ~text:"Definition y := 4." in
   [%test_eq: bool] (ExecutionManager.is_locally_executed (Bridge.Internal.execution_state st) s3.id) false;
-  [%test_eq: int option] (Option.map ~f:Stateid.to_int (Bridge.Internal.observe_id st))
-    (Some (Stateid.to_int s1.id))
+  [%test_eq: int option] (Option.map ~f:State.Id.to_int (Bridge.Internal.observe_id st))
+    (Some (State.Id.to_int s1.id))

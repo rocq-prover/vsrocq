@@ -17,7 +17,7 @@ open Common.Types
 
 let Log log = Common.Log.mk_log "delegationManager"
 
-type sentence_id = Stateid.t
+type sentence_id = State.Id.t
 
 type link = {
   write_to :  Unix.file_descr;
