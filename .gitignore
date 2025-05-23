@@ -10,10 +10,6 @@ language-server/language/dune
 language-server/protocol/dune
 language-server/vsrocqtop/dune
 language-server/_build
-language-server/dm/dune
-language-server/language/dune
-language-server/protocol/dune
-language-server/vsrocqtop/dune
 client/yarn-error.log
 client/.vscode-test/
 client/out/
