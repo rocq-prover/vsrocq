@@ -14,7 +14,7 @@
  (flags -linkall)
  (package vsrocq-language-server)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
- (libraries rocq-runtime.sysinit rocq-runtime.tactics lsp dm protocol))
+ (libraries rocq-runtime.sysinit rocq-runtime.tactics lsp dm protocol im))
 
 (executable
  (name vsrocqtop_tactic_worker)
@@ -23,5 +23,5 @@
  (flags -linkall)
  (package vsrocq-language-server)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
- (libraries rocq-runtime.sysinit rocq-runtime.tactics lsp dm protocol))
+ (libraries rocq-runtime.sysinit rocq-runtime.tactics lsp dm protocol im))
 
