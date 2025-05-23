@@ -15,14 +15,15 @@
 (** This toplevel implements an LSP-based server language for VsCode,
     used by the VsRocq extension. *)
 
+open Bm
 open Common.Types
 open Host
+
 open Lsp.Types
 open Printer
 open Protocol
 open Protocol.LspWrapper
 open Protocol.ExtProtocol
-
 
 module CompactedDecl = Context.Compacted.Declaration
 
@@ -32,7 +33,7 @@ let get_init_state () =
   | Some st -> st
   | None -> CErrors.anomaly (Hpp.str "Initial state not available")
 
-type tab = { st : Bridge.DocumentManager.state; visible : bool }
+type tab = { st : Bridge.state; visible : bool }
 
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
 
@@ -63,7 +64,7 @@ type lsp_event =
 
 type event =
  | LspManagerEvent of lsp_event
- | DocumentManagerEvent of DocumentUri.t * Bridge.DocumentManager.event
+ | BridgeEvent of DocumentUri.t * Bridge.event
  | Notification of notification
  | LogEvent of Common.Log.event
 
@@ -96,7 +97,7 @@ let output_notification notif =
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notif
 
 let inject_dm_event uri x : event Sel.Event.t =
-  Sel.Event.map (fun e -> DocumentManagerEvent(uri,e)) x
+  Sel.Event.map (fun e -> BridgeEvent(uri,e)) x
 
 let inject_notification x : event Sel.Event.t =
   Sel.Event.map (fun x -> Notification(x)) x
@@ -185,7 +186,7 @@ let parse_loc json =
   Position.{ line ; character }
 
 let publish_diagnostics uri doc =
-  let diagnostics = Bridge.DocumentManager.all_diagnostics doc in
+  let diagnostics = Bridge.all_diagnostics doc in
   let diagnostics =
     if !full_diagnostics then diagnostics
     else List.filter (fun d -> d.Diagnostic.severity != Some DiagnosticSeverity.Information) diagnostics
@@ -196,7 +197,7 @@ let publish_diagnostics uri doc =
 
 let send_highlights uri doc =
   let { Common.Types.processing;  processed; prepared } =
-    Bridge.DocumentManager.executed_ranges doc !check_mode in
+    Bridge.executed_ranges doc !check_mode in
   let notification = Notification.Server.UpdateHighlights {
     uri;
     preparedRange = prepared;
@@ -238,9 +239,9 @@ let update_view uri st =
 let replace_state path st visible = Hashtbl.replace states path { st; visible}
 
 let run_documents () =
-  let interpret_doc_in_bg path { st : Bridge.DocumentManager.state ; visible } events =
-      let st = Bridge.DocumentManager.reset_to_top st in
-      let (st, events') = Bridge.DocumentManager.interpret_in_background st ~should_block_on_error:!block_on_first_error in
+  let interpret_doc_in_bg path { st : Bridge.state ; visible } events =
+      let st = Bridge.reset_to_top st in
+      let (st, events') = Bridge.interpret_in_background st ~should_block_on_error:!block_on_first_error in
       let uri = DocumentUri.of_path path in
       replace_state path st visible;
       update_view uri st;
@@ -250,8 +251,8 @@ let run_documents () =
   Hashtbl.fold interpret_doc_in_bg states []
 
 let reset_observe_ids =
-  let reset_doc_observe_id path {st : Bridge.DocumentManager.state; visible} events =
-    let st = Bridge.DocumentManager.reset_to_top st in
+  let reset_doc_observe_id path {st : Bridge.state; visible} events =
+    let st = Bridge.reset_to_top st in
     let uri = DocumentUri.of_path path in
     replace_state path st visible;
     update_view uri st
@@ -276,7 +277,7 @@ let open_new_document uri text =
   let dir = Filename.dirname fname in
   let local_args = Args.get_local_args dir in
   let vst = init_document local_args vst in
-  let st, events = try Bridge.DocumentManager.init vst ~opts:(Coqargs.injection_commands local_args) uri ~text with
+  let st, events = try Bridge.init vst ~opts:(Coqargs.injection_commands local_args) uri ~text with
     e -> raise e
   in
   Hashtbl.add states (DocumentUri.to_path uri) { st ; visible = true; };
@@ -290,7 +291,7 @@ let textDocumentDidOpen params =
   | Some { st } ->
     let (st, events) = 
       if !check_mode = Settings.Mode.Continuous then
-        let (st, events) = Bridge.DocumentManager.interpret_in_background st ~should_block_on_error:!block_on_first_error in
+        let (st, events) = Bridge.interpret_in_background st ~should_block_on_error:!block_on_first_error in
         (st, events)
       else 
         (st, [])
@@ -308,7 +309,7 @@ let textDocumentDidChange params =
         Option.get range, text
       in
       let text_edits = List.map mk_text_edit contentChanges in
-      let st, events = Bridge.DocumentManager.apply_text_edits st text_edits in
+      let st, events = Bridge.apply_text_edits st text_edits in
       replace_state (DocumentUri.to_path uri) st visible;
       update_view uri st;
       inject_dm_events (uri, events)
@@ -357,7 +358,7 @@ let textDocumentHover id params =
   match Hashtbl.find_opt states (DocumentUri.to_path textDocument.uri) with
   | None -> log (fun () -> "[textDocumentHover] ignoring event on non existing document"); Ok None (* FIXME handle error case properly *)
   | Some { st } ->
-    match Bridge.DocumentManager.hover st position with
+    match Bridge.hover st position with
     | Some contents -> Ok (Some (Hover.create ~contents:(`MarkupContent contents) ()))
     | _ -> Ok None (* FIXME handle error case properly *)
 
@@ -366,7 +367,7 @@ let textDocumentDefinition params =
   match Hashtbl.find_opt states (DocumentUri.to_path textDocument.uri) with
   | None -> log (fun () -> "[textDocumentDefinition] ignoring event on non existing document"); Ok None (* FIXME handle error case properly *)
   | Some { st } -> 
-    match Bridge.DocumentManager.jump_to_definition st position with
+    match Bridge.jump_to_definition st position with
     | None -> log (fun () -> "[textDocumentDefinition] could not find symbol location"); Ok None (* FIXME handle error case properly *)
     | Some (range, uri) ->
       let uri = DocumentUri.of_path uri in
@@ -385,7 +386,7 @@ let rocqtopInterpretToPoint params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let (st, events) = Bridge.DocumentManager.interpret_to_position st position !check_mode ~point_interp_mode:!point_interp_mode
+    let (st, events) = Bridge.interpret_to_position st position !check_mode ~point_interp_mode:!point_interp_mode
     in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
@@ -397,7 +398,7 @@ let rocqtopStepBackward params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let (st, events) = Bridge.DocumentManager.interpret_to_previous st !check_mode in
+      let (st, events) = Bridge.interpret_to_previous st !check_mode in
       replace_state (DocumentUri.to_path uri) st visible;
       update_view uri st;
       inject_dm_events (uri,events)
@@ -407,13 +408,13 @@ let rocqtopStepForward params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let (st, events) = Bridge.DocumentManager.interpret_to_next st !check_mode in
+      let (st, events) = Bridge.interpret_to_next st !check_mode in
       replace_state (DocumentUri.to_path uri) st visible;
       update_view uri st;
       inject_dm_events (uri,events) 
 
   let make_CompletionItem i item : CompletionItem.t = 
-    let (label, insertText, typ, path) = Bridge.CompletionItems.pp_completion_item item in
+    let (label, insertText, typ, path) = Bm.CompletionItems.pp_completion_item item in
     CompletionItem.create
       ~label
       ~insertText
@@ -434,7 +435,7 @@ let textDocumentCompletion id params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[textDocumentCompletion]ignoring event on non existent document"); Error( {message="Document does not exist"; code=None} ), []
   | Some { st } -> 
-    let items = List.mapi make_CompletionItem (Bridge.DocumentManager.get_completions st position) in
+    let items = List.mapi make_CompletionItem (Bridge.get_completions st position) in
     return_completion ~isIncomplete:false ~items, []
 
 let documentSymbol id params =
@@ -442,13 +443,13 @@ let documentSymbol id params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[documentSymbol] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some tab -> log (fun () -> "[documentSymbol] getting symbols");
-    if Bridge.DocumentManager.is_parsing tab.st then
+    if Bridge.is_parsing tab.st then
        (* Making use of the error codes: the ServerCancelled error code indicates 
        that the server is busy and the client should resend the request later.
        It doesn't seem to be working for documentSymbol at the moment. *)
       Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} , []
     else
-      let symbols = Bridge.DocumentManager.get_document_symbols tab.st in
+      let symbols = Bridge.get_document_symbols tab.st in
       Ok(Some (`DocumentSymbol symbols)), []
 
 let rocqtopResetRocq id params =
@@ -456,7 +457,7 @@ let rocqtopResetRocq id params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[resetRocq] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st; visible } -> 
-    let st, events = Bridge.DocumentManager.reset st in
+    let st, events = Bridge.reset st in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
     Ok(()), (uri,events) |> inject_dm_events
@@ -466,7 +467,7 @@ let rocqtopInterpretToEnd params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let (st, events) = Bridge.DocumentManager.interpret_to_end st !check_mode in
+    let (st, events) = Bridge.interpret_to_end st !check_mode in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
     inject_dm_events (uri,events)
@@ -476,25 +477,25 @@ let rocqtopLocate id params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[locate] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st } ->
-    Bridge.DocumentManager.locate st position ~pattern, []
+    Bridge.locate st position ~pattern, []
 
 let rocqtopPrint id params = 
   let Request.Client.PrintParams.{ textDocument = { uri }; position; pattern } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[print] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } -> Bridge.DocumentManager.print st position ~pattern, []
+  | Some { st } -> Bridge.print st position ~pattern, []
 
 let rocqtopAbout id params =
   let Request.Client.AboutParams.{ textDocument = { uri }; position; pattern } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[about] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } -> Bridge.DocumentManager.about st position ~pattern, []
+  | Some { st } -> Bridge.about st position ~pattern, []
 
 let rocqtopCheck id params =
   let Request.Client.CheckParams.{ textDocument = { uri }; position; pattern } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[check] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } -> Bridge.DocumentManager.check st position ~pattern, []
+  | Some { st } -> Bridge.check st position ~pattern, []
 
 let rocqtopSearch id params =
   let Request.Client.SearchParams.{ textDocument = { uri }; id; position; pattern } = params in
@@ -502,7 +503,7 @@ let rocqtopSearch id params =
   | None -> log (fun () -> "[search] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st } ->
     try
-      let notifications = Bridge.DocumentManager.search st ~id position pattern in
+      let notifications = Bridge.search st ~id position pattern in
       Ok(()), inject_notifications notifications
     with e ->
       let e, info = Exninfo.capture e in
@@ -514,7 +515,7 @@ let sendDocumentState id params =
   let uri = textDocument.uri in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[documentState] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } -> let document = Bridge.DocumentManager.Internal.string_of_state st in
+  | Some { st } -> let document = Bridge.Internal.string_of_state st in
     Ok Request.Client.DocumentStateResult.{ document }, []
 
 let sendDocumentProofs id params = 
@@ -523,10 +524,10 @@ let sendDocumentProofs id params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[documentProofs] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st } ->
-    if Bridge.DocumentManager.is_parsing st then
+    if Bridge.is_parsing st then
       Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} , []
     else
-      let proofs = Bridge.DocumentManager.get_document_proofs st in
+      let proofs = Bridge.get_document_proofs st in
       Ok Request.Client.DocumentProofsResult.{ proofs }, []
 
 let workspaceDidChangeConfiguration params = 
@@ -645,13 +646,13 @@ let pr_lsp_event fmt = function
 
 let handle_event = function
   | LspManagerEvent e -> handle_lsp_event e
-  | DocumentManagerEvent (uri, e) ->
+  | BridgeEvent (uri, e) ->
     begin match Hashtbl.find_opt states (DocumentUri.to_path uri) with
     | None ->
       log (fun () -> "ignoring event on non-existing document");
       []
     | Some { st; visible } ->
-      let handled_event = Bridge.DocumentManager.handle_event e st ~block:!block_on_first_error !check_mode !diff_mode in
+      let handled_event = Bridge.handle_event e st ~block:!block_on_first_error !check_mode !diff_mode in
       let events = handled_event.events in
       begin match handled_event.state with
         | None -> ()
@@ -665,15 +666,15 @@ let handle_event = function
   | Notification notification ->
     begin match notification with 
     | QueryResultNotification params ->
-      output_notification @@ SearchResult params; [inject_notification Bridge.SearchQuery.query_feedback]
+      output_notification @@ SearchResult params; [inject_notification Bm.SearchQuery.query_feedback]
     end
   | LogEvent e ->
     send_rocq_debug e; [inject_debug_event Common.Log.debug]
 
 let pr_event fmt = function
   | LspManagerEvent e -> pr_lsp_event fmt e
-  | DocumentManagerEvent (uri, e) ->
-    Format.fprintf fmt "%a" Bridge.DocumentManager.pp_event e
+  | BridgeEvent (uri, e) ->
+    Format.fprintf fmt "%a" Bridge.pp_event e
   | Notification _ -> Format.fprintf fmt "notif"
   | LogEvent _ -> Format.fprintf fmt "debug"
 
