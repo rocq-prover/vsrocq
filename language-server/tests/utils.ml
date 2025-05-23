@@ -18,6 +18,7 @@ open Base
 open Bm
 open Common
 open Dm
+open Host
 
 open Common.Types
 open Protocol.LspWrapper
@@ -78,13 +79,13 @@ let rec parse : type a. int -> int -> Document.sentence list -> Document.parsing
     | P spec, s :: l, errors ->
         parse (m+1) n l errors spec >>= (fun a -> Ok(ss_of_s s,a))
     | E _, [], error :: _ ->
-        Error ("erroneous sentence not part of the document. Corresponding error is " ^ Pp.string_of_ppcmds @@ snd error.Document.msg)
+        Error ("erroneous sentence not part of the document. Corresponding error is " ^ Hpp.string_of_ppcmds @@ snd error.Document.msg)
     | E spec, _ :: sentences, error :: l ->
         parse m (n+1) sentences l spec >>= (fun a -> Ok(error,a))
     | O, (s :: _ as l), _ -> Error ("more sentences than expected, extra " ^ Int.to_string (List.length l) ^ ". Extra sentence is " ^ Document.Internal.string_of_sentence s)
     | O, _, (_ :: _ as l) -> Error ("more errors than expected, extra " ^ Int.to_string (List.length l))
     | P _, [], errors ->
-      let errors = String.concat ~sep:"\n" @@ List.map ~f:(fun err -> Pp.string_of_ppcmds @@ snd err.Document.msg) errors in
+      let errors = String.concat ~sep:"\n" @@ List.map ~f:(fun err -> Hpp.string_of_ppcmds @@ snd err.Document.msg) errors in
       Error ("fewer sentences than expected, only " ^ Int.to_string m ^ "  + errors:\n" ^ errors)
     | E _, _, [] -> Error ("fewer errors than expected, only " ^ Int.to_string n)
 

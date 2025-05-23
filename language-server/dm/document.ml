@@ -545,7 +545,7 @@ let get_loc_from_info_or_exn e info =
   | _ -> HLoc.get_loc @@ info
 [%%else]
 let get_loc_from_info_or_exn _ info =
-  Loc.get_loc info
+  HLoc.get_loc info
 
 (* let get_qf_from_info info = Quickfix.get_qf info *)
 [%%endif]

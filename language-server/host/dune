@@ -4,5 +4,6 @@
  (name host)
  (public_name vscoq-language-server.host)
  (wrapped true)
- (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~coq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
- (libraries coq-core.gramlib coq-core.boot coq-core.sysinit coq-core.vernac coq-core.kernel coq-core.engine coq-core.pretyping coq-core.printing coq-core.parsing coq-core.interp coq-core.lib coq-core.clib coq-core.library coq-core.proofs coq-core.tactics protocol sel lsp))
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (libraries rocq-runtime.gramlib rocq-runtime.boot rocq-runtime.sysinit rocq-runtime.vernac rocq-runtime.kernel rocq-runtime.engine rocq-runtime.pretyping rocq-runtime.printing rocq-runtime.parsing rocq-runtime.interp rocq-runtime.lib rocq-runtime.clib rocq-runtime.library rocq-runtime.proofs rocq-runtime.tactics 
+ sel))
