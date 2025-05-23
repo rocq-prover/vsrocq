@@ -19,7 +19,7 @@ let rec skip_xd acc = function
 | "-vsrocq-d" :: _ :: rest -> skip_xd acc rest
 | x :: rest -> skip_xd (x::acc) rest
 
-let vsrocqtop_specific_usage = {
+let vsrocqtop_specific_usage () = {
   Boot.Usage.executable_name = "vsrocqtop";
   extra_args = "";
   extra_options = {|
@@ -33,7 +33,7 @@ VSRocq options are:
 |}
 }
 
-let usage () = vsrocqtop_specific_usage
+let usage () = vsrocqtop_specific_usage ()
 
 [%%if  rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
 
@@ -42,11 +42,13 @@ let usage () = vsrocqtop_specific_usage
 
   let parse_args_default () =
     let initial_args = Coqargs.default in
-    fst @@ Coqinit.parse_arguments ~usage:vsrocqtop_specific_usage ~initial_args ~parse_extra ()
+    let usage = vsrocqtop_specific_usage () in
+    fst @@ Coqinit.parse_arguments ~usage ~initial_args ~parse_extra ()
 
   let parse_args_with_rocq_project args =
-    let initial_args = fst @@ Coqargs.parse_args ~init:Coqargs.default ~usage:vsrocqtop_specific_usage args in
-    fst @@ Coqinit.parse_arguments ~usage:vsrocqtop_specific_usage ~initial_args ~parse_extra ()
+    let usage = vsrocqtop_specific_usage () in
+    let initial_args = fst @@ Coqargs.parse_args ~init:Coqargs.default ~usage args in
+    fst @@ Coqinit.parse_arguments ~usage ~initial_args ~parse_extra ()
 
 [%%else]
 
