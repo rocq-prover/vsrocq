@@ -27,7 +27,7 @@ open Protocol.ExtProtocol
 
 module CompactedDecl = Context.Compacted.Declaration
 
-let init_state : Vernacstate.t option ref = ref None
+let init_state : State.t option ref = ref None
 let get_init_state () =
   match !init_state with
   | Some st -> st
@@ -266,9 +266,9 @@ let reset_observe_ids =
 let init_document _ vst = vst
 [%%else]
 let init_document local_args vst =
-  let () = Vernacstate.unfreeze_full_state vst in
+  let () = State.unfreeze_full_state vst in
   let () = Coqinit.init_document local_args in
-  Vernacstate.freeze_full_state ()
+  State.freeze_full_state ()
 [%%endif]
 
 let open_new_document uri text =
@@ -335,8 +335,8 @@ let consider_purge_invisible_tabs () =
   if usage > !max_memory_usage (* 4G *) then begin
     purge_invisible_tabs ();
     let vst = get_init_state () in
-    Vernacstate.unfreeze_full_state vst;
-    Vernacstate.Interp.invalidate_cache ();
+    State.unfreeze_full_state vst;
+    State.Interp.invalidate_cache ();
     Gc.compact ();
     let new_usage = current_memory_usage () in
     log (fun () -> Printf.sprintf  "memory footprint %d -> %d" usage new_usage);
@@ -679,5 +679,5 @@ let pr_event fmt = function
   | LogEvent _ -> Format.fprintf fmt "debug"
 
 let init () =
-  init_state := Some (Vernacstate.freeze_full_state ());
+  init_state := Some (State.freeze_full_state ());
   [lsp]

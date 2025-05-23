@@ -14,5 +14,6 @@
 
 open Protocol
 open CompletionItems
+open Host
 
-val get_completions : Settings.Completion.t -> Vernacstate.t -> completion_item list option
+val get_completions : Settings.Completion.t -> State.t -> completion_item list option

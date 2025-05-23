@@ -15,11 +15,13 @@
 (** This toplevel implements an LSP-based server language for VsCode,
     used by the VsRocq extension. *)
 
+open Host
 let log = Im.ParTactic.TacticWorkerProcess.log 
 
 let main_worker options ~opts:_ state =
-  let initial_vernac_state = Vernacstate.freeze_full_state () in
+  let initial_vernac_state = State.freeze_full_state () in
   try Im.ParTactic.TacticWorkerProcess.main ~st:initial_vernac_state options
+
   with exn ->
     let bt = Printexc.get_backtrace () in
     log (fun () -> Printexc.(to_string exn));

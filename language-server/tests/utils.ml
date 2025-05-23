@@ -45,7 +45,7 @@ let injections =
   Coqargs.injection_commands opts
 [%%endif]
 
-let init_state = Vernacstate.freeze_full_state ()
+let init_state = State.freeze_full_state ()
 
 let openDoc uri ~text =
   Bridge.init init_state ~opts:injections uri ~text
