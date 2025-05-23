@@ -13,9 +13,11 @@
 (**************************************************************************)
 
 open Base
+open Bridge
 open Dm
 open Common
 open Protocol
+open Utils
 
 let%test_unit "goals: encoding after replay from top" =
   let st = dm_init_and_parse_test_doc ~text:"Lemma foo : forall x y, x + y = y + x." in

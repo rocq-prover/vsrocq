@@ -14,9 +14,12 @@
 
 [%%import "vsrocq_config.mlh"]
 
-open Dm
 open Base
 open Bridge
+open Common
+open Dm
+
+open Common.Types
 open Protocol.LspWrapper
 
 [%%if lsp < (1,19,0) ]
@@ -56,7 +59,7 @@ let run r =
 type simple_sentence = {
   start : int;
   stop : int;
-  id : sentence_id;
+  id : Types.sentence_id;
 }
 
 let ss_of_s ({ start; stop; id; _ } : Document.sentence) : simple_sentence =
