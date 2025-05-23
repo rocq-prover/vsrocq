@@ -12,14 +12,30 @@
 (*                                                                        *)
 (**************************************************************************)
 open Protocol.LspWrapper
+open Host
 
-type sentence_id = Stateid.t
-type sentence_id_set = Stateid.Set.t
+module Loc = struct
+  include Loc
+end
+[@@deprecated "use a proxy in host/"]
+
+module Pp = struct
+  include Pp
+end
+[@@deprecated "use [Host.Hpp]"]
+
+module Vernacstate = struct
+  include Vernacstate
+end
+[@@deprecated "use [Host.state]"]
+
+type sentence_id = State.Id.t
+type sentence_id_set = State.Id.Set.t
 
 module RangeList = struct
 
   type t = Range.t list
-  
+
   let insert_or_merge_range r ranges =
     let ranges = List.sort Range.compare (r :: ranges) in
     let rec insert_or_merge_sorted_ranges r1 = function
@@ -78,8 +94,8 @@ let empty_overview = {processing = []; processed = []; prepared = []}
   module Quickfix = struct
     type t = unit
     let from_exception _ = Ok([])
-    let pp = Pp.mt
-    let loc _ = Loc.make_loc (0,0)
+    let pp = Host.Hpp.mt
+    let loc _ = Host.HLoc.make_loc (0,0)
   end
 [%%endif]
 

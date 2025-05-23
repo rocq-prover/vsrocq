@@ -14,12 +14,14 @@
 open Protocol
 
 module CompactedDecl = Context.Compacted.Declaration
-open Printer
-open EConstr
-open Names
-open Types
 
-let Log log = Log.mk_log "completionSuggester"
+open Common.Types
+open EConstr
+open Host
+open Names
+open Printer
+
+let Log log = Common.Log.mk_log "completionSuggester"
 
 module TypeCompare = struct
   type t = types
@@ -281,10 +283,10 @@ module SelectiveUnification = struct
           | Cast (c,_,_) -> aux iterations c
           | _            -> ({lemma with completes = Some No_completion}, worst_value)
         in
-      try 
+      try
         aux 0 (of_constr lemma.typ)
       with e ->
-        log (fun () -> Printf.sprintf "Error in Split Unification: %s for %s\n%!" (Printexc.to_string e) (Pp.string_of_ppcmds (pr_global lemma.ref)));
+        log (fun () -> Printf.sprintf "Error in Split Unification: %s for %s\n%!" (Printexc.to_string e) (Hpp.string_of_ppcmds (pr_global lemma.ref)));
         ({lemma with completes = Some No_completion}, worst_value)
      in
     lemmas
@@ -342,11 +344,11 @@ let get_lemmas sigma env =
   results.contents
 
 let get_completions options st =
-  Vernacstate.unfreeze_full_state st;
+  State.unfreeze_full_state st;
   match st.interp.lemmas with
   | None -> None
   | Some lemmas ->
-    let proof = Proof.data (lemmas |> Vernacstate.LemmaStack.with_top ~f:Declare.Proof.get) in
+    let proof = Proof.data (lemmas |> State.LemmaStack.with_top ~f:Declare.Proof.get) in
     let env = Global.env () in
     let sigma = proof.sigma in
     let lemmas = get_lemmas sigma env in

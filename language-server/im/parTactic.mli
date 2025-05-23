@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*                                 VSRocq                                 *)
+(*                                 VSRocq                                  *)
 (*                                                                        *)
 (*                   Copyright INRIA and contributors                     *)
 (*       (see version control and README file for authors & dates)        *)
@@ -12,7 +12,17 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Protocol
-open CompletionItems
+open Host
+module TacticWorkerProcess : sig
+  type options
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
+   val parse_options : string list -> options * string list
+[%%else]
+   val parse_options : Coqargs.t -> string list -> options * string list
+[%%endif]
+  val main : st:State.t -> options -> unit
+  val log : ?force:bool -> (unit -> string) -> unit
+end
 
-val get_completions : Settings.Completion.t -> Vernacstate.t -> completion_item list option
+(* HACK: the sentence id of the current phrase is used to report errors *)
+val set_id_for_feedback : Feedback.route_id -> Common.Types.sentence_id -> unit

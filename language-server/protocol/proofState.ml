@@ -14,6 +14,7 @@
 
 open Printing
 open Lsp.Types
+open Host
 
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
@@ -86,11 +87,11 @@ let mk_goal_diff diff_goal_map env sigma g =
     goal = pp_of_rocqpp ccl;
   }
 
-let proof_of_state st =
-  match st.Vernacstate.interp.lemmas with
+let proof_of_state (st:State.t) =
+  match st.interp.lemmas with
   | None -> None
   | Some lemmas ->
-    Some (lemmas |> Vernacstate.LemmaStack.with_top ~f:Declare.Proof.get)
+    Some (lemmas |> State.LemmaStack.with_top ~f:Declare.Proof.get)
 
 (* The Rocq diff API is so poorly designed that we have to imperatively set a
    string option to control the behavior of `mk_goal_diff`. We do the required
@@ -104,7 +105,7 @@ let set_diff_mode diff_mode =
   Goptions.set_string_option_value Proof_diffs.opt_name @@ string_of_diff_mode diff_mode
 
 let get_proof ~previous diff_mode st =
-  Vernacstate.unfreeze_full_state st;
+  State.unfreeze_full_state st;
   match proof_of_state st with
   | None -> None
   | Some proof ->

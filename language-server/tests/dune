@@ -1,6 +1,6 @@
 (library
   (name tests)
-  (libraries base dm protocol)
+  (libraries base common bm dm protocol)
   (preprocess
     (pps ppx_sexp_conv ppx_inline_test ppx_assert ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
     (preprocessor_deps vsrocq_config.mlh)

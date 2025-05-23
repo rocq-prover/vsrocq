@@ -14,9 +14,13 @@
 
 [%%import "vsrocq_config.mlh"]
 
-open Dm
 open Base
-open Types
+open Bm
+open Common
+open Dm
+open Host
+
+open Common.Types
 open Protocol.LspWrapper
 
 [%%if lsp < (1,19,0) ]
@@ -42,10 +46,10 @@ let injections =
   Coqargs.injection_commands opts
 [%%endif]
 
-let init_state = Vernacstate.freeze_full_state ()
+let init_state = State.freeze_full_state ()
 
 let openDoc uri ~text =
-  DocumentManager.init init_state ~opts:injections uri ~text
+  Bridge.init init_state ~opts:injections uri ~text
 
 let run r =
   [%test_pred: (_,string) Result.t ] (function Error _ -> false | _ -> true) r;
@@ -56,7 +60,7 @@ let run r =
 type simple_sentence = {
   start : int;
   stop : int;
-  id : sentence_id;
+  id : Types.sentence_id;
 }
 
 let ss_of_s ({ start; stop; id; _ } : Document.sentence) : simple_sentence =
@@ -75,13 +79,13 @@ let rec parse : type a. int -> int -> Document.sentence list -> Document.parsing
     | P spec, s :: l, errors ->
         parse (m+1) n l errors spec >>= (fun a -> Ok(ss_of_s s,a))
     | E _, [], error :: _ ->
-        Error ("erroneous sentence not part of the document. Corresponding error is " ^ Pp.string_of_ppcmds @@ snd error.Document.msg)
+        Error ("erroneous sentence not part of the document. Corresponding error is " ^ Hpp.string_of_ppcmds @@ snd error.Document.msg)
     | E spec, _ :: sentences, error :: l ->
         parse m (n+1) sentences l spec >>= (fun a -> Ok(error,a))
     | O, (s :: _ as l), _ -> Error ("more sentences than expected, extra " ^ Int.to_string (List.length l) ^ ". Extra sentence is " ^ Document.Internal.string_of_sentence s)
     | O, _, (_ :: _ as l) -> Error ("more errors than expected, extra " ^ Int.to_string (List.length l))
     | P _, [], errors ->
-      let errors = String.concat ~sep:"\n" @@ List.map ~f:(fun err -> Pp.string_of_ppcmds @@ snd err.Document.msg) errors in
+      let errors = String.concat ~sep:"\n" @@ List.map ~f:(fun err -> Hpp.string_of_ppcmds @@ snd err.Document.msg) errors in
       Error ("fewer sentences than expected, only " ^ Int.to_string m ^ "  + errors:\n" ^ errors)
     | E _, _, [] -> Error ("fewer errors than expected, only " ^ Int.to_string n)
 
@@ -92,13 +96,13 @@ let d_sentences doc spec =
   r
 
 let dm_parse st spec =
-  let doc = DocumentManager.Internal.document st in
+  let doc = Bridge.Internal.document st in
   st, d_sentences doc spec
 
-let sentence_id_of_sexp s = Stateid.of_int (Sexplib.Std.int_of_sexp s)
-let sexp_of_sentence_id i = Sexplib.Std.sexp_of_int (Stateid.to_int i)
+let sentence_id_of_sexp s = State.Id.of_int (Sexplib.Std.int_of_sexp s)
+let sexp_of_sentence_id i = Sexplib.Std.sexp_of_int (State.Id.to_int i)
 
-let compare_sentence_id = Stateid.compare
+let compare_sentence_id = State.Id.compare
 
 type (_,'a) count =
   | O : (unit,'a) count
@@ -141,27 +145,27 @@ let task : type a. Scheduler.task -> a task_approx -> (a,string) Result.t =
 
 
 let task st id spec =
-  let sch = Document.schedule (DocumentManager.Internal.document st) in
+  let sch = Document.schedule (Bridge.Internal.document st) in
   let init, t = Scheduler.task_for_sentence sch id in
   init, run (task t spec)
 
 
-let rec handle_dm_events n (events : DocumentManager.event Sel.Todo.t) st =
-  if n <= 0 then (Stdlib.Format.eprintf "handle_dm_events run out of steps:\nTodo = %a\n" (Sel.Todo.pp DocumentManager.pp_event) events; Stdlib.exit 1)
+let rec handle_dm_events n (events : Bridge.event Sel.Todo.t) st =
+  if n <= 0 then (Stdlib.Format.eprintf "handle_dm_events run out of steps:\nTodo = %a\n" (Sel.Todo.pp Bridge.pp_event) events; Stdlib.exit 1)
   else if Sel.Todo.is_empty events then st, events
     
   else begin
-    (*Stdlib.Format.eprintf "waiting %a\n%!" Sel.(pp_todo DocumentManager.pp_event) events;*)
+    (*Stdlib.Format.eprintf "waiting %a\n%!" Sel.(pp_todo Bridge.pp_event) events;*)
     Stdlib.flush_all ();
     let (ready, remaining) = Sel.pop_timeout ~stop_after_being_idle_for:0.1 events in
     match ready with
     | None -> st, events
     | Some ev ->
-      (* Stdlib.Format.eprintf "handle_dm_events: handling %a\n"  DocumentManager.pp_event ev; *)
+      (* Stdlib.Format.eprintf "handle_dm_events: handling %a\n"  Bridge.pp_event ev; *)
       let st, new_events =
-        match DocumentManager.handle_event ev st ~block:false Protocol.Settings.Mode.Manual Protocol.Settings.Goals.Diff.Mode.Off with
-        | { DocumentManager.state = None; events = events' } -> st, events'
-        | { DocumentManager.state = Some st; events = events' } -> st, events'
+        match Bridge.handle_event ev st ~block:false Protocol.Settings.Mode.Manual Protocol.Settings.Goals.Diff.Mode.Off with
+        | { Bridge.state = None; events = events' } -> st, events'
+        | { Bridge.state = Some st; events = events' } -> st, events'
       in
       let todo = Sel.Todo.add remaining new_events in
       handle_dm_events (n-1) todo st
@@ -172,7 +176,7 @@ let rec handle_d_events n (events : Document.event Sel.Todo.t) (st : Document.do
   if n <= 0 then (Stdlib.Format.eprintf "handle_d_events run out of steps:\nTodo = %a\n" (Sel.Todo.pp Document.pp_event) events; Stdlib.exit 1)
   else if Sel.Todo.is_empty events then assert false
   else begin
-    (*Stdlib.Format.eprintf "waiting %a\n%!" Sel.(pp_todo DocumentManager.pp_event) events;*)
+    (*Stdlib.Format.eprintf "waiting %a\n%!" Sel.(pp_todo Bridge.pp_event) events;*)
     Stdlib.flush_all ();
     let (ready, remaining) = Sel.pop_timeout ~stop_after_being_idle_for:0.1 events in
     match ready with
@@ -192,7 +196,7 @@ type diag_spec =
   | D of sentence_id * Lsp.Types.DiagnosticSeverity.t * string
 
 let check_no_diag st =
-  let diagnostics = DocumentManager.all_diagnostics st in
+  let diagnostics = Bridge.all_diagnostics st in
   let diagnostics = List.map ~f:Lsp.Types.Diagnostic.(fun d -> d.range, string_of_message d.message, d.severity) diagnostics in
   [%test_pred: (Range.t * string * DiagnosticSeverity.t option) list] List.is_empty diagnostics
 
@@ -210,7 +214,7 @@ let check_diag st specl =
     Stdlib.(=) severity (Some s) &&
     Str.string_match (Str.regexp rex) message 0
   in
-  let diagnostics = DocumentManager.all_diagnostics st in
+  let diagnostics = Bridge.all_diagnostics st in
   let diagnostics = List.map ~f:diagnostic_summary diagnostics in
   run @@ map_error
     ~f:(fun s -> Printf.sprintf "%s\n\nDiagnostics: %s" s (
@@ -218,7 +222,7 @@ let check_diag st specl =
     (List.fold_left ~f:(fun e c -> e >>= (fun () ->
       match c with
       | D(id,s,rex) ->
-          let range = Document.range_of_id (DocumentManager.Internal.document st) id in
+          let range = Document.range_of_id (Bridge.Internal.document st) id in
           match List.find ~f:(match_diagnostic range s rex) diagnostics with
           | Some _ -> Ok ()
           | None -> Error (Printf.sprintf "no %s diagnostic on %s matching %s"
@@ -232,11 +236,11 @@ let test_uri = Lsp.Types.DocumentUri.of_path "foo.v"
 let init_test_doc ~text = openDoc test_uri ~text
 let whole_init_and_parse_test_doc ~text =
   let dm, _ = openDoc test_uri ~text in
-  let doc = DocumentManager.Internal.document dm in
+  let doc = Bridge.Internal.document dm in
   let doc, events = Document.validate_document doc in
   let todo = Sel.Todo.(add empty events) in
   let update = handle_d_events todo doc in
-  DocumentManager.Internal.validate_document dm update, update
+  Bridge.Internal.validate_document dm update, update
 
 let init_and_parse_test_doc ~text = snd @@ whole_init_and_parse_test_doc ~text
 let dm_init_and_parse_test_doc ~text = fst @@ whole_init_and_parse_test_doc ~text

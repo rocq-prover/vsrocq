@@ -13,6 +13,7 @@
 (**************************************************************************)
 
 open Types
+open Host
 
 (** The scheduler is the component in charge of planning the execution of
     sentences. It also defines the task delegation strategy, and computes
@@ -31,13 +32,13 @@ type executable_sentence = {
   id : sentence_id;
   ast : Synterp.vernac_control_entry;
   classif : Vernacextend.vernac_classification;
-  synterp : Vernacstate.Synterp.t;
+  synterp : State.Synterp.t;
   error_recovery : error_recovery_strategy;
 }
 
 type task =
-  | Skip of { id: sentence_id; error: Pp.t option }
-  | Block of { id: sentence_id; error: Pp.t Loc.located }
+  | Skip of { id: sentence_id; error: Hpp.t option }
+  | Block of { id: sentence_id; error: Hpp.t HLoc.located }
   | Exec of executable_sentence
   | OpaqueProof of { terminator: executable_sentence;
                      opener_id: sentence_id;
@@ -52,9 +53,9 @@ type schedule
 
 val initial_schedule : schedule
 
-val schedule_errored_sentence : sentence_id -> Pp.t Loc.located -> schedule -> schedule
+val schedule_errored_sentence : sentence_id -> Hpp.t HLoc.located -> schedule -> schedule
 
-val schedule_sentence : sentence_id * (Synterp.vernac_control_entry * Vernacextend.vernac_classification * Vernacstate.Synterp.t) -> state -> schedule -> state * schedule
+val schedule_sentence : sentence_id * (Synterp.vernac_control_entry * Vernacextend.vernac_classification * State.Synterp.t) -> state -> schedule -> state * schedule
 (** Identifies the structure of the document and dependencies between sentences
     in order to easily compute the tasks to interpret the a sentence.
     Input sentence is None on parsing error. *)

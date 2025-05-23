@@ -12,6 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 open Lsp.Types
+open Host
 
 type text_edit = Range.t * string
 
@@ -82,8 +83,8 @@ let end_loc raw =
 
 let range_of_loc raw loc =
   let open Range in
-  { start = position_of_loc raw loc.Loc.bp;
-    end_ = position_of_loc raw loc.Loc.ep;
+  { start = position_of_loc raw (HLoc.get_begin loc);
+    end_ = position_of_loc raw (HLoc.get_end loc);
   }
 
 let word_at_position raw pos : string option =

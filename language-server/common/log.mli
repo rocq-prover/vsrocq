@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*                                 VSRocq                                  *)
+(*                                 VSRocq                                 *)
 (*                                                                        *)
 (*                   Copyright INRIA and contributors                     *)
 (*       (see version control and README file for authors & dates)        *)
@@ -11,16 +11,27 @@
 (*   See LICENSE file.                                                    *)
 (*                                                                        *)
 (**************************************************************************)
-module TacticWorkerProcess : sig
-  type options
-[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
-   val parse_options : string list -> options * string list
-[%%else]
-   val parse_options : Coqargs.t -> string list -> options * string list
-[%%endif]
-  val main : st:Vernacstate.t -> options -> unit
-  val log : ?force:bool -> (unit -> string) -> unit
-end
 
-(* HACK: the sentence id of the current phrase is used to report errors *)
-val set_id_for_feedback : Feedback.route_id -> Types.sentence_id -> unit
+open Types
+open Host
+
+val mk_log : string -> (?force:bool -> (unit -> string) -> unit) log
+val logs : unit -> string list
+
+type event = string
+type events = event Sel.Event.t list
+
+val lsp_initialization_done : unit -> events
+val handle_event : event -> unit
+
+val worker_initialization_begins : unit -> unit
+val worker_initialization_done : fwd_event:(event -> unit) -> unit
+
+(* debug messages coming from either the language server of Rocq *)
+val debug : event Sel.Event.t
+
+[%% if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" ]
+val feedback_add_feeder_on_Message : (Feedback.route_id -> State.Id.t -> Feedback.doc_id -> Feedback.level -> HLoc.t option -> 'a list -> Hpp.t -> unit) -> int
+[%%else]
+val feedback_add_feeder_on_Message : (Feedback.route_id -> State.Id.t  -> Feedback.doc_id -> Feedback.level -> HLoc.t option -> Quickfix.t list -> Hpp.t -> unit) -> int
+[%%endif]

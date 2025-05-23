@@ -12,20 +12,21 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
+open Common.Types
 open Lsp.Types
 open Protocol
 open Protocol.LspWrapper
 open Protocol.ExtProtocol
 open Protocol.Printing
 open CompletionItems
+open Host
 
 (** The document manager holds the view that Rocq has of the currently open
     states. It makes it easy for IDEs to handle text edits, navigate
     and get feedback. Note that it does not require IDEs to parse vernacular
     sentences. *)
 
-type observe_id = Id of Types.sentence_id | Top
+type observe_id = Id of Common.Types.sentence_id | Top
 
 type blocking_error = {
   last_range: Range.t;
@@ -48,7 +49,7 @@ type handled_event = {
 
 val is_parsing : state -> bool
 
-val init : Vernacstate.t -> opts:Coqargs.injection_command list -> DocumentUri.t -> text:string -> state * events
+val init : State.t -> opts:Coqargs.injection_command list -> DocumentUri.t -> text:string -> state * events
 (** [init st opts uri text] initializes the document manager with initial vernac state
     [st] on which command line opts will be set. *)
 
@@ -142,17 +143,16 @@ val locate : state -> Position.t -> pattern:string -> (pp, error) Result.t
 
 val print : state -> Position.t -> pattern:string -> (pp, error) Result.t
 
-
 module Internal : sig
 
-  val document : state -> Document.document
-  val raw_document : state -> RawDocument.t
-  val execution_state : state -> ExecutionManager.state
+  val document : state -> Dm.Document.document
+  val raw_document : state -> Dm.RawDocument.t
+  val execution_state : state -> Im.ExecutionManager.state
   val string_of_state : state -> string
   val observe_id : state -> sentence_id option
-  val inject_doc_events : Document.event Sel.Event.t list -> event Sel.Event.t list
+  val inject_doc_events : Dm.Document.event Sel.Event.t list -> event Sel.Event.t list
 
-  val validate_document : state -> Document.parsing_end_info -> state
+  val validate_document : state -> Dm.Document.parsing_end_info -> state
 
 
 end

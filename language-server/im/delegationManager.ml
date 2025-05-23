@@ -12,11 +12,12 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
+open Host
+open Common.Types
 
-let Log log = Log.mk_log "delegationManager"
+let Log log = Common.Log.mk_log "delegationManager"
 
-type sentence_id = Stateid.t
+type sentence_id = State.Id.t
 
 type link = {
   write_to :  Unix.file_descr;
@@ -49,7 +50,7 @@ module type Job = sig
   val binary_name : string
   val initial_pool_size : int
   type update_request
-  val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * Loc.t option * Quickfix.t list * Pp.t) -> update_request
+  val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t) -> update_request
 end
 
 (* One typically created a job id way before the worker is spawned, so we
@@ -66,7 +67,7 @@ let cancel_job (_,id) =
    keep here the conversion (STM) feedback -> (LSP) feedback *)
 
 let install_feedback send =
-  Log.feedback_add_feeder_on_Message (fun route span _ lvl loc qf msg ->
+  Common.Log.feedback_add_feeder_on_Message (fun route span _ lvl loc qf msg ->
     send (route,span,(lvl,loc, qf, msg)))
     
 module type Worker = sig
@@ -77,7 +78,7 @@ module type Worker = sig
 
   (** Event for the main loop *)
   type delegation
-  val pr_event : delegation -> Pp.t
+  val pr_event : delegation -> Hpp.t
   type events = delegation Sel.Event.t list
   
   (** handling an event may require an update to a sentence in the exec state,
@@ -115,13 +116,13 @@ type job_update_request = Job.update_request
 
 type worker_message =
   | Job_update of Job.update_request
-  | DebugMessage of Log.event
+  | DebugMessage of Common.Log.event
 
 let write_value link (x:worker_message) = write_value_gen link x
 
 let write_value_job link (x:Job.t) = write_value_gen link x
 
-let Log log_worker = Log.mk_log ("worker." ^ Job.name)
+let Log log_worker = Common.Log.mk_log ("worker." ^ Job.name)
 
 let install_feedback_worker ~feedback_cleanup link =
   feedback_cleanup ();
@@ -136,13 +137,13 @@ type delegation =
  | WorkerEnd of (int * Unix.process_status)
  | WorkerIOError of exn
 let pr_event = function
-  | WorkerEnd _ -> Pp.str "WorkerEnd"
-  | WorkerIOError _ -> Pp.str "WorkerIOError"
-  | WorkerProgress _ -> Pp.str "WorkerProgress"
-  | WorkerStart _ -> Pp.str "WorkerStart"
+  | WorkerEnd _ -> Hpp.str "WorkerEnd"
+  | WorkerIOError _ -> Hpp.str "WorkerIOError"
+  | WorkerProgress _ -> Hpp.str "WorkerProgress"
+  | WorkerStart _ -> Hpp.str "WorkerStart"
 
 let install_debug_worker link =
-  Log.worker_initialization_done
+  Common.Log.worker_initialization_done
     ~fwd_event:(fun e -> write_value link (DebugMessage e))
 
 type events = delegation Sel.Event.t list
@@ -204,7 +205,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
         dup2 null stdin;
         dup2 null stdout;
         close chan;
-        Log.worker_initialization_begins ();
+        Common.Log.worker_initialization_begins ();
         let chan = socket PF_INET SOCK_STREAM 0 in
         connect chan address;
         let read_from = chan in
@@ -288,7 +289,7 @@ let handle_event = function
         Queue.push () pool;
       (None,[])
   | WorkerProgress { link; update_request = DebugMessage d } ->
-      Log.handle_event d;
+      Common.Log.handle_event d;
       (None, [worker_progress link])
   | WorkerProgress { link; update_request = Job_update u } ->
       log (fun () -> "worker progress");
@@ -305,7 +306,7 @@ let handle_event = function
         exit 0
       | Error(msg, cleanup_events) ->
         log (fun () -> "worker did not spawn: " ^ msg);
-        (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
+        (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Hpp.str msg)), cleanup_events)
     else
       match create_process_worker procname cancellation_handle job with
       | Ok events ->
@@ -313,7 +314,7 @@ let handle_event = function
           (None, events)
       | Error(msg, cleanup_events) ->
           log (fun () -> "worker did not spawn: " ^ msg);
-          (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
+          (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Hpp.str msg)), cleanup_events)
 
 
 (* the only option is the socket port *)
