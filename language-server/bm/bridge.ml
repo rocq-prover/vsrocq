@@ -760,7 +760,7 @@ let get_completions st pos =
 let parse_entry st pos entry pattern =
   let pa = Pcoq.Parsable.make (Gramlib.Stream.of_string pattern) in
   let st = match Dm.Document.find_sentence_before st.document pos with
-  | None -> st.init_vs.State.synterp.parsing
+  | None -> st.init_vs.synterp.parsing
   | Some { synterp_state } -> synterp_state.State.Synterp.parsing
   in
   State.Parser.parse st entry pa
