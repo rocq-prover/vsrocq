@@ -873,8 +873,8 @@ let jump_to_definition st pos =
         match Nametab.cci_src_loc ref with
           | None -> None
           | Some loc ->
-            begin match loc.Loc.fname with
-              | Loc.ToplevelInput | InFile  { dirpath = None } -> None
+            begin match loc.fname with
+              | ToplevelInput | InFile  { dirpath = None } -> None
               | InFile { dirpath = Some dp } ->
                   let f = Loadpath.locate_absolute_library @@ Libnames.dirpath_of_string dp in
                   begin match f with

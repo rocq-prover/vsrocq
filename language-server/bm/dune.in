@@ -3,7 +3,7 @@
  (public_name vsrocq-language-server.bm)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")")) 
  (preprocessor_deps vsrocq_config.mlh)
- (libraries @@ROCQ_RUNTIME@@.sysinit lsp protocol sel common dm im))
+ (libraries @@ROCQ_RUNTIME@@.sysinit lsp protocol host sel common dm im))
 
 (rule
   (target vsrocq_config.mlh)
