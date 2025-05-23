@@ -21,7 +21,7 @@ open Protocol.ExtProtocol
 open Protocol.Printing
 open Common.Types
 
-let Log log = Common.Log.mk_log "documentManager"
+let Log log = Common.Log.mk_log "Bridge"
 
 type observe_id = Id of Common.Types.sentence_id | Top
 

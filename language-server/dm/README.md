@@ -26,6 +26,6 @@ also generate binaries which do need to see these modules.
 
 ### public
 
-- [documentManager](documentManager.mli) is the main entry point for user
+- [Bridge](Bridge.mli) is the main entry point for user
   actions, like interpret_to_position.
 
