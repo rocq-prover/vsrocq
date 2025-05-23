@@ -12,9 +12,10 @@
 (*                                                                        *)
 (**************************************************************************)
 open Base
-open Dm
 open Common
+open Dm
 open Types
+open Utils
 
 [@@@warning "-27"]
 

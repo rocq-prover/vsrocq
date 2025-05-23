@@ -12,9 +12,12 @@
 (*                                                                        *)
 (**************************************************************************)
 open Base
+open Bridge
 open Dm
+open Im
 open Common
 open Protocol
+open Utils
 
 [@@@warning "-27"]
 
