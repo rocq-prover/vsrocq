@@ -17,7 +17,7 @@ module Interp = Vernacstate.Interp
 
 module LemmaStack = Vernacstate.LemmaStack
 
-module Declare = Vernacstate.Declare
+module Declare = Vernacstate.Declare [@ocaml.warning "-3"]
 
 module Stm = Vernacstate.Stm
 
