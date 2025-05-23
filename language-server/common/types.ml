@@ -93,8 +93,8 @@ let empty_overview = {processing = []; processed = []; prepared = []}
   module Quickfix = struct
     type t = unit
     let from_exception _ = Ok([])
-    let pp = Hpp.mt
-    let loc _ = HLoc.make_loc (0,0)
+    let pp = Host.Hpp.mt
+    let loc _ = Host.HLoc.make_loc (0,0)
   end
 [%%endif]
 
