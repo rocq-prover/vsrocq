@@ -43,7 +43,7 @@ type document_state =
 
 type state = {
   uri : DocumentUri.t;
-  init_vs : Vernacstate.t;
+  init_vs : State.t;
   opts : Coqargs.injection_command list;
   document : Document.document;
   execution_state : ExecutionManager.state;
@@ -55,7 +55,7 @@ type state = {
 type event =
   | Execute of { (* we split the computation to help interruptibility *)
       id : Types.sentence_id; (* sentence of interest *)
-      vst_for_next_todo : Vernacstate.t; (* the state to be used for the next
+      vst_for_next_todo : State.t; (* the state to be used for the next
         todo, it is not necessarily the state of the last sentence, since it
         may have failed and this is a surrogate used for error resiliancy *)
       task : ExecutionManager.prepared_task;
@@ -474,7 +474,7 @@ let interpret_to_previous st check_mode =
     | Some { start } ->
       match Document.find_sentence_before st.document start with
       | None -> 
-        Vernacstate.unfreeze_full_state st.init_vs;
+        State.unfreeze_full_state st.init_vs;
         let range = Range.top () in
         { st with observe_id=Top }, [mk_move_cursor_event range; mk_proof_view_event_empty]
       | Some { id } -> 
@@ -552,13 +552,13 @@ let dirpath_of_top = Coqinit.dirpath_of_top
 [%%endif]
 
 let init init_vs ~opts uri ~text =
-  Vernacstate.unfreeze_full_state init_vs;
+  State.unfreeze_full_state init_vs;
   let top = try (dirpath_of_top (TopPhysical (DocumentUri.to_path uri))) with
     e -> raise e
   in
   start_library top opts;
-  let init_vs = Vernacstate.freeze_full_state () in
-  let document = Document.create_document init_vs.Vernacstate.synterp text in
+  let init_vs = State.freeze_full_state () in
+  let document = Document.create_document init_vs.synterp text in
   let execution_state, feedback = ExecutionManager.init init_vs in
   let state = { uri; opts; init_vs; document; execution_state; observe_id=Top; cancel_handle = None; document_state = Parsing } in
   let priority = Some PriorityManager.launch_parsing in
@@ -567,7 +567,7 @@ let init init_vs ~opts uri ~text =
 
 let reset { uri; opts; init_vs; document; execution_state; } =
   let text = RawDocument.text @@ Document.raw_document document in
-  Vernacstate.unfreeze_full_state init_vs;
+  State.unfreeze_full_state init_vs;
   let document = Document.create_document init_vs.synterp text in
   ExecutionManager.destroy execution_state;
   let execution_state, feedback = ExecutionManager.init init_vs in
@@ -761,17 +761,17 @@ let get_completions st pos =
 let parse_entry st pos entry pattern =
   let pa = Pcoq.Parsable.make (Gramlib.Stream.of_string pattern) in
   let st = match Document.find_sentence_before st.document pos with
-  | None -> st.init_vs.Vernacstate.synterp.parsing
-  | Some { synterp_state } -> synterp_state.Vernacstate.Synterp.parsing
+  | None -> st.init_vs.synterp.parsing
+  | Some { synterp_state } -> synterp_state.parsing
   in
-  Vernacstate.Parser.parse st entry pa
+  State.Parser.parse st entry pa
 [%%else]
 let parse_entry st pos entry pattern =
   let pa = parsable_make (Gramlib.Stream.of_string pattern) in
   let st = match Document.find_sentence_before st.document pos with
-  | None -> Vernacstate.(Synterp.parsing st.init_vs.synterp)
-  | Some { synterp_state } -> Vernacstate.Synterp.parsing synterp_state
-  in  
+  | None -> State.(Synterp.parsing st.init_vs.synterp)
+  | Some { synterp_state } -> State.Synterp.parsing synterp_state
+  in
   unfreeze st;
   entry_parse entry pa
 [%%endif]

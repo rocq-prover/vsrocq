@@ -19,6 +19,7 @@ open Protocol.LspWrapper
 open Protocol.ExtProtocol
 open Protocol.Printing
 open CompletionItems
+open Host
 
 (** The document manager holds the view that Rocq has of the currently open
     states. It makes it easy for IDEs to handle text edits, navigate
@@ -48,7 +49,7 @@ type handled_event = {
 
 val is_parsing : state -> bool
 
-val init : Vernacstate.t -> opts:Coqargs.injection_command list -> DocumentUri.t -> text:string -> state * events
+val init : State.t -> opts:Coqargs.injection_command list -> DocumentUri.t -> text:string -> state * events
 (** [init st opts uri text] initializes the document manager with initial vernac state
     [st] on which command line opts will be set. *)
 

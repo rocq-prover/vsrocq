@@ -77,7 +77,7 @@ type pre_sentence = {
   parsing_start : int;
   start : int;
   stop : int;
-  synterp_state : Vernacstate.Synterp.t; (* synterp state after this sentence's synterp phase *)
+  synterp_state : State.Synterp.t; (* synterp state after this sentence's synterp phase *)
   ast : sentence_state;
 }
 
@@ -90,7 +90,7 @@ type sentence = {
   parsing_start : int;
   start : int;
   stop : int;
-  synterp_state : Vernacstate.Synterp.t; (* synterp state after this sentence's synterp phase *)
+  synterp_state : State.Synterp.t; (* synterp state after this sentence's synterp phase *)
   scheduler_state_before : Scheduler.state;
   scheduler_state_after : Scheduler.state;
   ast : sentence_state;
@@ -106,7 +106,7 @@ type document = {
   outline : outline;
   parsed_loc : int;
   raw_doc : RawDocument.t;
-  init_synterp_state : Vernacstate.Synterp.t;
+  init_synterp_state : State.Synterp.t;
   cancel_handle: Sel.Event.cancellation_handle option;
 }
 
@@ -115,7 +115,7 @@ type parse_state = {
   stop: int;
   top_id: sentence_id option;
   loc: HLoc.t option;
-  synterp_state : Vernacstate.Synterp.t;
+  synterp_state : State.Synterp.t;
   stream: (unit, char) Gramlib.Stream.t;
   raw: RawDocument.t;
   parsed: pre_sentence list;
@@ -493,21 +493,21 @@ let rec stream_tok n_tok acc str begin_line begin_char =
     (*
 let parse_one_sentence stream ~st =
   let pa = Pcoq.Parsable.make stream in
-  Vernacstate.Parser.parse st (Pvernac.main_entry (Some (Vernacinterp.get_default_proof_mode ()))) pa
+  State.Parser.parse st (Pvernac.main_entry (Some (Vernacinterp.get_default_proof_mode ()))) pa
   (* FIXME: handle proof mode correctly *)
   *)
 
 
 [%%if rocq = "8.18" || rocq = "8.19"]
 let parse_one_sentence ?loc stream ~st =
-  Vernacstate.Synterp.unfreeze st;
+  State.Synterp.unfreeze st;
   let entry = Pvernac.main_entry (Some (Synterp.get_default_proof_mode ())) in
   let pa = Pcoq.Parsable.make ?loc stream in
   let sentence = Pcoq.Entry.parse entry pa in
   (sentence, [])
 [%%elif rocq = "8.20"]
 let parse_one_sentence ?loc stream ~st =
-  Vernacstate.Synterp.unfreeze st;
+  State.Synterp.unfreeze st;
   Flags.record_comments := true;
   let entry = Pvernac.main_entry (Some (Synterp.get_default_proof_mode ())) in
   let pa = Pcoq.Parsable.make ?loc stream in
@@ -516,7 +516,7 @@ let parse_one_sentence ?loc stream ~st =
   (sentence, comments)
 [%%else]
 let parse_one_sentence ?loc stream ~st =
-  Vernacstate.Synterp.unfreeze st;
+  State.Synterp.unfreeze st;
   Flags.record_comments := true;
   let entry = Pvernac.main_entry (Some (Synterp.get_default_proof_mode ())) in
   let pa = Procq.Parsable.make ?loc stream in
@@ -594,7 +594,7 @@ let handle_parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments
           log (fun () -> "Parsed: " ^ (Hpp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
           let entry = get_entry ast in
           let classification = Vernac_classifier.classify_vernac ast in
-          let synterp_state = Vernacstate.Synterp.freeze () in
+          let synterp_state = State.Synterp.freeze () in
           let parsed_ast = Parsed { ast = entry; classification; tokens } in
           let sentence = { parsing_start = start; ast = parsed_ast; start = begin_char; stop; synterp_state } in
           let parsed = sentence :: parsed in

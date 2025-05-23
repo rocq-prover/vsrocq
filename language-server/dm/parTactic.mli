@@ -11,6 +11,8 @@
 (*   See LICENSE file.                                                    *)
 (*                                                                        *)
 (**************************************************************************)
+
+open Host
 module TacticWorkerProcess : sig
   type options
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
@@ -18,7 +20,7 @@ module TacticWorkerProcess : sig
 [%%else]
    val parse_options : Coqargs.t -> string list -> options * string list
 [%%endif]
-  val main : st:Vernacstate.t -> options -> unit
+  val main : st:State.t -> options -> unit
   val log : ?force:bool -> (unit -> string) -> unit
 end
 

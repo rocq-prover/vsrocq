@@ -42,7 +42,7 @@ type errored_sentence = (sentence_id * HLoc.t option) option
 type feedback_message = Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t
 
 val pr_event : event -> Hpp.t
-val init : Vernacstate.t -> state * event Sel.Event.t
+val init : State.t -> state * event Sel.Event.t
 val destroy : state -> unit
 
 val get_options : unit -> options
@@ -70,7 +70,7 @@ val get_context : state -> sentence_id -> (Evd.evar_map * Environ.env) option
 val get_initial_context : state -> Evd.evar_map * Environ.env
 
 (** Returns the vernac state after the sentence *)
-val get_vernac_state : state -> sentence_id -> Vernacstate.t option
+val get_vernac_state : state -> sentence_id -> State.t option
 
 (** Events for the main loop *)
 val handle_event : event -> state -> (sentence_id option * state option * events)
@@ -79,8 +79,8 @@ val handle_event : event -> state -> (sentence_id option * state option * events
     one task at a time to ease checking for interruption *)
 type prepared_task
 val get_id_of_executed_task : prepared_task -> sentence_id
-val build_tasks_for : Document.document -> Scheduler.schedule -> state -> sentence_id -> bool -> Vernacstate.t * state * prepared_task option * errored_sentence
-val execute : state -> Document.document -> Vernacstate.t * events * bool -> prepared_task -> bool -> (prepared_task option * state * Vernacstate.t * events * errored_sentence)
+val build_tasks_for : Document.document -> Scheduler.schedule -> state -> sentence_id -> bool -> State.t * state * prepared_task option * errored_sentence
+val execute : state -> Document.document -> State.t * events * bool -> prepared_task -> bool -> (prepared_task option * state * State.t * events * errored_sentence)
 
 (* val update_overview : prepared_task -> prepared_task list -> state -> Document.document -> state
 val cut_overview : prepared_task -> state -> Document.document -> state *)
@@ -98,6 +98,6 @@ module ProofWorkerProcess : sig
 [%%else]
    val parse_options : Coqargs.t -> string list -> options * string list
 [%%endif]
-  val main : st:Vernacstate.t -> options -> unit
+  val main : st:State.t -> options -> unit
   val log : ?force:bool -> (unit -> string) -> unit
 end

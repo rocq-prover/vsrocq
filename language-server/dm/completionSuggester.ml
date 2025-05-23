@@ -343,11 +343,11 @@ let get_lemmas sigma env =
   results.contents
 
 let get_completions options st =
-  Vernacstate.unfreeze_full_state st;
+  State.unfreeze_full_state st;
   match st.interp.lemmas with
   | None -> None
   | Some lemmas ->
-    let proof = Proof.data (lemmas |> Vernacstate.LemmaStack.with_top ~f:Declare.Proof.get) in
+    let proof = Proof.data (lemmas |> State.LemmaStack.with_top ~f:Declare.Proof.get) in
     let env = Global.env () in
     let sigma = proof.sigma in
     let lemmas = get_lemmas sigma env in

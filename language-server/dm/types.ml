@@ -24,6 +24,11 @@ module Pp = struct
 end
 [@@deprecated "use [Host.Hpp]"]
 
+module Vernacstate = struct
+  include Vernacstate
+end
+[@@deprecated "use [Host.state]"]
+
 type sentence_id = Stateid.t
 type sentence_id_set = Stateid.Set.t
 

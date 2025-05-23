@@ -27,7 +27,7 @@ type executable_sentence = {
   id : sentence_id;
   ast : Synterp.vernac_control_entry;
   classif : Vernacextend.vernac_classification;
-  synterp : Vernacstate.Synterp.t;
+  synterp : State.Synterp.t;
   error_recovery : error_recovery_strategy;
 }
 

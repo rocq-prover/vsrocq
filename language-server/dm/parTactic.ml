@@ -30,7 +30,7 @@ module TacticJob = struct
   let appendFeedback (rid,id) fb = AppendFeedback(rid,id,fb)
 
   type t =  {
-    state    : Vernacstate.t;
+    state    : State.t;
     ast      : ComTactic.interpretable;
     goalno   : int;
     goal     : Evar.t;
@@ -76,9 +76,9 @@ let get_ustate sigma = Evd.ustate sigma
 let worker_solve_one_goal { TacticJob.state; ast; goalno; goal } ~send_back =
   let focus_cond = Proof.no_cond command_focus in
   let pr_goal g = string_of_int (Evar.repr g) in
-  Vernacstate.unfreeze_full_state state;
+  State.unfreeze_full_state state;
   try
-    Vernacstate.LemmaStack.with_top (Option.get state.Vernacstate.interp.lemmas) ~f:(fun pstate ->
+    State.LemmaStack.with_top (Option.get state.interp.lemmas) ~f:(fun pstate ->
     let pstate = Declare.Proof.map pstate ~f:(Proof.focus focus_cond () goalno) in
     let pstate = ComTactic.solve ~pstate Goal_select.SelectAll ~info:None ast ~with_end_tac:false in
     let { Proof.sigma } = Declare.Proof.fold pstate ~f:Proof.data in
@@ -107,8 +107,8 @@ let feedback_id = ref (0,Stateid.dummy)
 let set_id_for_feedback rid sid = feedback_id := (rid,sid)
 
 let interp_par ~pstate ~info ast ~abstract ~with_end_tac : Declare.Proof.t =
-  let state = Vernacstate.freeze_full_state () in
-  let state = Vernacstate.Stm.make_shallow state in
+  let state = State.freeze_full_state () in
+  let state = State.Stm.make_shallow state in
   let queue = Queue.create () in
   let events, job_ids = List.split @@
     Declare.Proof.fold pstate ~f:(fun p ->
