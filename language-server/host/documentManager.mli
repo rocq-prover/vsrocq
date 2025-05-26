@@ -6,7 +6,7 @@ type text
 (** Integer that represent the absolute offset character in the
     document as an integer. *)
 type loc
-type doc = Host.ast list
+type doc = HostTypes.ast list
 
 (** LSP-like diagnostic *)
 type diagnostic
@@ -22,20 +22,20 @@ type outline_item
 
     Returns [None] when the end of file has been reached or on an
     unrecoverable error. *)
-val parse: text -> ?start:loc -> (Host.ast * loc) option
+(* val parse: text -> ?start:loc -> (HostTypes.ast * loc) option *)
 
 (** Validate semantically the [doc] which is a list of ast and
     populate a [valid_doc] which contains enough structure to compute
     diagnostics, hovering and outlining capabilities. *)
-val validate: doc -> Host.valid_doc
+(* val validate: doc -> HostTypes.valid_doc *)
 
 (** Retrieve the diagnostics (warning/errors) from the validated
     doc. *)
-val diagnostics: Host.valid_doc -> diagnostic list
+(* val diagnostics: HostTypes.valid_doc -> diagnostic list *)
 
 (** Returns the info that located at the [loc] cursor position in
     validated document. *)
-val hover: Host.valid_doc -> loc -> hover_info
+(* val hover: HostTypes.valid_doc -> loc -> hover_info *)
 
 (** Returns the outlined symbols of the validated document. *)
-val outline: Host.valid_doc -> outline_item list
+(* val outline: HostTypes.valid_doc -> outline_item list *)

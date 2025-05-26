@@ -6,7 +6,7 @@ type text
 (** Integer that represent the absolute offset character in the
     document as an integer. *)
 type loc
-type doc = Host.ast list
+type doc = HostTypes.ast list
 
 (** LSP-like diagnostic *)
 type diagnostic
