@@ -74,7 +74,6 @@ let lsp : event Sel.Event.t =
         (* do not remove this line otherwise the server stays running in some scenarios *)
         exit 0)
 
-
 let output_json obj =
   let msg  = Yojson.Safe.pretty_to_string ~std:true obj in
   let size = String.length msg in
@@ -146,11 +145,12 @@ let do_shutdown id params =
 let do_exit () =
   exit 0
 
-let parse_loc json =
+(*Dead code ?*)
+(* let parse_loc json =
   let open Yojson.Safe.Util in
   let line = json |> member "line" |> to_int in
   let character = json |> member "character" |> to_int in
-  Position.{ line ; character }
+  Position.{ line ; character } *)
 
 let publish_diagnostics uri doc =
   let diagnostics = Bridge.all_diagnostics doc in
@@ -162,6 +162,7 @@ let publish_diagnostics uri doc =
   let diag_notification = Lsp.Server_notification.PublishDiagnostics params in
   output_notification (Std diag_notification)
 
+(* TODO: Prover specific *)
 let send_highlights uri doc =
   let { Common.Types.processing;  processed; prepared } =
     Bridge.executed_ranges doc !Host.Config.check_mode in
@@ -174,15 +175,17 @@ let send_highlights uri doc =
   in
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notification
 
+(* TODO: Prover specific *)
 let send_proof_view pv =
   log (fun () -> "-------------------------- sending proof view ---------------------------------------");
   let notification = Notification.Server.ProofView pv in
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notification
 
+(* TODO: Prover specific *)
 let send_move_cursor uri range = 
   let notification = Notification.Server.MoveCursor {uri;range} in 
   output_notification notification
-
+(* TODO: Prover specific *)
 let send_block_on_error uri range = 
   let notification = Notification.Server.BlockOnError {uri;range} in 
   output_notification notification
@@ -205,6 +208,7 @@ let update_view uri st =
 
 let replace_state path st visible = Hashtbl.replace states path { st; visible}
 
+(* TODO: Prover specific *)
 let run_documents () =
   let interpret_doc_in_bg path { st : Bridge.state ; visible } events =
       let st = Bridge.reset_to_top st in
@@ -217,6 +221,7 @@ let run_documents () =
   in
   Hashtbl.fold interpret_doc_in_bg states []
 
+(* TODO: Prover specific *)
 let reset_observe_ids =
   let reset_doc_observe_id path {st : Bridge.state; visible} events =
     let st = Bridge.reset_to_top st in
@@ -341,12 +346,13 @@ let textDocumentDefinition params =
       let location = Location.create ~range:range ~uri:uri in
       Ok (Some (`Location [location]))
 
-
-let progress_hook uri () =
+(*dead code*)
+(* let progress_hook uri () =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "ignoring non existent document")
-  | Some { st } -> update_view uri st
+  | Some { st } -> update_view uri st *)
 
+(* TODO: Prover specific *)
 let rocqtopInterpretToPoint params =
   let Notification.Client.InterpretToPointParams.{ textDocument; position } = params in
   let uri = textDocument.uri in
@@ -359,7 +365,8 @@ let rocqtopInterpretToPoint params =
     update_view uri st;
     let sel_events = inject_dm_events (uri, events) in
     sel_events
- 
+
+(* TODO: Prover specific *)
 let rocqtopStepBackward params =
   let Notification.Client.StepBackwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
@@ -370,6 +377,7 @@ let rocqtopStepBackward params =
       update_view uri st;
       inject_dm_events (uri,events)
 
+      (* TODO: Prover specific *)
 let rocqtopStepForward params =
   let Notification.Client.StepForwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
@@ -419,6 +427,7 @@ let documentSymbol id params =
       let symbols = Bridge.get_document_symbols tab.st in
       Ok(Some (`DocumentSymbol symbols)), []
 
+  (* TODO: Prover specific *)
 let rocqtopResetRocq id params =
   let Request.Client.ResetParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
@@ -428,7 +437,7 @@ let rocqtopResetRocq id params =
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
     Ok(()), (uri,events) |> inject_dm_events
-
+(* TODO: Prover specific *)
 let rocqtopInterpretToEnd params =
   let Notification.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
@@ -438,32 +447,32 @@ let rocqtopInterpretToEnd params =
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
     inject_dm_events (uri,events)
-
+(* TODO: Prover specific *)
 let rocqtopLocate id params = 
   let Request.Client.LocateParams.{ textDocument = { uri }; position; pattern } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[locate] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st } ->
     Bridge.locate st position ~pattern, []
-
+(* TODO: Prover specific *)
 let rocqtopPrint id params = 
   let Request.Client.PrintParams.{ textDocument = { uri }; position; pattern } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[print] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st } -> Bridge.print st position ~pattern, []
-
+(* TODO: Prover specific *)
 let rocqtopAbout id params =
   let Request.Client.AboutParams.{ textDocument = { uri }; position; pattern } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[about] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st } -> Bridge.about st position ~pattern, []
-
+(* TODO: Prover specific *)
 let rocqtopCheck id params =
   let Request.Client.CheckParams.{ textDocument = { uri }; position; pattern } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[check] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st } -> Bridge.check st position ~pattern, []
-
+(* TODO: Prover specific *)
 let rocqtopSearch id params =
   let Request.Client.SearchParams.{ textDocument = { uri }; id; position; pattern } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
@@ -484,7 +493,7 @@ let sendDocumentState id params =
   | None -> log (fun () -> "[documentState] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some { st } -> let document = Bridge.Internal.string_of_state st in
     Ok Request.Client.DocumentStateResult.{ document }, []
-
+(* TODO: Prover specific *)
 let sendDocumentProofs id params = 
   let Request.Client.DocumentProofsParams.{ textDocument } = params in
   let uri = textDocument.uri in
