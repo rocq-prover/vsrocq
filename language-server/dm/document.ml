@@ -199,7 +199,12 @@ let record_outline document id (ast : Synterp.vernac_control_entry) classif (out
         | Vernacexpr.VernacCoFixpoint _ -> Some DefinitionType
         | _ -> None
     in
-    let str_names = List.map (fun n -> Names.Id.to_string n) names in
+    let str_names =
+      match names with
+      | [] -> ["default"]
+      | _ -> List.map (fun n -> Names.Id.to_string n) names
+    in
+
     begin match type_ with
     | None -> outline
     | Some type_ ->
@@ -227,7 +232,11 @@ let record_outline document id (ast : Synterp.vernac_control_entry) classif (out
         | Vernacexpr.VernacCoFixpoint _ -> Some DefinitionType, string_of_id document id
         | _ -> None, ""
     in
-    let str_names = List.map (fun n -> Names.Id.to_string n) names in
+    let str_names =
+      match names with
+      | [] -> ["default"]
+      | _ -> List.map (fun n -> Names.Id.to_string n) names
+    in
     begin match type_ with
     | None -> outline
     | Some type_ ->
