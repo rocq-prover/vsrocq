@@ -12,7 +12,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Protocol
 open Protocol.LspWrapper
 open Host
 open Common.Scheduler
@@ -39,29 +38,6 @@ type sentence_state =
   | Done of execution_status
   | Delegated of DelegationManager.job_handle * (execution_status -> unit) option
 
-type delegation_mode =
-  | CheckProofsInMaster
-  | SkipProofs
-  | DelegateProofsToWorkers of { number_of_workers : int }
-
-type options = {
-  delegation_mode : delegation_mode;
-  completion_options : Settings.Completion.t;
-  enableDiagnostics : bool
-}
-
-let default_options = {
-  delegation_mode = CheckProofsInMaster;
-  completion_options = {
-    enable = false;
-    algorithm = StructuredSplitUnification;
-    unificationLimit = 100;
-    atomicFactor = 5.;
-    sizeFactor = 5.
-  };
-  enableDiagnostics = true;
-}
-
 let doc_id = ref (-1)
 let fresh_doc_id () = incr doc_id; !doc_id
 
@@ -69,7 +45,7 @@ type document_id = int
 
 type rocq_feedback_listener = int
 
-type delegated_task = { 
+type delegated_task = {
   terminator_id: sentence_id;
   opener_id: sentence_id;
   proof_using: Vernacexpr.section_subset_expr;
@@ -121,13 +97,6 @@ let print_exec_overview overview =
 
 let print_exec_overview_of_state st = print_exec_overview st.overview
   
-let options = ref default_options
-
-let set_options o = options := o
-let set_default_options () = options := default_options
-let is_diagnostics_enabled () = !options.enableDiagnostics
-
-let get_options () = !options
 
 module ProofJob = struct
   type update_request =
@@ -545,7 +514,7 @@ let prepare_task task : prepared_task list =
   | Exec e -> [PExec e]
   | Query e -> [PQuery e]
   | OpaqueProof { terminator; opener_id; tasks; proof_using} ->
-      match !options.delegation_mode with
+      match (Host.Config.get_options ()).delegation_mode with
       | DelegateProofsToWorkers _ ->
           log (fun () -> "delegating proofs to workers");
           let last_step_id = last_opt tasks in

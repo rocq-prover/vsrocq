@@ -163,7 +163,7 @@ let rec handle_dm_events n (events : Bridge.event Sel.Todo.t) st =
     | Some ev ->
       (* Stdlib.Format.eprintf "handle_dm_events: handling %a\n"  Bridge.pp_event ev; *)
       let st, new_events =
-        match Bridge.handle_event ev st ~block:false Protocol.Settings.Mode.Manual Protocol.Settings.Goals.Diff.Mode.Off with
+        match Bridge.handle_event ev st ~block:false Host.Settings.Mode.Manual Host.Settings.Goals.Diff.Mode.Off with
         | { Bridge.state = None; events = events' } -> st, events'
         | { Bridge.state = Some st; events = events' } -> st, events'
       in

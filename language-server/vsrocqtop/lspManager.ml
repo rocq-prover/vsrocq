@@ -37,17 +37,6 @@ type tab = { st : Bridge.state; visible : bool }
 
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
 
-let check_mode = ref Settings.Mode.Manual
-
-let diff_mode = ref Settings.Goals.Diff.Mode.Off
-let max_memory_usage  = ref 4000000000
-
-let full_diagnostics = ref false
-let full_messages = ref false
-
-let point_interp_mode = ref Settings.PointInterpretationMode.Cursor
-
-let block_on_first_error = ref true
 
 let Common.Types.Log log = Common.Log.mk_log "lspManager"
 
@@ -114,28 +103,6 @@ let inject_notifications l =
 let inject_debug_events l =
   List.map inject_debug_event l
 
-let do_configuration settings = 
-  let open Settings in
-  let open Im.ExecutionManager in
-  let delegation_mode =
-    match settings.proof.delegation with
-    | None     -> CheckProofsInMaster
-    | Skip     -> SkipProofs
-    | Delegate -> DelegateProofsToWorkers { number_of_workers = Option.get settings.proof.workers }
-  in
-  Im.ExecutionManager.set_options {
-    delegation_mode;
-    completion_options = settings.completion;
-    enableDiagnostics = settings.diagnostics.enable;
-  };
-  check_mode := settings.proof.mode;
-  diff_mode := settings.goals.diff.mode;
-  full_diagnostics := settings.diagnostics.full;
-  full_messages := settings.goals.messages.full;
-  max_memory_usage := settings.memory.limit * 1000000000;
-  block_on_first_error := settings.proof.block;
-  point_interp_mode := settings.proof.pointInterpretationMode
-
 let send_configuration_request () =
   let id = `Int conf_request_id in
   let mk_configuration_item section =
@@ -150,7 +117,7 @@ let do_initialize id params =
   begin match initializationOptions with
   | None -> log (fun () -> "Failed to decode initialization options")
   | Some initializationOptions ->
-    do_configuration @@ Settings.t_of_yojson initializationOptions;
+    Config.do_configuration @@ Settings.t_of_yojson initializationOptions;
   end;
   let textDocumentSync = `TextDocumentSyncKind TextDocumentSyncKind.Incremental in
   let completionProvider = CompletionOptions.create ~resolveProvider:false () in
@@ -188,7 +155,7 @@ let parse_loc json =
 let publish_diagnostics uri doc =
   let diagnostics = Bridge.all_diagnostics doc in
   let diagnostics =
-    if !full_diagnostics then diagnostics
+    if !Host.Config.full_diagnostics then diagnostics
     else List.filter (fun d -> d.Diagnostic.severity != Some DiagnosticSeverity.Information) diagnostics
   in
   let params = Lsp.Types.PublishDiagnosticsParams.create ~diagnostics ~uri () in
@@ -197,7 +164,7 @@ let publish_diagnostics uri doc =
 
 let send_highlights uri doc =
   let { Common.Types.processing;  processed; prepared } =
-    Bridge.executed_ranges doc !check_mode in
+    Bridge.executed_ranges doc !Host.Config.check_mode in
   let notification = Notification.Server.UpdateHighlights {
     uri;
     preparedRange = prepared;
@@ -231,7 +198,7 @@ let send_error_notification message =
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Lsp.Server_notification.to_jsonrpc notification
 
 let update_view uri st =
-  if (Im.ExecutionManager.is_diagnostics_enabled ()) then (
+  if (Host.Config.is_diagnostics_enabled ()) then (
     send_highlights uri st;
     publish_diagnostics uri st;
   )
@@ -241,7 +208,7 @@ let replace_state path st visible = Hashtbl.replace states path { st; visible}
 let run_documents () =
   let interpret_doc_in_bg path { st : Bridge.state ; visible } events =
       let st = Bridge.reset_to_top st in
-      let (st, events') = Bridge.interpret_in_background st ~should_block_on_error:!block_on_first_error in
+      let (st, events') = Bridge.interpret_in_background st ~should_block_on_error:!Host.Config.block_on_first_error in
       let uri = DocumentUri.of_path path in
       replace_state path st visible;
       update_view uri st;
@@ -290,8 +257,8 @@ let textDocumentDidOpen params =
   | None -> open_new_document uri text
   | Some { st } ->
     let (st, events) = 
-      if !check_mode = Settings.Mode.Continuous then
-        let (st, events) = Bridge.interpret_in_background st ~should_block_on_error:!block_on_first_error in
+      if !Host.Config.check_mode = Settings.Mode.Continuous then
+        let (st, events) = Bridge.interpret_in_background st ~should_block_on_error:!Host.Config.block_on_first_error in
         (st, events)
       else 
         (st, [])
@@ -332,7 +299,7 @@ let purge_invisible_tabs () =
 
 let consider_purge_invisible_tabs () =
   let usage = current_memory_usage () in
-  if usage > !max_memory_usage (* 4G *) then begin
+  if usage > !Host.Config.max_memory_usage (* 4G *) then begin
     purge_invisible_tabs ();
     let vst = get_init_state () in
     State.unfreeze_full_state vst;
@@ -386,7 +353,7 @@ let rocqtopInterpretToPoint params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let (st, events) = Bridge.interpret_to_position st position !check_mode ~point_interp_mode:!point_interp_mode
+    let (st, events) = Bridge.interpret_to_position st position !Host.Config.check_mode ~point_interp_mode:!Host.Config.point_interp_mode
     in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
@@ -398,7 +365,7 @@ let rocqtopStepBackward params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let (st, events) = Bridge.interpret_to_previous st !check_mode in
+      let (st, events) = Bridge.interpret_to_previous st !Host.Config.check_mode in
       replace_state (DocumentUri.to_path uri) st visible;
       update_view uri st;
       inject_dm_events (uri,events)
@@ -408,7 +375,7 @@ let rocqtopStepForward params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let (st, events) = Bridge.interpret_to_next st !check_mode in
+      let (st, events) = Bridge.interpret_to_next st !Host.Config.check_mode in
       replace_state (DocumentUri.to_path uri) st visible;
       update_view uri st;
       inject_dm_events (uri,events) 
@@ -428,7 +395,7 @@ let textDocumentCompletion id params =
   let return_completion ~isIncomplete ~items =
     Ok (Some (`CompletionList (Lsp.Types.CompletionList.create ~isIncomplete ~items ())))
   in
-  if not (Im.ExecutionManager.get_options ()).completion_options.enable then
+  if not (Host.Config.get_options ()).completion_options.enable then
     return_completion ~isIncomplete:false ~items:[], []
   else
   let Lsp.Types.CompletionParams.{ textDocument = { uri }; position } = params in
@@ -467,7 +434,7 @@ let rocqtopInterpretToEnd params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let (st, events) = Bridge.interpret_to_end st !check_mode in
+    let (st, events) = Bridge.interpret_to_end st !Host.Config.check_mode in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
     inject_dm_events (uri,events)
@@ -533,8 +500,8 @@ let sendDocumentProofs id params =
 let workspaceDidChangeConfiguration params = 
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
   let settings = Settings.t_of_yojson settings in
-  do_configuration settings;
-  match !check_mode with
+  Host.Config.do_configuration settings;
+  match !Host.Config.check_mode with
   | Continuous -> run_documents ()
   | Manual -> reset_observe_ids (); ([] : events)
 
@@ -652,7 +619,7 @@ let handle_event = function
       log (fun () -> "ignoring event on non-existing document");
       []
     | Some { st; visible } ->
-      let handled_event = Bridge.handle_event e st ~block:!block_on_first_error !check_mode !diff_mode in
+      let handled_event = Bridge.handle_event e st ~block:!Host.Config.block_on_first_error !Host.Config.check_mode !Host.Config.diff_mode in
       let events = handled_event.events in
       begin match handled_event.state with
         | None -> ()

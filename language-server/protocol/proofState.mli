@@ -11,8 +11,8 @@
 (*   See LICENSE file.                                                    *)
 (*                                                                        *)
 (**************************************************************************)
-open Settings
 open Host
+open Settings
 
 type proof_statement [@@deriving yojson]
 

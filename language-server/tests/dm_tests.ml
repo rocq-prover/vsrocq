@@ -15,7 +15,6 @@ open Base
 open Bm
 open Dm
 open Im
-open Protocol
 open Utils
 open Host
 
@@ -180,7 +179,7 @@ let%test_unit "step_forward.proof_view" =
   let todo = Sel.Todo.(add todo events) in
   let st = handle_dm_events todo st in
   [%test_pred: sentence_id option] (Option.equal State.Id.equal (Some s2.id)) (Bridge.Internal.observe_id st);
-  let data = Bridge.get_proof st Protocol.Settings.Goals.Diff.Mode.Off None in
+  let data = Bridge.get_proof st Host.Settings.Goals.Diff.Mode.Off None in
   [%test_eq: bool] (Option.is_some data) true
   (* 
   let doc = Bridge.Internal.document st in
