@@ -11,7 +11,6 @@
 (*   See LICENSE file.                                                    *)
 (*                                                                        *)
 (**************************************************************************)
-open Protocol
 
 module CompactedDecl = Context.Compacted.Declaration
 

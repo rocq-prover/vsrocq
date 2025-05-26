@@ -738,7 +738,7 @@ let get_completions st pos =
       []
   | Some id ->
     let ost = Im.ExecutionManager.get_vernac_state st.execution_state id in
-    let settings = Im.ExecutionManager.get_options () in
+    let settings = Host.Config.get_options () in
     match Option.bind ost @@ CompletionSuggester.get_completions settings.completion_options with
     | None -> 
         log (fun () -> "No completions available");

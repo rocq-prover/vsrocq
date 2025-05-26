@@ -20,19 +20,6 @@ open Host
     defined by the scheduler), caching event states and invalidating
     them. It can delegate to worker processes via DelegationManager *)
 
-type delegation_mode =
-  | CheckProofsInMaster
-  | SkipProofs
-  | DelegateProofsToWorkers of { number_of_workers : int }
-
-type options = {
-  delegation_mode : delegation_mode;
-  completion_options : Settings.Completion.t;
-  enableDiagnostics : bool;
-}
-
-val is_diagnostics_enabled: unit -> bool
-
 (** Execution state, includes the cache *)
 type state
 type event
@@ -45,9 +32,6 @@ val pr_event : event -> Hpp.t
 val init : State.t -> state * event Sel.Event.t
 val destroy : state -> unit
 
-val get_options : unit -> options
-val set_options : options -> unit
-val set_default_options : unit -> unit
 val invalidate : Dm.Document.document -> Common.Scheduler.schedule -> sentence_id -> state -> state
 
 val error : state -> sentence_id -> (HLoc.t option * Hpp.t) option
