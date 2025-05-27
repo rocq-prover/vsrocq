@@ -15,9 +15,9 @@
 (** This toplevel implements an LSP-based server language for VsCode,
     used by the VsRocq extension. *)
 
-open Bm
 open Common.Types
 open Host
+open Host_bm
 
 open Lsp.Types
 open Printer
@@ -381,7 +381,7 @@ let rocqtopStepForward params =
       inject_dm_events (uri,events) 
 
   let make_CompletionItem i item : CompletionItem.t = 
-    let (label, insertText, typ, path) = Bm.CompletionItems.pp_completion_item item in
+    let (label, insertText, typ, path) = Host_bm.CompletionItems.pp_completion_item item in
     CompletionItem.create
       ~label
       ~insertText
@@ -633,7 +633,7 @@ let handle_event = function
   | Notification notification ->
     begin match notification with 
     | QueryResultNotification params ->
-      output_notification @@ SearchResult params; [inject_notification Bm.SearchQuery.query_feedback]
+      output_notification @@ SearchResult params; [inject_notification Host_bm.SearchQuery.query_feedback]
     end
   | LogEvent e ->
     send_rocq_debug e; [inject_debug_event Common.Log.debug]

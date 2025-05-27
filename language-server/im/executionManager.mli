@@ -32,15 +32,15 @@ val pr_event : event -> Hpp.t
 val init : State.t -> state * event Sel.Event.t
 val destroy : state -> unit
 
-val invalidate : Dm.Document.document -> Common.Scheduler.schedule -> sentence_id -> state -> state
+val invalidate : Host_dm.Document.document -> Common.Scheduler.schedule -> sentence_id -> state -> state
 
 val error : state -> sentence_id -> (HLoc.t option * Hpp.t) option
 val feedback :  state -> sentence_id -> feedback_message list
 val all_errors : state -> (sentence_id * (HLoc.t option * Hpp.t * Quickfix.t list option)) list
 val all_feedback : state -> (sentence_id * feedback_message) list
 
-val reset_overview : state -> Dm.Document.document -> state
-val shift_overview : state -> before:Dm.RawDocument.t -> after:Dm.RawDocument.t -> start:int -> offset:int -> state
+val reset_overview : state -> Host_dm.Document.document -> state
+val shift_overview : state -> before:Host_dm.RawDocument.t -> after:Host_dm.RawDocument.t -> start:int -> offset:int -> state
 val shift_diagnostics_locs : state -> start:int -> offset:int -> state
 val executed_ids : state -> sentence_id list
 
@@ -63,12 +63,12 @@ val handle_event : event -> state -> (sentence_id option * state option * events
     one task at a time to ease checking for interruption *)
 type prepared_task
 val get_id_of_executed_task : prepared_task -> sentence_id
-val build_tasks_for : Dm.Document.document -> Common.Scheduler.schedule -> state -> sentence_id -> bool -> State.t * state * prepared_task option * errored_sentence
-val execute : state -> Dm.Document.document -> State.t * events * bool -> prepared_task -> bool -> (prepared_task option * state * State.t * events * errored_sentence)
+val build_tasks_for : Host_dm.Document.document -> Common.Scheduler.schedule -> state -> sentence_id -> bool -> State.t * state * prepared_task option * errored_sentence
+val execute : state -> Host_dm.Document.document -> State.t * events * bool -> prepared_task -> bool -> (prepared_task option * state * State.t * events * errored_sentence)
 
 (* val update_overview : prepared_task -> prepared_task list -> state -> Document.document -> state
 val cut_overview : prepared_task -> state -> Document.document -> state *)
-val update_processed : sentence_id -> state -> Dm.Document.document -> state
+val update_processed : sentence_id -> state -> Host_dm.Document.document -> state
 val prepare_overview : state -> LspWrapper.Range.t list -> state
 val overview : state -> exec_overview
 val overview_until_range : state -> LspWrapper.Range.t -> exec_overview

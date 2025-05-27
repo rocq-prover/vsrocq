@@ -145,14 +145,14 @@ val print : state -> Position.t -> pattern:string -> (pp, error) Result.t
 
 module Internal : sig
 
-  val document : state -> Dm.Document.document
-  val raw_document : state -> Dm.RawDocument.t
+  val document : state -> Host_dm.Document.document
+  val raw_document : state -> Host_dm.RawDocument.t
   val execution_state : state -> Im.ExecutionManager.state
   val string_of_state : state -> string
   val observe_id : state -> sentence_id option
-  val inject_doc_events : Dm.Document.event Sel.Event.t list -> event Sel.Event.t list
+  val inject_doc_events : Host_dm.Document.event Sel.Event.t list -> event Sel.Event.t list
 
-  val validate_document : state -> Dm.Document.parsing_end_info -> state
+  val validate_document : state -> Host_dm.Document.parsing_end_info -> state
 
 
 end

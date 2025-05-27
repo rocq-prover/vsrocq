@@ -247,9 +247,9 @@ let interp_qed_delayed ~proof_using ~state_id ~(st:State.t) =
 
 let cut_overview task state document =
   let range = match task with
-  | PDelegate { terminator_id } -> Dm.Document.range_of_id_with_blank_space document terminator_id
+  | PDelegate { terminator_id } -> Host_dm.Document.range_of_id_with_blank_space document terminator_id
   | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } ->
-    Dm.Document.range_of_id_with_blank_space document id
+    Host_dm.Document.range_of_id_with_blank_space document id
   in
   let {prepared; processing; processed} = state.overview in
   let prepared = RangeList.cut_from_range range prepared in
@@ -271,7 +271,7 @@ let update_processed_as_Done s range overview =
     {prepared; processing; processed}
 
 let update_processed id state document =
-  let range = Dm.Document.range_of_id_with_blank_space document id in
+  let range = Host_dm.Document.range_of_id_with_blank_space document id in
   match SM.find id state.of_sentence with
   | (s, _) ->
     begin match s with
@@ -297,8 +297,8 @@ let update_processing task state document =
   | PDelegate { opener_id; terminator_id; tasks } ->
     let proof_opener_id = id_of_first_task ~default:opener_id tasks in
     let proof_closer_id = id_of_last_task ~default:terminator_id tasks in
-    let proof_begin_range = Dm.Document.range_of_id_with_blank_space document proof_opener_id in
-    let proof_end_range = Dm.Document.range_of_id_with_blank_space document proof_closer_id in
+    let proof_begin_range = Host_dm.Document.range_of_id_with_blank_space document proof_opener_id in
+    let proof_end_range = Host_dm.Document.range_of_id_with_blank_space document proof_closer_id in
     let range = Range.create ~end_:proof_end_range.end_ ~start:proof_begin_range.start in
     (* When a job is delegated we shouldn't merge ranges (to get the proper progress report) *)
     let processing = List.append processing [ range ] in 
@@ -306,7 +306,7 @@ let update_processing task state document =
     let overview = {state.overview with prepared; processing} in
     {state with overview}
   | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } ->
-    let range = Dm.Document.range_of_id_with_blank_space document id in
+    let range = Host_dm.Document.range_of_id_with_blank_space document id in
     let processing = RangeList.insert_or_merge_range range processing in
     let prepared = RangeList.remove_or_truncate_range range prepared in
     let overview = {state.overview with processing; prepared} in
@@ -318,15 +318,15 @@ let update_prepared task document state =
   | PDelegate { opener_id; terminator_id; tasks } ->
     let proof_opener_id = id_of_first_task ~default:opener_id tasks in
     let proof_closer_id = id_of_last_task ~default:terminator_id tasks in
-    let proof_begin_range = Dm.Document.range_of_id_with_blank_space document proof_opener_id in
-    let proof_end_range = Dm.Document.range_of_id_with_blank_space document proof_closer_id in
+    let proof_begin_range = Host_dm.Document.range_of_id_with_blank_space document proof_opener_id in
+    let proof_end_range = Host_dm.Document.range_of_id_with_blank_space document proof_closer_id in
     let range = Range.create ~end_:proof_end_range.end_ ~start:proof_begin_range.start in
     (* When a job is delegated we shouldn't merge ranges (to get the proper progress report) *)
     let prepared = List.append prepared [ range ] in
     let overview = {state.overview with prepared} in
     {state with overview}
   | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } ->
-    let range = Dm.Document.range_of_id_with_blank_space document id in
+    let range = Host_dm.Document.range_of_id_with_blank_space document id in
     let prepared = RangeList.insert_or_merge_range range prepared in
     let overview = {state.overview with prepared} in
     {state with overview}
@@ -335,7 +335,7 @@ let update_overview task state document =
   let state = 
   match task with
   | PDelegate { terminator_id } ->
-    let range = Dm.Document.range_of_id_with_blank_space document terminator_id in
+    let range = Host_dm.Document.range_of_id_with_blank_space document terminator_id in
     let {prepared} = state.overview in
     let prepared = RangeList.remove_or_truncate_range range prepared in
     let overview = update_processed_as_Done (Success None) range state.overview in
@@ -753,10 +753,10 @@ let shift_overview st ~before ~after ~start ~offset =
     else (loc_start, loc_end)
   in
   let shift_range range =
-    let r_start = Dm.RawDocument.loc_of_position before range.Range.start in
-    let r_stop = Dm.RawDocument.loc_of_position before range.Range.end_ in
+    let r_start = Host_dm.RawDocument.loc_of_position before range.Range.start in
+    let r_stop = Host_dm.RawDocument.loc_of_position before range.Range.end_ in
     let r_start', r_stop' = shift_loc r_start r_stop in
-    Range.create ~start:(Dm.RawDocument.position_of_loc after r_start') ~end_:(Dm.RawDocument.position_of_loc after r_stop')
+    Range.create ~start:(Host_dm.RawDocument.position_of_loc after r_start') ~end_:(Host_dm.RawDocument.position_of_loc after r_stop')
   in
   let processed = CList.Smart.map shift_range st.overview.processed in
   let processing = CList.Smart.map shift_range st.overview.processing in
