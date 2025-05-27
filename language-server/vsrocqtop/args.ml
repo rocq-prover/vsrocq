@@ -12,7 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-let Common.Types.Log log = Common.Log.mk_log "args"
+let Host_common.Types.Log log = Host_common.Log.mk_log "args"
 
 let rec skip_xd acc = function
 | [] -> (), List.rev acc
@@ -28,7 +28,7 @@ VSRocq options are:
                          Known components:
                            all (shorthand for all components)
                            init (all components but only during initialization)
-|} ^ "\t\t\t   " ^ String.concat "\n\t\t\t   " (Common.Log.logs ()) ^ {|
+|} ^ "\t\t\t   " ^ String.concat "\n\t\t\t   " (Host_common.Log.logs ()) ^ {|
   
 |}
 }

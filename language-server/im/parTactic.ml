@@ -12,10 +12,10 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Common.Types
+open Host_common.Types
 open Host
 
-let Log log = Common.Log.mk_log "parTactic"
+let Log log = Host_common.Log.mk_log "parTactic"
 
 type sentence_id = State.Id.t
 
