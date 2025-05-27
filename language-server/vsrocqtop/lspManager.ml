@@ -15,7 +15,7 @@
 (** This toplevel implements an LSP-based server language for VsCode,
     used by the VsRocq extension. *)
 
-open Common.Types
+open Host_common.Types
 open Host
 open Host_bm
 
@@ -38,7 +38,7 @@ type tab = { st : Bridge.state; visible : bool }
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
 
 
-let Common.Types.Log log = Common.Log.mk_log "lspManager"
+let Host_common.Types.Log log = Host_common.Log.mk_log "lspManager"
 
 let conf_request_id = max_int
 
@@ -55,12 +55,12 @@ type event =
  | LspManagerEvent of lsp_event
  | BridgeEvent of DocumentUri.t * Bridge.event
  | Notification of notification
- | LogEvent of Common.Log.event
+ | LogEvent of Host_common.Log.event
 
 type events = event Sel.Event.t list
 
 let lsp : event Sel.Event.t =
-  Sel.On.httpcle ~priority:Common.PriorityManager.lsp_message ~name:"lsp" Unix.stdin (function
+  Sel.On.httpcle ~priority:Host_common.PriorityManager.lsp_message ~name:"lsp" Unix.stdin (function
     | Ok buff ->
       begin
         log (fun () -> "UI req ready");
@@ -137,7 +137,7 @@ let do_initialize id params =
     serverInfo = Some server_info;
   } in
   log (fun () -> "---------------- initialized --------------");
-  let debug_events = Common.Log.lsp_initialization_done () |> inject_debug_events in
+  let debug_events = Host_common.Log.lsp_initialization_done () |> inject_debug_events in
   Ok initialize_result, debug_events@[Sel.now @@ LspManagerEvent (send_configuration_request ())]
 
 let do_shutdown id params =
@@ -163,7 +163,7 @@ let publish_diagnostics uri doc =
   output_notification (Std diag_notification)
 
 let send_highlights uri doc =
-  let { Common.Types.processing;  processed; prepared } =
+  let { Host_common.Types.processing;  processed; prepared } =
     Bridge.executed_ranges doc !Host.Config.check_mode in
   let notification = Notification.Server.UpdateHighlights {
     uri;
@@ -636,7 +636,7 @@ let handle_event = function
       output_notification @@ SearchResult params; [inject_notification Host_bm.SearchQuery.query_feedback]
     end
   | LogEvent e ->
-    send_rocq_debug e; [inject_debug_event Common.Log.debug]
+    send_rocq_debug e; [inject_debug_event Host_common.Log.debug]
 
 let pr_event fmt = function
   | LspManagerEvent e -> pr_lsp_event fmt e

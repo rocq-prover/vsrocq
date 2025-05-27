@@ -25,4 +25,4 @@ module TacticWorkerProcess : sig
 end
 
 (* HACK: the sentence id of the current phrase is used to report errors *)
-val set_id_for_feedback : Feedback.route_id -> Common.Types.sentence_id -> unit
+val set_id_for_feedback : Feedback.route_id -> Host_common.Types.sentence_id -> unit

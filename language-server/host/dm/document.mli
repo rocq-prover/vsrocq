@@ -12,7 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Common.Types
+open Host_common.Types
 open Host
 open Lsp.Types
 
@@ -120,8 +120,8 @@ type sentence = {
   start : int;
   stop : int;
   synterp_state : State.Synterp.t; (* synterp state after this sentence's synterp phase *)
-  scheduler_state_before : Common.Scheduler.state;
-  scheduler_state_after : Common.Scheduler.state;
+  scheduler_state_before : Host_common.Scheduler.state;
+  scheduler_state_after : Host_common.Scheduler.state;
   ast : sentence_state;
   id : sentence_id;
 }
@@ -163,7 +163,7 @@ val get_first_sentence : document  -> sentence option
 val get_last_sentence : document  -> sentence option
 (** [get_last_sentence doc] returns the last parsed sentence *)
 
-val schedule : document -> Common.Scheduler.schedule
+val schedule : document -> Host_common.Scheduler.schedule
 
 val range_of_id : document -> State.Id.t -> Range.t
 (** [range_of_id doc id] returns a Range object coressponding to the sentence id given in argument *)

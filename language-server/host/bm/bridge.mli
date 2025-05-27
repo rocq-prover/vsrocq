@@ -12,7 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Common.Types
+open Host_common.Types
 open Lsp.Types
 open Protocol
 open Protocol.LspWrapper
@@ -26,7 +26,7 @@ open Host
     and get feedback. Note that it does not require IDEs to parse vernacular
     sentences. *)
 
-type observe_id = Id of Common.Types.sentence_id | Top
+type observe_id = Id of Host_common.Types.sentence_id | Top
 
 type blocking_error = {
   last_range: Range.t;

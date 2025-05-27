@@ -13,9 +13,9 @@
 (**************************************************************************)
 
 open Host
-open Common.Types
+open Host_common.Types
 
-let Log log = Common.Log.mk_log "delegationManager"
+let Log log = Host_common.Log.mk_log "delegationManager"
 
 type sentence_id = State.Id.t
 
@@ -67,7 +67,7 @@ let cancel_job (_,id) =
    keep here the conversion (STM) feedback -> (LSP) feedback *)
 
 let install_feedback send =
-  Common.Log.feedback_add_feeder_on_Message (fun route span _ lvl loc qf msg ->
+  Host_common.Log.feedback_add_feeder_on_Message (fun route span _ lvl loc qf msg ->
     send (route,span,(lvl,loc, qf, msg)))
     
 module type Worker = sig
@@ -116,13 +116,13 @@ type job_update_request = Job.update_request
 
 type worker_message =
   | Job_update of Job.update_request
-  | DebugMessage of Common.Log.event
+  | DebugMessage of Host_common.Log.event
 
 let write_value link (x:worker_message) = write_value_gen link x
 
 let write_value_job link (x:Job.t) = write_value_gen link x
 
-let Log log_worker = Common.Log.mk_log ("worker." ^ Job.name)
+let Log log_worker = Host_common.Log.mk_log ("worker." ^ Job.name)
 
 let install_feedback_worker ~feedback_cleanup link =
   feedback_cleanup ();
@@ -143,7 +143,7 @@ let pr_event = function
   | WorkerStart _ -> Hpp.str "WorkerStart"
 
 let install_debug_worker link =
-  Common.Log.worker_initialization_done
+  Host_common.Log.worker_initialization_done
     ~fwd_event:(fun e -> write_value link (DebugMessage e))
 
 type events = delegation Sel.Event.t list
@@ -205,7 +205,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
         dup2 null stdin;
         dup2 null stdout;
         close chan;
-        Common.Log.worker_initialization_begins ();
+        Host_common.Log.worker_initialization_begins ();
         let chan = socket PF_INET SOCK_STREAM 0 in
         connect chan address;
         let read_from = chan in
@@ -289,7 +289,7 @@ let handle_event = function
         Queue.push () pool;
       (None,[])
   | WorkerProgress { link; update_request = DebugMessage d } ->
-      Common.Log.handle_event d;
+      Host_common.Log.handle_event d;
       (None, [worker_progress link])
   | WorkerProgress { link; update_request = Job_update u } ->
       log (fun () -> "worker progress");

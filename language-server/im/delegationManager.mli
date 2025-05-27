@@ -13,7 +13,7 @@
 (**************************************************************************)
 
 open Host
-open Common.Types
+open Host_common.Types
 
 (* This component handles delegation to workers. It gathers all the code for
    process management across supported OSes (fork on Unix, create_process +

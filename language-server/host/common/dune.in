@@ -1,0 +1,5 @@
+(library
+ (name host_common)
+ (public_name vsrocq-language-server.host.common)
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (libraries @@ROCQ_RUNTIME@@.sysinit lsp sel protocol host))

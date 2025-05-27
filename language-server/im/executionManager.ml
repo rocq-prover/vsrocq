@@ -14,10 +14,10 @@
 
 open Protocol.LspWrapper
 open Host
-open Common.Scheduler
-open Common.Types
+open Host_common.Scheduler
+open Host_common.Types
 
-let Log log = Common.Log.mk_log "executionManager"
+let Log log = Host_common.Log.mk_log "executionManager"
 
 type feedback_message = Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t
 
@@ -101,7 +101,7 @@ let print_exec_overview_of_state st = print_exec_overview st.overview
 module ProofJob = struct
   type update_request =
     | UpdateExecStatus of sentence_id * execution_status
-    | AppendFeedback of Feedback.route_id * Common.Types.sentence_id * (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t)
+    | AppendFeedback of Feedback.route_id * Host_common.Types.sentence_id * (Feedback.level * HLoc.t option * Quickfix.t list * Hpp.t)
 
   let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
 
@@ -398,10 +398,10 @@ let update state id v =
 ;;
 
 let local_feedback feedback_queue : event Sel.Event.t =
-  Sel.On.queue_all ~name:"feedback" ~priority:Common.PriorityManager.feedback feedback_queue (fun x xs -> LocalFeedback(feedback_queue, x :: xs))
+  Sel.On.queue_all ~name:"feedback" ~priority:Host_common.PriorityManager.feedback feedback_queue (fun x xs -> LocalFeedback(feedback_queue, x :: xs))
 
 let install_feedback_listener doc_id send =
-  Common.Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
+  Host_common.Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
     if lvl != Feedback.Debug && doc = doc_id then send (route,span,(lvl,loc, qf, msg)))
 
 let init vernac_state =
@@ -832,7 +832,7 @@ let rec invalidate document schedule id st =
   let of_sentence = List.fold_left invalidate1 of_sentence
     List.(concat (map (fun tasks -> map id_of_prepared_task tasks) !removed)) in
   if of_sentence == st.of_sentence then st else
-  let deps = Common.Scheduler.dependents schedule id in
+  let deps = Host_common.Scheduler.dependents schedule id in
   State.Id.Set.fold (invalidate document schedule) deps { st with of_sentence; todo }
 
 let context_of_state st =

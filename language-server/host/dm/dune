@@ -4,4 +4,4 @@
  (name host_dm)
  (public_name vsrocq-language-server.host.dm)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
- (libraries base rocq-runtime.sysinit rocq-runtime.vernac rocq-runtime.parsing lsp sel protocol language common))
+ (libraries base rocq-runtime.sysinit rocq-runtime.vernac rocq-runtime.parsing lsp sel protocol language host_common))

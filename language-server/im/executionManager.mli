@@ -12,7 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Common.Types
+open Host_common.Types
 open Protocol
 open Host
 
@@ -32,7 +32,7 @@ val pr_event : event -> Hpp.t
 val init : State.t -> state * event Sel.Event.t
 val destroy : state -> unit
 
-val invalidate : Host_dm.Document.document -> Common.Scheduler.schedule -> sentence_id -> state -> state
+val invalidate : Host_dm.Document.document -> Host_common.Scheduler.schedule -> sentence_id -> state -> state
 
 val error : state -> sentence_id -> (HLoc.t option * Hpp.t) option
 val feedback :  state -> sentence_id -> feedback_message list
@@ -63,7 +63,7 @@ val handle_event : event -> state -> (sentence_id option * state option * events
     one task at a time to ease checking for interruption *)
 type prepared_task
 val get_id_of_executed_task : prepared_task -> sentence_id
-val build_tasks_for : Host_dm.Document.document -> Common.Scheduler.schedule -> state -> sentence_id -> bool -> State.t * state * prepared_task option * errored_sentence
+val build_tasks_for : Host_dm.Document.document -> Host_common.Scheduler.schedule -> state -> sentence_id -> bool -> State.t * state * prepared_task option * errored_sentence
 val execute : state -> Host_dm.Document.document -> State.t * events * bool -> prepared_task -> bool -> (prepared_task option * state * State.t * events * errored_sentence)
 
 (* val update_overview : prepared_task -> prepared_task list -> state -> Document.document -> state
