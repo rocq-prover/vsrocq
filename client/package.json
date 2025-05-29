@@ -309,6 +309,18 @@
             "description": "Include info in diagnostics"
           }
         }
+      },
+      {
+        "title": "MCP",
+        "type": "object",
+        "properties": {
+          "vscoq.mcp.use": {
+            "scope": "window",
+            "type": "boolean",
+            "default": false,
+            "description": "Use VsCoq MCP Server"
+          }
+        }
       }
     ],
     "commands": [

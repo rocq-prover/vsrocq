@@ -169,11 +169,10 @@ export function activate(context: ExtensionContext) {
         const searchProvider = new SearchViewProvider(context.extensionUri, client);
         context.subscriptions.push(window.registerWebviewViewProvider(SearchViewProvider.viewType, searchProvider));
 
-        console.log('MCP server about to start');
-
-        // Start MCP server
-        // startMCPServer(context, mcpPromiseBox, client);
-        console.log('MCP Server started');
+        if (workspace.getConfiguration('vscoq.mcp.use')) {
+            // Start MCP server
+            startMCPServer(context, mcpPromiseBox, client);
+        }
 
         const documentStateProvider = new DocumentStateViewProvider(client); 
         context.subscriptions.push(workspace.registerTextDocumentContentProvider("vsrocq-document-state", documentStateProvider));
@@ -313,8 +312,7 @@ export function activate(context: ExtensionContext) {
                     const gStr = stringOfPpString(goal.goal);
                     return [hypsStr, gStr].toString();
                 });
-                const str = {"message": msgStr, "goal": goalStr}.toString();
-                console.log('[EXT] Setting mcpPromiseBox value', { str, mcpPromiseBox });
+                const str = JSON.stringify({ message: msgStr, goal: goalStr });
                 mcpPromiseBox.setValue(str);
             }
         });
