@@ -26,7 +26,7 @@ interface Query {
     type: string; 
     pattern: string; 
 }
-        
+
 export default class SearchViewProvider implements vscode.WebviewViewProvider {
 
     public static readonly viewType = 'vsrocq.search'; 

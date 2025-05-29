@@ -48,8 +48,20 @@ import {
 import { DocumentStateViewProvider } from './panels/DocumentStateViewProvider';
 import VsRocqToolchainManager, {ToolchainError, ToolChainErrorCode} from './utilities/toolchain';
 import { QUICKFIX_COMMAND, RocqWarningQuickFix } from './QuickFixProvider';
+import { startMCPServer } from './mcpServer';
+import { stringOfPpString } from './utilities/pputils';
 
 let client: Client;
+
+export type McpPromiseBox = {
+    promise: Promise<string> | undefined,
+    setValue: ((value: string) => void) | undefined
+};
+
+let mcpPromiseBox: McpPromiseBox = {
+    promise: undefined,
+    setValue: undefined
+};
 
 export function activate(context: ExtensionContext) {
     const getDocumentProofs = (uri: Uri) => {
@@ -156,6 +168,12 @@ export function activate(context: ExtensionContext) {
         //register the search view provider 
         const searchProvider = new SearchViewProvider(context.extensionUri, client);
         context.subscriptions.push(window.registerWebviewViewProvider(SearchViewProvider.viewType, searchProvider));
+
+        console.log('MCP server about to start');
+
+        // Start MCP server
+        // startMCPServer(context, mcpPromiseBox, client);
+        console.log('MCP Server started');
 
         const documentStateProvider = new DocumentStateViewProvider(client); 
         context.subscriptions.push(workspace.registerTextDocumentContentProvider("vsrocq-document-state", documentStateProvider));
@@ -284,6 +302,21 @@ export function activate(context: ExtensionContext) {
             const editor = window.activeTextEditor ? window.activeTextEditor : window.visibleTextEditors[0];
             const autoDisplay = workspace.getConfiguration('vsrocq.goals').auto;
             GoalPanel.proofViewNotification(context.extensionUri, editor, proofView, autoDisplay);
+            if (mcpPromiseBox.setValue) {
+                const msgStr = proofView.messages.map((msg) => {
+                    return stringOfPpString(msg[1]);
+                }).toString();
+                const goalStr = proofView.proof?.goals?.map((goal) => {
+                    const hypsStr = goal.hypotheses.map((h) => {
+                        return stringOfPpString(h);
+                    }).toString();
+                    const gStr = stringOfPpString(goal.goal);
+                    return [hypsStr, gStr].toString();
+                });
+                const str = {"message": msgStr, "goal": goalStr}.toString();
+                console.log('[EXT] Setting mcpPromiseBox value', { str, mcpPromiseBox });
+                mcpPromiseBox.setValue(str);
+            }
         });
 
         client.onNotification("prover/blockOnError", (notification: ErrorAlertNotification) => {
