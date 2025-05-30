@@ -10,7 +10,11 @@ import {workspace, window, commands, languages, ExtensionContext, env,
   StatusBarAlignment,
   MarkdownString,
   WorkspaceEdit,
+<<<<<<< HEAD
   version
+=======
+  Position
+>>>>>>> MCP shift position to user positions; add important usafe info
 } from 'vscode';
 
 import * as os from 'node:os';
@@ -316,7 +320,7 @@ export function activate(context: ExtensionContext) {
                     return [hypsStr, gStr].toString();
                 });
                 const highlightEnds = client.getHighlights(mcpPromiseBox.currentDocumentURI ? String(mcpPromiseBox.currentDocumentURI) : "");
-                const highlightEnd = highlightEnds ? highlightEnds[0].end : "";
+                const highlightEnd = highlightEnds ? new Position(highlightEnds[0].end.line + 1, highlightEnds[0].end.character + 1) : "";
                 const str = JSON.stringify({ message: msgStr, interpretedUpTo: highlightEnd, goal: goalStr });
                 mcpPromiseBox.setValue(str);
                 mcpPromiseBox.setValue = undefined; // Clear to avoid double resolution

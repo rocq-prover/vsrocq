@@ -30,7 +30,9 @@ Otherwise, you can start the MCP server by running the action `MCP: List Servers
 
 Now the server should be running and you can use it with e.g. copilot agent mode.
 
-*Make sure that you are using Agent Mode*
+*Important Note: Make sure that you are using Agent Mode*
+
+*Important Note: Make sure to first perform at least one step in the file yourself, since I'm implicitly using the current active editor, to avoid the LLM having the add the file uri every time*
 
 #### Tips for writing prompts
 
