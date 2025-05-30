@@ -1,4 +1,4 @@
-import { ExtensionContext, window, workspace, Position } from 'vscode';
+import { ExtensionContext, window, workspace, Position, Selection, TextEditorRevealType, Range } from 'vscode';
 import { sendInterpretToPoint, sendStepForward, sendStepBackward, sendInterpretToEnd } from './manualChecking';
 import { McpPromiseBox } from './extension';
 import Client from './client';
@@ -19,7 +19,6 @@ function getServer(mcpPromiseBox: McpPromiseBox, client: Client) {
         "interpretToPoint",
         "Interpret to the given point (or current cursor) in the active Coq editor.",
         {
-            // Optionally allow a line/character override, but default to current cursor
             line: z.number().optional(),
             character: z.number().optional()
         },
@@ -28,12 +27,15 @@ function getServer(mcpPromiseBox: McpPromiseBox, client: Client) {
             console.log('[MCP] interpretToPoint called', { line, character, editorExists: !!editor });
             if (editor && line !== undefined && character !== undefined) {
                 const pos = new Position(line, character);
-                editor.selection = new (window as any).Selection(pos, pos);
+                const range = new Range(pos, pos);
+                editor.selections = [new Selection(range.start, range.end)];
+                editor.revealRange(range, TextEditorRevealType.Default);
                 console.log('[MCP] Cursor moved to', pos);
             }
             if (editor) {
                 await sendInterpretToPoint(editor, client);
                 console.log('[MCP] sendInterpretToPoint finished');
+                mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
                 mcpPromiseBox.promise = new Promise((resolve) => {
                   mcpPromiseBox.setValue = resolve;
                 });
@@ -57,6 +59,7 @@ function getServer(mcpPromiseBox: McpPromiseBox, client: Client) {
             if (editor) {
                 await sendStepForward(editor, client);
                 console.log('[MCP] sendStepForward finished');
+                mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
                 mcpPromiseBox.promise = new Promise((resolve) => {
                   mcpPromiseBox.setValue = resolve;
                 });
@@ -80,6 +83,7 @@ function getServer(mcpPromiseBox: McpPromiseBox, client: Client) {
             if (editor) {
                 await sendStepBackward(editor, client);
                 console.log('[MCP] sendStepBackward finished');
+                mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
                 mcpPromiseBox.promise = new Promise((resolve) => {
                   mcpPromiseBox.setValue = resolve;
                 });
@@ -102,6 +106,7 @@ function getServer(mcpPromiseBox: McpPromiseBox, client: Client) {
             console.log('[MCP] interpretToEnd called', { editorExists: !!editor });
             if (editor) {
                 await sendInterpretToEnd(editor, client);
+                mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
                 mcpPromiseBox.promise = new Promise((resolve) => {
                     mcpPromiseBox.setValue = resolve;
                 });

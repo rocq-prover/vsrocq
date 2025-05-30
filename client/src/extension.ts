@@ -17,6 +17,7 @@ import * as os from 'node:os';
 
 import {
   LanguageClientOptions,
+  PublishDiagnosticsParams,
   RequestType,
   ServerOptions,
   TextDocumentIdentifier,
@@ -55,12 +56,14 @@ let client: Client;
 
 export type McpPromiseBox = {
     promise: Promise<string> | undefined,
-    setValue: ((value: string) => void) | undefined
+    setValue: ((value: string) => void) | undefined,
+    currentDocumentURI: string | undefined
 };
 
 let mcpPromiseBox: McpPromiseBox = {
     promise: undefined,
-    setValue: undefined
+    setValue: undefined,
+    currentDocumentURI: undefined
 };
 
 export function activate(context: ExtensionContext) {
@@ -169,7 +172,7 @@ export function activate(context: ExtensionContext) {
         const searchProvider = new SearchViewProvider(context.extensionUri, client);
         context.subscriptions.push(window.registerWebviewViewProvider(SearchViewProvider.viewType, searchProvider));
 
-        if (workspace.getConfiguration('vscoq.mcp.use')) {
+        if (workspace.getConfiguration('vscoq.mcp').use) {
             // Start MCP server
             startMCPServer(context, mcpPromiseBox, client);
         }
@@ -312,8 +315,11 @@ export function activate(context: ExtensionContext) {
                     const gStr = stringOfPpString(goal.goal);
                     return [hypsStr, gStr].toString();
                 });
-                const str = JSON.stringify({ message: msgStr, goal: goalStr });
+                const highlightEnds = client.getHighlights(mcpPromiseBox.currentDocumentURI ? String(mcpPromiseBox.currentDocumentURI) : "");
+                const highlightEnd = highlightEnds ? highlightEnds[0].end : "";
+                const str = JSON.stringify({ message: msgStr, interpretedUpTo: highlightEnd, goal: goalStr });
                 mcpPromiseBox.setValue(str);
+                mcpPromiseBox.setValue = undefined; // Clear to avoid double resolution
             }
         });
 
