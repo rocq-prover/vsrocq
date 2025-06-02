@@ -10,11 +10,7 @@ import {workspace, window, commands, languages, ExtensionContext, env,
   StatusBarAlignment,
   MarkdownString,
   WorkspaceEdit,
-<<<<<<< HEAD
   version
-=======
-  Position
->>>>>>> MCP shift position to user positions; add important usafe info
 } from 'vscode';
 
 import * as os from 'node:os';
@@ -53,7 +49,7 @@ import {
 import { DocumentStateViewProvider } from './panels/DocumentStateViewProvider';
 import VsRocqToolchainManager, {ToolchainError, ToolChainErrorCode} from './utilities/toolchain';
 import { QUICKFIX_COMMAND, RocqWarningQuickFix } from './QuickFixProvider';
-import { startMCPServer } from './mcpServer';
+import { getPrettifiedProofView, startMCPServer } from './mcpServer';
 import { stringOfPpString } from './utilities/pputils';
 
 let client: Client;
@@ -68,6 +64,14 @@ let mcpPromiseBox: McpPromiseBox = {
     promise: undefined,
     setValue: undefined,
     currentDocumentURI: undefined
+};
+
+export type ProofState = {
+    lastProofViewNotification: ProofViewNotification | undefined
+};
+
+let proofState: ProofState = {
+    lastProofViewNotification: undefined
 };
 
 export function activate(context: ExtensionContext) {
@@ -178,7 +182,7 @@ export function activate(context: ExtensionContext) {
 
         if (workspace.getConfiguration('vscoq.mcp').use) {
             // Start MCP server
-            startMCPServer(context, mcpPromiseBox, client);
+            startMCPServer(context, mcpPromiseBox, proofState, client);
         }
 
         const documentStateProvider = new DocumentStateViewProvider(client); 
@@ -308,21 +312,10 @@ export function activate(context: ExtensionContext) {
             const editor = window.activeTextEditor ? window.activeTextEditor : window.visibleTextEditors[0];
             const autoDisplay = workspace.getConfiguration('vsrocq.goals').auto;
             GoalPanel.proofViewNotification(context.extensionUri, editor, proofView, autoDisplay);
+            proofState.lastProofViewNotification = proofView;
             if (mcpPromiseBox.setValue) {
-                const msgStr = proofView.messages.map((msg) => {
-                    return stringOfPpString(msg[1]);
-                }).toString();
-                const goalStr = proofView.proof?.goals?.map((goal) => {
-                    const hypsStr = goal.hypotheses.map((h) => {
-                        return stringOfPpString(h);
-                    }).toString();
-                    const gStr = stringOfPpString(goal.goal);
-                    return [hypsStr, gStr].toString();
-                });
-                const highlightEnds = client.getHighlights(mcpPromiseBox.currentDocumentURI ? String(mcpPromiseBox.currentDocumentURI) : "");
-                const highlightEnd = highlightEnds ? new Position(highlightEnds[0].end.line + 1, highlightEnds[0].end.character + 1) : "";
-                const str = JSON.stringify({ message: msgStr, interpretedUpTo: highlightEnd, goal: goalStr });
-                mcpPromiseBox.setValue(str);
+                const res = getPrettifiedProofView(client, proofView, mcpPromiseBox.currentDocumentURI);
+                mcpPromiseBox.setValue(res);
                 mcpPromiseBox.setValue = undefined; // Clear to avoid double resolution
             }
         });

@@ -1,6 +1,6 @@
 import { ExtensionContext, window, workspace, Position, Selection, TextEditorRevealType, Range } from 'vscode';
 import { sendInterpretToPoint, sendStepForward, sendStepBackward, sendInterpretToEnd } from './manualChecking';
-import { McpPromiseBox } from './extension';
+import { McpPromiseBox, ProofState } from './extension';
 import Client from './client';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as express from "express";
@@ -8,8 +8,10 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import * as fs from 'fs';
 import * as path from 'path';
+import { stringOfPpString } from './utilities/pputils';
+import { ProofViewNotification } from './protocol/types';
 
-function getServer(mcpPromiseBox: McpPromiseBox, client: Client) {
+function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client: Client) {
     const server = new McpServer({
         name: "VsRocq MCP Server",
         version: "1.0.0"
@@ -120,6 +122,18 @@ function getServer(mcpPromiseBox: McpPromiseBox, client: Client) {
         }
     );
 
+    server.tool(
+        "proofView",
+        "Get the current proof view and the current interpretation point.",
+        {},
+        async () => {
+            const editor = window.activeTextEditor;
+            const currentDocumentURI = editor?.document.uri.toString();
+            const result = getPrettifiedProofView(client, proofState.lastProofViewNotification, currentDocumentURI);
+            return { content: [{ type: "text", text: result }] };
+        }
+    );
+
     return server;
 }
 
@@ -175,7 +189,45 @@ function writeMCPConfigToWorkspace() {
     }
 }
 
-export async function startMCPServer(context: ExtensionContext, mcpPromiseBox: McpPromiseBox, client: Client) {
+// Returns a prettified proof view message for MCP clients
+export function getPrettifiedProofView(client: Client, proofView: ProofViewNotification | undefined, textDocumentURI: string | undefined): string {
+    if (!proofView) {
+        return JSON.stringify({
+            message: "No proof view available.",
+            interpretedUpTo: null,
+            goal: null
+        });
+    }
+    // Prettify messages
+    const msgStr = proofView.messages.map((msg: any) => {
+        return stringOfPpString(msg[1]);
+    }).toString();
+    // Prettify goals
+    const goalStr = proofView.proof?.goals?.map((goal: any) => {
+        const hypsStr = goal.hypotheses.map((h: any) => {
+            return stringOfPpString(h);
+        }).toString();
+        const gStr = stringOfPpString(goal.goal);
+        return [hypsStr, gStr].toString();
+    });
+    // Get highlight end position (last interpreted point)
+    const highlightEnds = client.getHighlights(textDocumentURI ? String(textDocumentURI) : "");
+    let highlightEnd = null;
+    if (highlightEnds && highlightEnds[0] && highlightEnds[0].end) {
+        // +1 to match the user positions
+        highlightEnd = {
+            line: highlightEnds[0].end.line + 1,
+            character: highlightEnds[0].end.character + 1
+        };
+    }
+    return JSON.stringify({
+        message: msgStr,
+        interpretedUpTo: highlightEnd,
+        goal: goalStr
+    });
+}
+
+export async function startMCPServer(context: ExtensionContext, mcpPromiseBox: McpPromiseBox, proofState: ProofState, client: Client) {
 
     writeMCPConfigToWorkspace();
 
@@ -185,7 +237,7 @@ export async function startMCPServer(context: ExtensionContext, mcpPromiseBox: M
     app.post('/mcp', async (req: express.Request, res: express.Response) => {
         console.log('[MCP] POST /mcp called', { body: req.body });
         try {
-            const server = getServer(mcpPromiseBox, client);
+            const server = getServer(mcpPromiseBox, proofState, client);
             const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: undefined,
             });
