@@ -38,17 +38,17 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1739449063,
-        "narHash": "sha256-Bx4xnTBB9aHNKc3QIJ2ujqWvmFNDKaWkq1VZfGpH5Ms=",
+        "lastModified": 1749494155,
+        "narHash": "sha256-FG4DEYBpROupu758beabUk9lhrblSf5hnv84v1TLqMc=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "4316480afd67ac44699314c127fdce2dea1d9937",
+        "rev": "88331c17ba434359491e8d5889cce872464052c2",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
+        "ref": "nixos-25.05",
         "repo": "nixpkgs",
-        "rev": "4316480afd67ac44699314c127fdce2dea1d9937",
         "type": "github"
       }
     },
@@ -60,17 +60,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1747047944,
-        "narHash": "sha256-3A0Ie9Wvmi3FagHRnUyZ5CcMg8ziVhB+Xy/QblAwdrU=",
-        "owner": "coq",
-        "repo": "coq",
-        "rev": "de8e6e97603ac2853a88438192821491a8b3163e",
+        "lastModified": 1749495228,
+        "narHash": "sha256-udotN8RZvmOrmRctX9QZGL5z8CsHy+n5VnviKeKYJ+s=",
+        "owner": "rocq-prover",
+        "repo": "rocq",
+        "rev": "52b1f585b39b80cab8d4634337089de71d118f33",
         "type": "github"
       },
       "original": {
-        "owner": "coq",
-        "repo": "coq",
-        "rev": "de8e6e97603ac2853a88438192821491a8b3163e",
+        "owner": "rocq-prover",
+        "repo": "rocq",
+        "rev": "52b1f585b39b80cab8d4634337089de71d118f33",
         "type": "github"
       }
     },

@@ -1,11 +1,11 @@
 {
-  description = "VsCoq 2, a language server for Coq based on LSP";
+  description = "VsRocq, a language server for Rocq based on LSP";
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:NixOS/nixpkgs?rev=4316480afd67ac44699314c127fdce2dea1d9937";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
-    rocq-master = { url = "github:coq/coq/de8e6e97603ac2853a88438192821491a8b3163e"; }; # Should be kept in sync with PIN_COQ in CI workflow
+    rocq-master = { url = "github:rocq-prover/rocq/52b1f585b39b80cab8d4634337089de71d118f33"; }; # Should be kept in sync with PIN_COQ in CI workflow
     rocq-master.inputs.nixpkgs.follows = "nixpkgs";
 
   };
@@ -17,27 +17,27 @@
     rocq-master,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
-      name = "vscoq-client";
+      name = "vsrocq-client";
       vscodeExtPublisher = "rocq-prover";
-      vscodeExtName = "vscoq";
+      vscodeExtName = "vsrocq";
       vscodeExtUniqueId = "rocq-prover.vsrocq";
-      vscoq_version = "2.2.6";
+      vsrocq_version = "2.2.6";
       rocq = rocq-master.packages.${system};
     in rec {
       formatter = nixpkgs.legacyPackages.${system}.alejandra;
 
       packages = {
-        default = self.packages.${system}.vscoq-language-server-coq-8-20;
+        default = self.packages.${system}.vsrocq-language-server-coq-8-20;
 
-        vscoq-language-server-coq-8-18 =
+        vsrocq-language-server-coq-8-18 =
           # Notice the reference to nixpkgs here.
           with import nixpkgs {inherit system;}; let
             ocamlPackages = ocaml-ng.ocamlPackages_4_14;
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
-              pname = "vscoq-language-server";
-              version = vscoq_version;
+              pname = "vsrocq-language-server";
+              version = vsrocq_version;
               src = ./language-server;
               nativeBuildInputs = [
                 coq_8_18
@@ -72,15 +72,15 @@
                 ]);
             };
 
-        vscoq-language-server-coq-8-19 =
+        vsrocq-language-server-coq-8-19 =
           # Notice the reference to nixpkgs here.
           with import nixpkgs {inherit system;}; let
             ocamlPackages = ocaml-ng.ocamlPackages_4_14;
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
-              pname = "vscoq-language-server";
-              version = vscoq_version;
+              pname = "vsrocq-language-server";
+              version = vsrocq_version;
               src = ./language-server;
               nativeBuildInputs = [
                 coq_8_19
@@ -115,15 +115,15 @@
                 ]);
             };
 
-        vscoq-language-server-coq-8-20 =
+        vsrocq-language-server-coq-8-20 =
           # Notice the reference to nixpkgs here.
           with import nixpkgs {inherit system;}; let
             ocamlPackages = ocaml-ng.ocamlPackages_4_14;
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
-              pname = "vscoq-language-server";
-              version = vscoq_version;
+              pname = "vsrocq-language-server";
+              version = vsrocq_version;
               src = ./language-server;
               nativeBuildInputs = [
                 coq_8_20
@@ -158,15 +158,58 @@
                 ]);
             };
 
-        vscoq-language-server-coq-master =
+        vsrocq-language-server-rocq-9 =
           # Notice the reference to nixpkgs here.
           with import nixpkgs {inherit system;}; let
             ocamlPackages = ocaml-ng.ocamlPackages_4_14;
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
-              pname = "vscoq-language-server";
-              version = vscoq_version;
+              pname = "vsrocq-language-server";
+              version = vsrocq_version;
+              src = ./language-server;
+              nativeBuildInputs = [
+                rocq-core
+              ];
+              buildInputs =
+                [
+                  rocq-core
+                  dune_3
+                ]
+                ++ (with coq.ocamlPackages; [
+                  lablgtk3-sourceview3
+                  glib
+                  pkgs.adwaita-icon-theme
+                  wrapGAppsHook
+                  ocaml
+                  yojson
+                  findlib
+                  ppx_inline_test
+                  ppx_assert
+                  ppx_sexp_conv
+                  ppx_deriving
+                  ppx_optcomp
+                  ppx_import
+                  sexplib
+                  ppx_yojson_conv
+                  lsp
+                  sel
+                ]);
+              propagatedBuildInputs= (with coq.ocamlPackages;
+                [
+                  zarith
+                ]);
+            };
+
+        vsrocq-language-server-coq-master =
+          # Notice the reference to nixpkgs here.
+          with import nixpkgs {inherit system;}; let
+            ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+          in
+            ocamlPackages.buildDunePackage {
+              duneVersion = "3";
+              pname = "vsrocq-language-server";
+              version = vsrocq_version;
               src = ./language-server;
               nativeBuildInputs = [
                 rocq
@@ -201,10 +244,10 @@
                 ]);
             };
 
-        vscoq-client = with import nixpkgs {inherit system;}; let
+        vsrocq-client = with import nixpkgs {inherit system;}; let
           yarn_deps = name: (path: (mkYarnModules {
             pname = "${name}_yarn_deps";
-            version = vscoq_version;
+            version = vsrocq_version;
             packageJSON = ./${path}/package.json;
             yarnLock = ./${path}/yarn.lock;
             yarnNix = ./${path}/yarn.nix;
@@ -240,7 +283,7 @@
         in {
           extension = pkgs.vscode-utils.buildVscodeExtension {
             inherit name vscodeExtName vscodeExtPublisher vscodeExtUniqueId src nativeBuildInputs;
-            version = vscoq_version;
+            version = vsrocq_version;
 
             buildPhase =
               cmds
@@ -254,16 +297,16 @@
               '';
           };
           vsix_archive = stdenv.mkDerivation {
-            name = "vscoq-client-vsix";
+            name = "vsrocq-client-vsix";
 
             unpackPhase = ''
-              cp -r ${self.packages.${system}.vscoq-client.extension}/share/vscode/extensions/${vscodeExtUniqueId}/* .
+              cp -r ${self.packages.${system}.vsrocq-client.extension}/share/vscode/extensions/${vscodeExtUniqueId}/* .
               ls -alt
               pwd
             '';
 
             nativeBuildInputs = [
-              self.packages.${system}.vscoq-client.extension
+              self.packages.${system}.vsrocq-client.extension
               client_deps
               nodejs
               yarn
@@ -280,50 +323,63 @@
       };
 
       devShells = {
-        vscoq-8-18 = with import nixpkgs {inherit system;};
+        vsrocq-8-18 = with import nixpkgs {inherit system;};
           mkShell {
             buildInputs = 
-              self.packages.${system}.vscoq-client.extension.buildInputs
-              ++ self.packages.${system}.vscoq-language-server-coq-8-18.buildInputs
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-coq-8-18.buildInputs
               ++ (with ocamlPackages; [
                 ocaml-lsp
               ])
               ++ ([git]);
           };
         
-        vscoq-8-19 = with import nixpkgs {inherit system;}; let
+        vsrocq-8-19 = with import nixpkgs {inherit system;}; let
           ocamlPackages = ocaml-ng.ocamlPackages_4_14;
         in
           mkShell {
             buildInputs =
-              self.packages.${system}.vscoq-client.extension.buildInputs
-              ++ self.packages.${system}.vscoq-language-server-coq-8-19.buildInputs
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-coq-8-19.buildInputs
               ++ (with ocamlPackages; [
                 ocaml-lsp
               ])
               ++ ([git]);
           };
 
-        vscoq-8-20 = with import nixpkgs {inherit system;}; let
+        vsrocq-8-20 = with import nixpkgs {inherit system;}; let
           ocamlPackages = ocaml-ng.ocamlPackages_4_14;
         in
           mkShell {
             buildInputs =
-              self.packages.${system}.vscoq-client.extension.buildInputs
-              ++ self.packages.${system}.vscoq-language-server-coq-8-20.buildInputs
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-coq-8-20.buildInputs
               ++ (with ocamlPackages; [
                 ocaml-lsp
               ])
               ++ ([git]);
           };
 
-        vscoq-master = with import nixpkgs {inherit system;}; let
+        vsrocq-9 = with import nixpkgs {inherit system;}; let
           ocamlPackages = ocaml-ng.ocamlPackages_4_14;
         in
           mkShell {
             buildInputs =
-              self.packages.${system}.vscoq-client.extension.buildInputs
-              ++ self.packages.${system}.vscoq-language-server-coq-master.buildInputs
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-rocq-9.buildInputs
+              ++ (with ocamlPackages; [
+                ocaml-lsp
+              ])
+              ++ ([git]);
+          };
+
+        vsrocq-master = with import nixpkgs {inherit system;}; let
+          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+        in
+          mkShell {
+            buildInputs =
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-coq-master.buildInputs
               ++ (with ocamlPackages; [
                 ocaml-lsp
               ])
@@ -335,8 +391,8 @@
         in
           mkShell {
             buildInputs =
-              self.packages.${system}.vscoq-client.extension.buildInputs
-              ++ self.packages.${system}.vscoq-language-server-coq-8-20.buildInputs
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-coq-8-20.buildInputs
               ++ (with ocamlPackages; [
                 ocaml-lsp
               ])

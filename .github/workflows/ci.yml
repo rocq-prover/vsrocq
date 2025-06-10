@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        coq: [8-18, 8-19, 8-20, master]
+        coq: [8-18, 8-19, 8-20, 9, master]
         profile: [dev, fatalwarnings]
     runs-on: ${{ matrix.os }}
     steps:
@@ -53,15 +53,18 @@ jobs:
         diff new_yarn.nix yarn.nix
         diff goal-view-ui/new_yarn.nix goal-view-ui/yarn.nix
         diff search-ui/new_yarn.nix search-ui/yarn.nix
-    - run: nix develop .#vscoq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
-    - run: nix develop .#vscoq-${{ matrix.coq }} -c bash -c "cd client && yarn run install:all && yarn run build:all && yarn run compile"
+    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
+      if: ${{matrix.coq != 9}}
+    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && etc/rocq-wrap-coqc.sh && dune build --profile ${{ matrix.profile }}"
+      if: ${{matrix.coq == 9}}
+    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && yarn run install:all && yarn run build:all && yarn run compile"
     - name: Test xvfb
       uses: Wandalen/wretry.action@v3
       with:
         attempt_limit: 5
         attempt_delay: 5000
         command: |
-            xvfb-run nix develop .#vscoq-${{ matrix.coq }} -c bash -c "cd client && yarn test"
+            xvfb-run nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && yarn test"
       if: runner.os == 'Linux'
     - name: Test
       uses: Wandalen/wretry.action@v3
@@ -69,10 +72,10 @@ jobs:
         attempt_limit: 5
         attempt_delay: 5000
         command: |
-            nix develop .#vscoq-${{ matrix.coq }} -c bash -c "cd client && yarn test"
+            nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && yarn test"
       if: runner.os != 'Linux'
     - if: ${{ failure() }}
-      run: cat /tmp/vscoq_init_log.*
+      run: cat /tmp/vsrocq_init_log.*
 
   install-opam:
     strategy:
@@ -114,7 +117,7 @@ jobs:
         VSROCQPATH: ${{ env.vsrocqtop }}
         VSROCQARGS: "-bt"
     - if: ${{ failure() }}
-      run: cat /tmp/vscoq_init_log.*
+      run: cat /tmp/vsrocq_init_log.*
 
   install-windows:
     if: false
@@ -133,7 +136,7 @@ jobs:
       env:
         COQ_VERSION: V8.18+rc1
 
-    - run: C:\ci\cygwin64\bin\bash.exe --login -c 'echo vscoqtop=$(cygpath -m $(which vscoqtop))' >> $Env:GITHUB_ENV
+    - run: C:\ci\cygwin64\bin\bash.exe --login -c 'echo vsrocqtop=$(cygpath -m $(which vsrocqtop))' >> $Env:GITHUB_ENV
 
     - uses: actions/setup-node@v3
       with:
@@ -185,7 +188,7 @@ jobs:
     - run: cd client && yarn run install:all && yarn run build:all && yarn run compile
     - run: cd client && xvfb-run yarn test
     - if: ${{ failure() }}
-      run: cat /tmp/vscoq_init_log.*
+      run: cat /tmp/vsrocq_init_log.*
 
 
   create-release:
