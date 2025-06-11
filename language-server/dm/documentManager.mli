@@ -12,20 +12,20 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
+open Host.Types
 open Lsp.Types
 open Protocol
 open Protocol.LspWrapper
 open Protocol.ExtProtocol
 open Protocol.Printing
-open CompletionItems
+open Host.CompletionItems
 
 (** The document manager holds the view that Rocq has of the currently open
     states. It makes it easy for IDEs to handle text edits, navigate
     and get feedback. Note that it does not require IDEs to parse vernacular
     sentences. *)
 
-type observe_id = Id of Types.sentence_id | Top
+type observe_id = Id of sentence_id | Top
 
 type blocking_error = {
   last_range: Range.t;

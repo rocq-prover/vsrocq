@@ -2,5 +2,36 @@
  (name host)
  (public_name vscoq-language-server.host)
  (wrapped true)
- (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~coq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (modules :standard \ vsrocqtop_proof_worker vsrocqtop_tactic_worker)
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (preprocessor_deps vsrocq_config.mlh)
  (libraries @@ROCQ_RUNTIME@@.gramlib @@ROCQ_RUNTIME@@.boot @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.kernel @@ROCQ_RUNTIME@@.engine @@ROCQ_RUNTIME@@.pretyping @@ROCQ_RUNTIME@@.printing @@ROCQ_RUNTIME@@.parsing @@ROCQ_RUNTIME@@.interp @@ROCQ_RUNTIME@@.lib @@ROCQ_RUNTIME@@.clib @@ROCQ_RUNTIME@@.library @@ROCQ_RUNTIME@@.proofs @@ROCQ_RUNTIME@@.tactics protocol sel lsp))
+
+(executable
+ (name vsrocqtop_proof_worker)
+ (public_name vsrocqtop_proof_worker.opt)
+ (modules vsrocqtop_proof_worker)
+ (flags -linkall)
+ (package vsrocq-language-server)
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (preprocessor_deps vsrocq_config.mlh)
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics lsp dm protocol))
+
+(executable
+ (name vsrocqtop_tactic_worker)
+ (public_name vsrocqtop_tactic_worker.opt)
+ (modules vsrocqtop_tactic_worker)
+ (flags -linkall)
+ (package vsrocq-language-server)
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (preprocessor_deps vsrocq_config.mlh)
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics lsp dm protocol))
+
+(rule
+  (target vsrocq_config.mlh)
+  (action (with-stdout-to %{target}
+    (progn
+      (echo "(* Automatically generated, don't edit *)\n")
+      (echo "[%%define lsp ")
+      (run vsrocq_version_parser %{version:lsp})
+      (echo "]\n")))))

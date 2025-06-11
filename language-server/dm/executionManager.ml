@@ -14,10 +14,10 @@
 
 open Protocol
 open Protocol.LspWrapper
-open Scheduler
-open Types
+open Host.Scheduler
+open Host.Types
 
-let Log log = Log.mk_log "executionManager"
+let Log log = Host.Log.mk_log "executionManager"
 
 type feedback_message = Feedback.level * Loc.t option * Quickfix.t list * Pp.t
 
@@ -36,7 +36,7 @@ module SM = Map.Make (Stateid)
 
 type sentence_state =
   | Done of execution_status
-  | Delegated of DelegationManager.job_handle * (execution_status -> unit) option
+  | Delegated of Host.DelegationManager.job_handle * (execution_status -> unit) option
 
 type delegation_mode =
   | CheckProofsInMaster
@@ -131,7 +131,7 @@ let get_options () = !options
 module ProofJob = struct
   type update_request =
     | UpdateExecStatus of sentence_id * execution_status
-    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
+    | AppendFeedback of Feedback.route_id * sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
   let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
 
   type t = {
@@ -146,7 +146,7 @@ module ProofJob = struct
 
 end
 
-module ProofWorker = DelegationManager.MakeWorker(ProofJob)
+module ProofWorker = Host.DelegationManager.MakeWorker(ProofJob)
 
 type event =
   | LocalFeedback of (Feedback.route_id * sentence_id * feedback_message) Queue.t * (Feedback.route_id * sentence_id * feedback_message) list
@@ -195,7 +195,7 @@ let interp_error_recovery strategy st : Vernacstate.t =
 (* just a wrapper around vernac interp *)
 let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
     Feedback.set_id_for_feedback doc_id state_id;
-    ParTactic.set_id_for_feedback doc_id state_id;
+    Host.ParTactic.set_id_for_feedback doc_id state_id;
     Sys.(set_signal sigint (Signal_handle(fun _ -> raise Break)));
     let result =
       try Ok(Vernacinterp.interp_entry ~st ast,[])
@@ -427,10 +427,10 @@ let update state id v =
 ;;
 
 let local_feedback feedback_queue : event Sel.Event.t =
-  Sel.On.queue_all ~name:"feedback" ~priority:PriorityManager.feedback feedback_queue (fun x xs -> LocalFeedback(feedback_queue, x :: xs))
+  Sel.On.queue_all ~name:"feedback" ~priority:Host.PriorityManager.feedback feedback_queue (fun x xs -> LocalFeedback(feedback_queue, x :: xs))
 
 let install_feedback_listener doc_id send =
-  Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
+  Host.Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
     if lvl != Feedback.Debug && doc = doc_id then send (route,span,(lvl,loc, qf, msg)))
 
 let init vernac_state =
@@ -526,12 +526,12 @@ let is_remotely_executed st id =
   | _ -> false
   
   
-let jobs : (DelegationManager.job_handle * Sel.Event.cancellation_handle * ProofJob.t) Queue.t = Queue.create ()
+let jobs : (Host.DelegationManager.job_handle * Sel.Event.cancellation_handle * ProofJob.t) Queue.t = Queue.create ()
 
 (* TODO: kill all Delegated... *)
 let destroy st =
   feedback_cleanup st;
-  Queue.iter (fun (h,c,_) -> DelegationManager.cancel_job h; Sel.Event.cancel c) jobs
+  Queue.iter (fun (h,c,_) -> Host.DelegationManager.cancel_job h; Sel.Event.cancel c) jobs
 
 
 let last_opt l = try Some (CList.last l).id with Failure _ -> None
@@ -652,7 +652,7 @@ let execute_task st (vs, events, interrupted) task =
           begin match find_fulfilled_opt opener_id st.of_sentence with
           | Some (Success _) ->
             let job =  { ProofJob.tasks; initial_vernac_state = vs; doc_id = st.doc_id; terminator_id } in
-            let job_id = DelegationManager.mk_job_handle (0,terminator_id) in
+            let job_id = Host.DelegationManager.mk_job_handle (0,terminator_id) in
             (* The proof was successfully opened *)
             let last_vs, _v, assign = interp_qed_delayed ~state_id:terminator_id ~proof_using ~st:vs in
             let complete_job status =
@@ -832,7 +832,7 @@ let invalidate1 of_sentence id =
     let p,_ = SM.find id of_sentence in
     match p with
     | Delegated (job_id,_) ->
-        DelegationManager.cancel_job job_id;
+        Host.DelegationManager.cancel_job job_id;
         SM.remove id of_sentence
     | _ -> SM.remove id of_sentence
   with Not_found -> of_sentence
@@ -861,7 +861,7 @@ let rec invalidate document schedule id st =
   let of_sentence = List.fold_left invalidate1 of_sentence
     List.(concat (map (fun tasks -> map id_of_prepared_task tasks) !removed)) in
   if of_sentence == st.of_sentence then st else
-  let deps = Scheduler.dependents schedule id in
+  let deps = Host.Scheduler.dependents schedule id in
   Stateid.Set.fold (invalidate document schedule) deps { st with of_sentence; todo }
 
 let context_of_state st =

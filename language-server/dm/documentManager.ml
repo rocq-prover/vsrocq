@@ -19,11 +19,11 @@ open Protocol
 open Protocol.LspWrapper
 open Protocol.ExtProtocol
 open Protocol.Printing
-open Types
+open Host.Types
 
-let Log log = Log.mk_log "documentManager"
+let Log log = Host.Log.mk_log "documentManager"
 
-type observe_id = Id of Types.sentence_id | Top
+type observe_id = Id of sentence_id | Top
 
 type blocking_error = {
   last_range: Range.t;
@@ -53,7 +53,7 @@ type state = {
 
 type event =
   | Execute of { (* we split the computation to help interruptibility *)
-      id : Types.sentence_id; (* sentence of interest *)
+      id : sentence_id; (* sentence of interest *)
       vst_for_next_todo : Vernacstate.t; (* the state to be used for the next
         todo, it is not necessarily the state of the last sentence, since it
         may have failed and this is a surrogate used for error resiliancy *)
@@ -62,10 +62,10 @@ type event =
     }
   | ExecutionManagerEvent of ExecutionManager.event
   | ParseBegin
-  | Observe of Types.sentence_id
-  | SendProofView of (Types.sentence_id option)
+  | Observe of sentence_id
+  | SendProofView of (sentence_id option)
   | DocumentEvent of Document.event
-  | SendBlockOnError of Types.sentence_id
+  | SendBlockOnError of sentence_id
   | SendMoveCursor of Range.t
 
 type handled_event = {
@@ -97,13 +97,13 @@ let inject_em_events events = List.map inject_em_event events
 let inject_doc_event x = Sel.Event.map (fun e -> DocumentEvent e) x
 let inject_doc_events events = List.map inject_doc_event events
 let mk_proof_view_event id =
-  Sel.now ~priority:PriorityManager.proof_view (SendProofView (Some id))
+  Sel.now ~priority:Host.PriorityManager.proof_view (SendProofView (Some id))
 let mk_proof_view_event_empty =
-  Sel.now ~priority:PriorityManager.proof_view (SendProofView None)
+  Sel.now ~priority:Host.PriorityManager.proof_view (SendProofView None)
 let mk_observe_event id =
-  Sel.now ~priority:PriorityManager.execution (Observe id)
+  Sel.now ~priority:Host.PriorityManager.execution (Observe id)
 let mk_move_cursor_event id = 
-  let priority = PriorityManager.move_cursor in
+  let priority = Host.PriorityManager.move_cursor in
   Sel.now ~priority @@ SendMoveCursor id
 
 let mk_block_on_error_event last_range error_id background =
@@ -112,7 +112,7 @@ let mk_block_on_error_event last_range error_id background =
     update_goal_view
   else
     let red_flash =
-      [Sel.now ~priority:PriorityManager.move_cursor @@ SendBlockOnError error_id] in
+      [Sel.now ~priority:Host.PriorityManager.move_cursor @@ SendBlockOnError error_id] in
     let move_cursor =
       match last_range with
       | Some last_range -> [mk_move_cursor_event last_range]
@@ -293,7 +293,7 @@ let get_info_messages st pos =
     List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, pp_of_rocqpp msg) feedback
 
 let create_execution_event background event =
-  let priority = if background then None else Some PriorityManager.execution in
+  let priority = if background then None else Some Host.PriorityManager.execution in
   Sel.now ?priority event
 
 let state_before_error state error_id loc =
@@ -560,7 +560,7 @@ let init init_vs ~opts uri ~text =
   let document = Document.create_document init_vs.Vernacstate.synterp text in
   let execution_state, feedback = ExecutionManager.init init_vs in
   let state = { uri; opts; init_vs; document; execution_state; observe_id=Top; cancel_handle = None; document_state = Parsing } in
-  let priority = Some PriorityManager.launch_parsing in
+  let priority = Some Host.PriorityManager.launch_parsing in
   let event = Sel.now ?priority ParseBegin in
   state, [event] @ [inject_em_event feedback]
 
@@ -572,7 +572,7 @@ let reset { uri; opts; init_vs; document; execution_state; } =
   let execution_state, feedback = ExecutionManager.init init_vs in
   let observe_id = Top in
   let state = { uri; opts; init_vs; document; execution_state; observe_id; cancel_handle = None ; document_state = Parsing } in
-  let priority = Some PriorityManager.launch_parsing in
+  let priority = Some Host.PriorityManager.launch_parsing in
   let event = Sel.now ?priority ParseBegin in
   state, [event] @ [inject_em_event feedback]
 
@@ -588,7 +588,7 @@ let apply_text_edits state edits =
     {state with execution_state; document}
   in
   let state = List.fold_left apply_edit_and_shift_diagnostics_locs_and_overview state edits in
-  let priority = Some PriorityManager.launch_parsing in
+  let priority = Some Host.PriorityManager.launch_parsing in
   let sel_event = Sel.now ?priority ParseBegin in
   state, [sel_event]
 
@@ -644,7 +644,7 @@ let execute st id vst_for_next_todo started task background block =
 
 let get_proof st diff_mode id =
   let previous_st id =
-    let oid = fst @@ Scheduler.task_for_sentence (Document.schedule st.document) id in
+    let oid = fst @@ Host.Scheduler.task_for_sentence (Document.schedule st.document) id in
     Option.bind oid (ExecutionManager.get_vernac_state st.execution_state)
   in
   let observe_id = to_sentence_id st.observe_id in
@@ -739,7 +739,7 @@ let get_completions st pos =
   | Some id ->
     let ost = ExecutionManager.get_vernac_state st.execution_state id in
     let settings = ExecutionManager.get_options () in
-    match Option.bind ost @@ CompletionSuggester.get_completions settings.completion_options with
+    match Option.bind ost @@ Host.CompletionSuggester.get_completions settings.completion_options with
     | None -> 
         log (fun () -> "No completions available");
         []
@@ -801,7 +801,7 @@ let search st ~id pos pattern =
   | None -> [] (* TODO execute? *)
   | Some (sigma, env) ->
     let query, r = parse_entry st loc (G_vernac.search_queries) pattern in
-    SearchQuery.interp_search ~id env sigma query r
+    Host.SearchQuery.interp_search ~id env sigma query r
 
 (** Try to generate hover text from [pattern] the context of the given [sentence] *)
 let hover_of_sentence st loc pattern sentence = 

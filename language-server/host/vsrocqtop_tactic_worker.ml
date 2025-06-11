@@ -15,11 +15,11 @@
 (** This toplevel implements an LSP-based server language for VsCode,
     used by the VsRocq extension. *)
 
-let log = Dm.ParTactic.TacticWorkerProcess.log 
+let log = Host.ParTactic.TacticWorkerProcess.log 
 
 let main_worker options ~opts:_ state =
   let initial_vernac_state = Vernacstate.freeze_full_state () in
-  try Dm.ParTactic.TacticWorkerProcess.main ~st:initial_vernac_state options
+  try Host.ParTactic.TacticWorkerProcess.main ~st:initial_vernac_state options
   with exn ->
     let bt = Printexc.get_backtrace () in
     log (fun () -> Printexc.(to_string exn));
@@ -43,7 +43,7 @@ let start_library top opts =
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
 let () =
   Coqinit.init_ocaml ();
-  let opts, emoptions = Coqinit.parse_arguments ~parse_extra:Dm.ParTactic.TacticWorkerProcess.parse_options ~usage:vsrocqtop_specific_usage () in
+  let opts, emoptions = Coqinit.parse_arguments ~parse_extra:Host.ParTactic.TacticWorkerProcess.parse_options ~usage:vsrocqtop_specific_usage () in
   let injections = Coqinit.init_runtime opts in
   start_library Coqargs.(dirpath_of_top opts.config.logic.toplevel_name) injections;
   log (fun () -> "started");

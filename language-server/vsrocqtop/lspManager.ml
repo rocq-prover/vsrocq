@@ -20,7 +20,7 @@ open Lsp.Types
 open Protocol
 open Protocol.LspWrapper
 open Protocol.ExtProtocol
-open Dm.Types
+open Host.Types
 
 module CompactedDecl = Context.Compacted.Declaration
 
@@ -46,7 +46,7 @@ let point_interp_mode = ref Settings.PointInterpretationMode.Cursor
 
 let block_on_first_error = ref true
 
-let Dm.Types.Log log = Dm.Log.mk_log "lspManager"
+let Host.Types.Log log = Host.Log.mk_log "lspManager"
 
 let conf_request_id = max_int
 
@@ -63,12 +63,12 @@ type event =
  | LspManagerEvent of lsp_event
  | DocumentManagerEvent of DocumentUri.t * Dm.DocumentManager.event
  | Notification of notification
- | LogEvent of Dm.Log.event
+ | LogEvent of Host.Log.event
 
 type events = event Sel.Event.t list
 
 let lsp : event Sel.Event.t =
-  Sel.On.httpcle ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" Unix.stdin (function
+  Sel.On.httpcle ~priority:Host.PriorityManager.lsp_message ~name:"lsp" Unix.stdin (function
     | Ok buff ->
       begin
         log (fun () -> "UI req ready");
@@ -167,7 +167,7 @@ let do_initialize id params =
     serverInfo = Some server_info;
   } in
   log (fun () -> "---------------- initialized --------------");
-  let debug_events = Dm.Log.lsp_initialization_done () |> inject_debug_events in
+  let debug_events = Host.Log.lsp_initialization_done () |> inject_debug_events in
   Ok initialize_result, debug_events@[Sel.now @@ LspManagerEvent (send_configuration_request ())]
 
 let do_shutdown id params =
@@ -193,7 +193,7 @@ let publish_diagnostics uri doc =
   output_notification (Std diag_notification)
 
 let send_highlights uri doc =
-  let { Dm.Types.processing;  processed; prepared } =
+  let { Host.Types.processing;  processed; prepared } =
     Dm.DocumentManager.executed_ranges doc !check_mode in
   let notification = Notification.Server.UpdateHighlights {
     uri;
@@ -411,7 +411,7 @@ let rocqtopStepForward params =
       inject_dm_events (uri,events) 
 
   let make_CompletionItem i item : CompletionItem.t = 
-    let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item item in
+    let (label, insertText, typ, path) = Host.CompletionItems.pp_completion_item item in
     CompletionItem.create
       ~label
       ~insertText
@@ -663,10 +663,10 @@ let handle_event = function
   | Notification notification ->
     begin match notification with 
     | QueryResultNotification params ->
-      output_notification @@ SearchResult params; [inject_notification Dm.SearchQuery.query_feedback]
+      output_notification @@ SearchResult params; [inject_notification Host.SearchQuery.query_feedback]
     end
   | LogEvent e ->
-    send_rocq_debug e; [inject_debug_event Dm.Log.debug]
+    send_rocq_debug e; [inject_debug_event Host.Log.debug]
 
 let pr_event fmt = function
   | LspManagerEvent e -> pr_lsp_event fmt e

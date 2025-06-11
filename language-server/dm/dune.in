@@ -1,30 +1,9 @@
 (library
  (name dm)
  (public_name vsrocq-language-server.dm)
- (modules :standard \ vsrocqtop_proof_worker vsrocqtop_tactic_worker)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
  (preprocessor_deps vsrocq_config.mlh)
  (libraries base @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.parsing host lsp sel protocol language))
-
-(executable
- (name vsrocqtop_proof_worker)
- (public_name vsrocqtop_proof_worker.opt)
- (modules vsrocqtop_proof_worker)
- (flags -linkall)
- (package vsrocq-language-server)
- (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
- (preprocessor_deps vsrocq_config.mlh)
- (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics lsp dm protocol))
-
-(executable
- (name vsrocqtop_tactic_worker)
- (public_name vsrocqtop_tactic_worker.opt)
- (modules vsrocqtop_tactic_worker)
- (flags -linkall)
- (package vsrocq-language-server)
- (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
- (preprocessor_deps vsrocq_config.mlh)
- (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics lsp dm protocol))
 
 (rule
   (target vsrocq_config.mlh)

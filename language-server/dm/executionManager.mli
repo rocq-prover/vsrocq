@@ -12,7 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
+open Host.Types
 open Protocol
 
 (** The event manager is in charge of the actual event of tasks (as
@@ -47,7 +47,7 @@ val destroy : state -> unit
 val get_options : unit -> options
 val set_options : options -> unit
 val set_default_options : unit -> unit
-val invalidate : Document.document -> Scheduler.schedule -> sentence_id -> state -> state
+val invalidate : Document.document -> Host.Scheduler.schedule -> sentence_id -> state -> state
 
 val error : state -> sentence_id -> (Loc.t option * Pp.t) option
 val feedback :  state -> sentence_id -> feedback_message list
@@ -78,7 +78,7 @@ val handle_event : event -> state -> (sentence_id option * state option * events
     one task at a time to ease checking for interruption *)
 type prepared_task
 val get_id_of_executed_task : prepared_task -> sentence_id
-val build_tasks_for : Document.document -> Scheduler.schedule -> state -> sentence_id -> bool -> Vernacstate.t * state * prepared_task option * errored_sentence
+val build_tasks_for : Document.document -> Host.Scheduler.schedule -> state -> sentence_id -> bool -> Vernacstate.t * state * prepared_task option * errored_sentence
 val execute : state -> Document.document -> Vernacstate.t * events * bool -> prepared_task -> bool -> (prepared_task option * state * Vernacstate.t * events * errored_sentence)
 
 (* val update_overview : prepared_task -> prepared_task list -> state -> Document.document -> state
