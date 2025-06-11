@@ -47,15 +47,13 @@ val destroy : state -> unit
 val get_options : unit -> options
 val set_options : options -> unit
 val set_default_options : unit -> unit
-val invalidate : Document.document -> Host.Scheduler.schedule -> sentence_id -> state -> state
+val invalidate : Host.Scheduler.schedule -> sentence_id -> state -> state
 
 val error : state -> sentence_id -> (Loc.t option * Pp.t) option
 val feedback :  state -> sentence_id -> feedback_message list
 val all_errors : state -> (sentence_id * (Loc.t option * Pp.t * Quickfix.t list option)) list
 val all_feedback : state -> (sentence_id * feedback_message) list
 
-val reset_overview : state -> Document.document -> state
-val shift_overview : state -> before:RawDocument.t -> after:RawDocument.t -> start:int -> offset:int -> state
 val shift_diagnostics_locs : state -> start:int -> offset:int -> state
 val executed_ids : state -> sentence_id list
 
@@ -83,16 +81,9 @@ val execute : state -> Vernacstate.t * events * bool -> prepared_task -> (state 
 
 val cut_todo_list : state -> state
 val pop_todo : state -> prepared_task option * state
+val get_all_Done : state -> sentence_id list * sentence_id list
+val get_todo : state -> sentence_id list
 
-(* val update_overview : prepared_task -> prepared_task list -> state -> Document.document -> state
-val cut_overview : prepared_task -> state -> Document.document -> state *)
-val update_processed : sentence_id -> state -> Document.document -> state
-val prepare_overview : state -> LspWrapper.Range.t list -> state
-val update_overview : prepared_task -> state -> Document.document -> state
-val cut_overview : prepared_task -> state -> Document.document -> state
-val overview : state -> exec_overview
-val overview_until_range : state -> LspWrapper.Range.t -> exec_overview
-val print_exec_overview_of_state : state -> unit
 
 (** Rocq toplevels for delegation without fork *)
 module ProofWorkerProcess : sig
