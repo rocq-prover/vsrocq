@@ -4,7 +4,7 @@
  (modules :standard \ vsrocqtop_proof_worker vsrocqtop_tactic_worker)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
  (preprocessor_deps vsrocq_config.mlh)
- (libraries base @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.parsing lsp sel protocol language))
+ (libraries base @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.parsing host lsp sel protocol language))
 
 (executable
  (name vsrocqtop_proof_worker)
