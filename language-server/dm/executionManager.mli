@@ -79,12 +79,17 @@ val handle_event : event -> state -> (sentence_id option * state option * events
 type prepared_task
 val get_id_of_executed_task : prepared_task -> sentence_id
 val build_tasks_for : Document.document -> Host.Scheduler.schedule -> state -> sentence_id -> bool -> Vernacstate.t * state * prepared_task option * errored_sentence
-val execute : state -> Document.document -> Vernacstate.t * events * bool -> prepared_task -> bool -> (prepared_task option * state * Vernacstate.t * events * errored_sentence)
+val execute : state -> Vernacstate.t * events * bool -> prepared_task -> (state * Vernacstate.t * events * errored_sentence)
+
+val cut_todo_list : state -> state
+val pop_todo : state -> prepared_task option * state
 
 (* val update_overview : prepared_task -> prepared_task list -> state -> Document.document -> state
 val cut_overview : prepared_task -> state -> Document.document -> state *)
 val update_processed : sentence_id -> state -> Document.document -> state
 val prepare_overview : state -> LspWrapper.Range.t list -> state
+val update_overview : prepared_task -> state -> Document.document -> state
+val cut_overview : prepared_task -> state -> Document.document -> state
 val overview : state -> exec_overview
 val overview_until_range : state -> LspWrapper.Range.t -> exec_overview
 val print_exec_overview_of_state : state -> unit

@@ -97,6 +97,12 @@ type state = {
   overview: exec_overview;
 }
 
+let cut_todo_list st = { st with todo = [] }
+let pop_todo st =
+  match st.todo with
+  | [] -> None, st
+  | task :: todo -> Some task, { st with todo }
+
 let get_id_of_executed_task task =
   match task with
   | PSkip {id} -> id
@@ -695,21 +701,10 @@ let execute_task st (vs, events, interrupted) task =
       let st = update st (id_of_prepared_task task) (Error ((None,Pp.str "interrupted"),None,None)) in
       (st, vs, events, true, None)
 
-let execute st document (vs, events, interrupted) task block_on_first_error =
+let execute st (vs, events, interrupted) task =
   let st, vst_for_next_todo, events, _, exec_error =
     execute_task st (vs, events, interrupted) task in
-  match block_on_first_error, exec_error with
-  | false, _ | _, None ->
-    let st = update_overview task st document in
-    let next, st = match st.todo with
-      | [] -> None, st
-      | task :: todo -> Some task, { st with todo }
-    in next, st, vst_for_next_todo, events, None
-  | true, Some _ ->
-    let st = cut_overview task st document in
-    let st = { st with todo=[]} in
-    None, st, vst_for_next_todo, events, exec_error
-
+  st, vst_for_next_todo, events, exec_error
 
 let build_tasks_for document sch st id block =
   let rec build_tasks id tasks st =

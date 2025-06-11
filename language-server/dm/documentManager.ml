@@ -621,8 +621,20 @@ let execute st id vst_for_next_todo started task background block =
     {state=Some st; events=[]; update_view=true; notification=None} (* Sentences have been invalidate, probably because the user edited while executing *)
   | Some _ ->
     log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
+    let (exec_state,vst_for_next_todo,events, exec_error) =
+      ExecutionManager.execute st.execution_state (vst_for_next_todo, [], false) task in
+
     let (next, execution_state,vst_for_next_todo,events, exec_error) =
-      ExecutionManager.execute st.execution_state st.document (vst_for_next_todo, [], false) task block in
+      match block, exec_error with
+      | false, _ | _, None ->
+        let st = ExecutionManager.update_overview task exec_state st.document in
+        let next, st = ExecutionManager.pop_todo st in
+        next, st, vst_for_next_todo, events, None
+      | true, Some _ ->
+        let st = ExecutionManager.cut_overview task exec_state st.document in
+        let st = ExecutionManager.cut_todo_list st in
+        None, st, vst_for_next_todo, events, exec_error in
+
     let st, block_events =
       match exec_error with
       | None -> st, []
