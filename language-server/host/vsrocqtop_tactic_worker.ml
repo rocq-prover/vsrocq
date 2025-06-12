@@ -52,7 +52,7 @@ let () =
 [%%else]
 let () =
   Coqinit.init_ocaml ();
-  let opts, emoptions = Coqinit.parse_arguments ~parse_extra:Dm.ParTactic.TacticWorkerProcess.parse_options (List.tl (Array.to_list Sys.argv)) in
+  let opts, emoptions = Coqinit.parse_arguments ~parse_extra:Host.ParTactic.TacticWorkerProcess.parse_options (List.tl (Array.to_list Sys.argv)) in
   let () = Coqinit.init_runtime ~usage:vsrocqtop_specific_usage opts in
   (* not sure if init_document is useful in tactic worker *)
   let () = Coqinit.init_document opts in
