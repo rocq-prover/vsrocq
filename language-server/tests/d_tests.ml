@@ -1,6 +1,6 @@
 open Common
 open Dm
-open Types
+open Host.Types
 open Base
 
 [@@@warning "-27"]
@@ -16,7 +16,7 @@ let trdeps doc s1 =
     let s' = Stateid.Set.fold (fun x acc -> Stateid.Set.union (f x) acc) s s in
     if Stateid.Set.equal s s' then s
     else trclose f s' in
-  trclose (Scheduler.dependents (Document.schedule doc)) (Stateid.Set.singleton s1.id)
+  trclose (Host.Scheduler.dependents (Document.schedule doc)) (Stateid.Set.singleton s1.id)
 
 
 let%test_unit "parse.validate_errors_twice" = 

@@ -16,7 +16,7 @@
 
 open Dm
 open Base
-open Types
+open Host.Types
 open Protocol.LspWrapper
 
 [%%if lsp < (1,19,0) ]
@@ -122,7 +122,7 @@ type _ task_approx =
   | Query : sentence_id task_approx
   | Proof : ('a,sentence_id) count -> (sentence_id * 'a * sentence_id) task_approx
 
-let task : type a. Scheduler.task -> a task_approx -> (a,string) Result.t =
+let task : type a. Host.Scheduler.task -> a task_approx -> (a,string) Result.t =
   let open Result in
   fun t spec ->
     match spec, t with
@@ -142,7 +142,7 @@ let task : type a. Scheduler.task -> a task_approx -> (a,string) Result.t =
 
 let task st id spec =
   let sch = Document.schedule (DocumentManager.Internal.document st) in
-  let init, t = Scheduler.task_for_sentence sch id in
+  let init, t = Host.Scheduler.task_for_sentence sch id in
   init, run (task t spec)
 
 

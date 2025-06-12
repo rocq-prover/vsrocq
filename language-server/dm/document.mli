@@ -12,7 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
+open Host.Types
 open Lsp.Types
 
 (** This file defines operations on the content of a document (text, parsing
@@ -119,8 +119,8 @@ type sentence = {
   start : int;
   stop : int;
   synterp_state : Vernacstate.Synterp.t; (* synterp state after this sentence's synterp phase *)
-  scheduler_state_before : Scheduler.state;
-  scheduler_state_after : Scheduler.state;
+  scheduler_state_before : Host.Scheduler.state;
+  scheduler_state_after : Host.Scheduler.state;
   ast : sentence_state;
   id : sentence_id;
 }
@@ -162,7 +162,7 @@ val get_first_sentence : document  -> sentence option
 val get_last_sentence : document  -> sentence option
 (** [get_last_sentence doc] returns the last parsed sentence *)
 
-val schedule : document -> Scheduler.schedule
+val schedule : document -> Host.Scheduler.schedule
 
 val range_of_id : document -> Stateid.t -> Range.t
 (** [range_of_id doc id] returns a Range object coressponding to the sentence id given in argument *)

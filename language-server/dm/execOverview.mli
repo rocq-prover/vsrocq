@@ -11,24 +11,17 @@
 (*   See LICENSE file.                                                    *)
 (*                                                                        *)
 (**************************************************************************)
-open Lsp.Types
-open Host
-open Types
+open Host.Types
+open Protocol
 
-type text_edit = Range.t * string
+val update_processed_success : sentence_id -> exec_overview -> Document.document -> exec_overview
+val update_processed_error : sentence_id -> exec_overview -> Document.document -> exec_overview
 
-type t
+val cut_overview : sentence_id -> exec_overview -> Document.document -> exec_overview
+val prepare_overview : exec_overview -> LspWrapper.Range.t list -> exec_overview
 
-val create : string -> t
-val text : t -> string
+val reset_overview : processed_success:sentence_id list -> processed_error:sentence_id list -> todo:sentence_id list -> Document.document -> exec_overview
+val shift_overview : exec_overview -> before:RawDocument.t -> after:RawDocument.t -> start:int -> offset:int -> exec_overview
 
-val position_of_loc : t -> int -> Position.t
-val loc_of_position : t -> Position.t -> int
-val end_loc : t -> int
-
-val range_of_loc : t -> HLoc.t -> Range.t
-val word_at_position: t -> Position.t -> string option
-val string_in_range: t -> int -> int -> string
-
-(** Applies a text edit, and returns start location *)
-val apply_text_edit : t -> text_edit -> t * int
+val overview_until_range : exec_overview -> LspWrapper.Range.t -> exec_overview
+val print : exec_overview -> unit

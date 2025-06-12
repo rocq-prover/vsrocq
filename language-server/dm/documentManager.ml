@@ -19,11 +19,11 @@ open Protocol
 open Protocol.LspWrapper
 open Protocol.ExtProtocol
 open Protocol.Printing
-open Types
+open Host.Types
 
-let Log log = Log.mk_log "documentManager"
+let Log log = Host.Log.mk_log "documentManager"
 
-type observe_id = Id of Types.sentence_id | Top
+type observe_id = Id of sentence_id | Top
 
 type blocking_error = {
   last_range: Range.t;
@@ -46,6 +46,7 @@ type state = {
   opts : Coqargs.injection_command list;
   document : Document.document;
   execution_state : ExecutionManager.state;
+  overview : exec_overview;
   observe_id : observe_id;
   cancel_handle : Sel.Event.cancellation_handle option;
   document_state: document_state;
@@ -53,7 +54,7 @@ type state = {
 
 type event =
   | Execute of { (* we split the computation to help interruptibility *)
-      id : Types.sentence_id; (* sentence of interest *)
+      id : sentence_id; (* sentence of interest *)
       vst_for_next_todo : Vernacstate.t; (* the state to be used for the next
         todo, it is not necessarily the state of the last sentence, since it
         may have failed and this is a surrogate used for error resiliancy *)
@@ -62,10 +63,10 @@ type event =
     }
   | ExecutionManagerEvent of ExecutionManager.event
   | ParseBegin
-  | Observe of Types.sentence_id
-  | SendProofView of (Types.sentence_id option)
+  | Observe of sentence_id
+  | SendProofView of (sentence_id option)
   | DocumentEvent of Document.event
-  | SendBlockOnError of Types.sentence_id
+  | SendBlockOnError of sentence_id
   | SendMoveCursor of Range.t
 
 type handled_event = {
@@ -97,13 +98,13 @@ let inject_em_events events = List.map inject_em_event events
 let inject_doc_event x = Sel.Event.map (fun e -> DocumentEvent e) x
 let inject_doc_events events = List.map inject_doc_event events
 let mk_proof_view_event id =
-  Sel.now ~priority:PriorityManager.proof_view (SendProofView (Some id))
+  Sel.now ~priority:Host.PriorityManager.proof_view (SendProofView (Some id))
 let mk_proof_view_event_empty =
-  Sel.now ~priority:PriorityManager.proof_view (SendProofView None)
+  Sel.now ~priority:Host.PriorityManager.proof_view (SendProofView None)
 let mk_observe_event id =
-  Sel.now ~priority:PriorityManager.execution (Observe id)
+  Sel.now ~priority:Host.PriorityManager.execution (Observe id)
 let mk_move_cursor_event id = 
-  let priority = PriorityManager.move_cursor in
+  let priority = Host.PriorityManager.move_cursor in
   Sel.now ~priority @@ SendMoveCursor id
 
 let mk_block_on_error_event last_range error_id background =
@@ -112,7 +113,7 @@ let mk_block_on_error_event last_range error_id background =
     update_goal_view
   else
     let red_flash =
-      [Sel.now ~priority:PriorityManager.move_cursor @@ SendBlockOnError error_id] in
+      [Sel.now ~priority:Host.PriorityManager.move_cursor @@ SendBlockOnError error_id] in
     let move_cursor =
       match last_range with
       | Some last_range -> [mk_move_cursor_event last_range]
@@ -123,11 +124,11 @@ type events = event Sel.Event.t list
 
 let executed_ranges st mode =
   match st.observe_id, mode with
-  | _, Settings.Mode.Continuous -> ExecutionManager.overview st.execution_state
+  | _, Settings.Mode.Continuous -> st.overview
   | Top, Settings.Mode.Manual -> empty_overview
   | Id id, Settings.Mode.Manual ->
       let range = Document.range_of_id st.document id in
-      ExecutionManager.overview_until_range st.execution_state range
+      ExecOverview.overview_until_range st.overview range
 
 let observe_id_range st = 
   let doc = Document.raw_document st.document in
@@ -293,7 +294,7 @@ let get_info_messages st pos =
     List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, pp_of_rocqpp msg) feedback
 
 let create_execution_event background event =
-  let priority = if background then None else Some PriorityManager.execution in
+  let priority = if background then None else Some Host.PriorityManager.execution in
   Sel.now ?priority event
 
 let state_before_error state error_id loc =
@@ -531,10 +532,12 @@ let validate_document state (Document.{unchanged_id; invalid_ids; previous_docum
   in
   let execution_state =
     List.fold_left (fun st id ->
-      ExecutionManager.invalidate previous_document (Document.schedule previous_document) id st
+      ExecutionManager.invalidate (Document.schedule previous_document) id st
       ) state.execution_state (Stateid.Set.elements invalid_ids) in
-  let execution_state = ExecutionManager.reset_overview execution_state previous_document in
-  { state with  execution_state; observe_id; document_state = Parsed }
+  let processed_success, processed_error =  ExecutionManager.get_all_Done execution_state in
+  let todo = ExecutionManager.get_todo execution_state in
+  let overview = ExecOverview.reset_overview ~processed_success ~processed_error ~todo previous_document in
+  { state with  overview; execution_state; observe_id; document_state = Parsed }
 
 [%%if rocq ="8.18" || rocq ="8.19"]
 let start_library top opts = Coqinit.start_library ~top opts
@@ -559,8 +562,8 @@ let init init_vs ~opts uri ~text =
   let init_vs = Vernacstate.freeze_full_state () in
   let document = Document.create_document init_vs.Vernacstate.synterp text in
   let execution_state, feedback = ExecutionManager.init init_vs in
-  let state = { uri; opts; init_vs; document; execution_state; observe_id=Top; cancel_handle = None; document_state = Parsing } in
-  let priority = Some PriorityManager.launch_parsing in
+  let state = { uri; opts; init_vs; document; overview = empty_overview; execution_state; observe_id=Top; cancel_handle = None; document_state = Parsing } in
+  let priority = Some Host.PriorityManager.launch_parsing in
   let event = Sel.now ?priority ParseBegin in
   state, [event] @ [inject_em_event feedback]
 
@@ -571,24 +574,23 @@ let reset { uri; opts; init_vs; document; execution_state; } =
   ExecutionManager.destroy execution_state;
   let execution_state, feedback = ExecutionManager.init init_vs in
   let observe_id = Top in
-  let state = { uri; opts; init_vs; document; execution_state; observe_id; cancel_handle = None ; document_state = Parsing } in
-  let priority = Some PriorityManager.launch_parsing in
+  let state = { uri; opts; init_vs; document; overview = empty_overview; execution_state; observe_id; cancel_handle = None ; document_state = Parsing } in
+  let priority = Some Host.PriorityManager.launch_parsing in
   let event = Sel.now ?priority ParseBegin in
   state, [event] @ [inject_em_event feedback]
 
 let apply_text_edits state edits =
   let apply_edit_and_shift_diagnostics_locs_and_overview state (range, new_text as edit) =
     let document = Document.apply_text_edit state.document edit in
-    let exec_st = state.execution_state in
     let edit_start = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.start in
     let edit_stop = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.end_ in
     let edit_length = edit_stop - edit_start in
-    let exec_st = ExecutionManager.shift_diagnostics_locs exec_st ~start:edit_stop ~offset:(String.length new_text - edit_length) in
-    let execution_state = ExecutionManager.shift_overview exec_st ~before:(Document.raw_document state.document) ~after:(Document.raw_document document) ~start:edit_stop ~offset:(String.length new_text - edit_length) in
-    {state with execution_state; document}
+    let execution_state = ExecutionManager.shift_diagnostics_locs state.execution_state ~start:edit_stop ~offset:(String.length new_text - edit_length) in
+    let overview = ExecOverview.shift_overview state.overview ~before:(Document.raw_document state.document) ~after:(Document.raw_document document) ~start:edit_stop ~offset:(String.length new_text - edit_length) in
+    {state with execution_state; overview; document}
   in
   let state = List.fold_left apply_edit_and_shift_diagnostics_locs_and_overview state edits in
-  let priority = Some PriorityManager.launch_parsing in
+  let priority = Some Host.PriorityManager.launch_parsing in
   let sel_event = Sel.now ?priority ParseBegin in
   state, [sel_event]
 
@@ -621,8 +623,24 @@ let execute st id vst_for_next_todo started task background block =
     {state=Some st; events=[]; update_view=true; notification=None} (* Sentences have been invalidate, probably because the user edited while executing *)
   | Some _ ->
     log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
-    let (next, execution_state,vst_for_next_todo,events, exec_error) =
-      ExecutionManager.execute st.execution_state st.document (vst_for_next_todo, [], false) task block in
+    let (exec_state,vst_for_next_todo,events, exec_error) =
+      ExecutionManager.execute st.execution_state (vst_for_next_todo, [], false) task in
+
+    let (overview, next, execution_state,vst_for_next_todo,events, exec_error) =
+      let tid = ExecutionManager.get_id_of_executed_task task in
+      match block, exec_error with
+      | false, _| _, None ->
+        let overview =
+          match exec_error with
+          | None -> ExecOverview.update_processed_success tid st.overview st.document 
+          | Some _ -> ExecOverview.update_processed_error tid st.overview st.document in
+        let next, exec_state = ExecutionManager.pop_todo exec_state in
+        overview, next, exec_state, vst_for_next_todo, events, None
+      | true, Some _ ->
+        let overview = ExecOverview.cut_overview tid st.overview st.document in
+        let exec_state = ExecutionManager.cut_todo_list exec_state in
+        overview, None, exec_state, vst_for_next_todo, events, exec_error in
+
     let st, block_events =
       match exec_error with
       | None -> st, []
@@ -633,18 +651,19 @@ let execute st id vst_for_next_todo started task background block =
       in
     let event = Option.map (fun task -> create_execution_event background (Execute {id; vst_for_next_todo; task; started })) next in
     match event, block_events with
-      | None, [] -> execution_finished { st with execution_state } id started (* There is no new tasks, and no errors -> execution finished *)
+      | None, [] ->
+        execution_finished { st with execution_state; overview } id started (* There is no new tasks, and no errors -> execution finished *)
       | _ ->
         let cancel_handle = Option.map Sel.Event.get_cancellation_handle event in
         let event = Option.cata (fun event -> [event]) [] event in
-        let state = Some {st with execution_state; cancel_handle} in
+        let state = Some {st with execution_state; overview; cancel_handle} in
         let update_view = true in
         let events = proof_view_event @ inject_em_events events @ block_events @ event in
         {state; events; update_view; notification=None}
 
 let get_proof st diff_mode id =
   let previous_st id =
-    let oid = fst @@ Scheduler.task_for_sentence (Document.schedule st.document) id in
+    let oid = fst @@ Host.Scheduler.task_for_sentence (Document.schedule st.document) id in
     Option.bind oid (ExecutionManager.get_vernac_state st.execution_state)
   in
   let observe_id = to_sentence_id st.observe_id in
@@ -655,18 +674,16 @@ let get_proof st diff_mode id =
 
 let handle_execution_manager_event st ev =
   let id, execution_state_update, events = ExecutionManager.handle_event ev st.execution_state in
-  let st = 
-    match (id, execution_state_update) with
-    | Some id, Some exec_st ->
-      let execution_state = ExecutionManager.update_processed id exec_st st.document in
-      Some {st with execution_state}
-    | Some id, None ->
-      let execution_state = ExecutionManager.update_processed id st.execution_state st.document in
-      Some {st with execution_state}
-    | _, _ -> Option.map (fun execution_state -> {st with execution_state}) execution_state_update
-  in
+  let st = Option.fold_left (fun st execution_state -> {st with execution_state}) st execution_state_update in
+  let overview = 
+    match id with
+    | None -> st.overview
+    | Some id ->
+      match ExecutionManager.error st.execution_state id with
+      | None -> ExecOverview.update_processed_success id st.overview st.document
+      | Some _ -> ExecOverview.update_processed_error id st.overview st.document in
   let update_view = true in
-  {state=st; events=(inject_em_events events); update_view; notification=None}
+  {state = Some { st with overview }; events=(inject_em_events events); update_view; notification=None}
 
 let handle_event ev st ~block check_mode diff_mode =
   let background = check_mode = Settings.Mode.Continuous in
@@ -739,7 +756,7 @@ let get_completions st pos =
   | Some id ->
     let ost = ExecutionManager.get_vernac_state st.execution_state id in
     let settings = ExecutionManager.get_options () in
-    match Option.bind ost @@ CompletionSuggester.get_completions settings.completion_options with
+    match Option.bind ost @@ Host.CompletionSuggester.get_completions settings.completion_options with
     | None -> 
         log (fun () -> "No completions available");
         []
@@ -801,7 +818,7 @@ let search st ~id pos pattern =
   | None -> [] (* TODO execute? *)
   | Some (sigma, env) ->
     let query, r = parse_entry st loc (G_vernac.search_queries) pattern in
-    SearchQuery.interp_search ~id env sigma query r
+    Host.SearchQuery.interp_search ~id env sigma query r
 
 (** Try to generate hover text from [pattern] the context of the given [sentence] *)
 let hover_of_sentence st loc pattern sentence = 
