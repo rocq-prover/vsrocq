@@ -1,6 +1,6 @@
 (library
  (name host)
- (public_name vscoq-language-server.host)
+ (public_name vsrocq-language-server.host)
  (wrapped true)
  (modules :standard \ vsrocqtop_proof_worker vsrocqtop_tactic_worker)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
