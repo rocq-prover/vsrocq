@@ -651,7 +651,8 @@ let execute st id vst_for_next_todo started task background block =
       in
     let event = Option.map (fun task -> create_execution_event background (Execute {id; vst_for_next_todo; task; started })) next in
     match event, block_events with
-      | None, [] -> execution_finished { st with execution_state } id started (* There is no new tasks, and no errors -> execution finished *)
+      | None, [] ->
+        execution_finished { st with execution_state; overview } id started (* There is no new tasks, and no errors -> execution finished *)
       | _ ->
         let cancel_handle = Option.map Sel.Event.get_cancellation_handle event in
         let event = Option.cata (fun event -> [event]) [] event in
