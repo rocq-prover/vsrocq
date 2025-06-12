@@ -11,13 +11,13 @@
 (*   See LICENSE file.                                                    *)
 (*                                                                        *)
 (**************************************************************************)
-open Host.Types
+open Types
 open Protocol
 open Protocol.LspWrapper
 
 module SM = Map.Make (Stateid)
 
-let Log log = Host.Log.mk_log "execOverview"
+let Log log = Log.mk_log "execOverview"
 
 let cut_overview id {prepared; processing; processed} document =
   let range = Document.range_of_id_with_blank_space document id in

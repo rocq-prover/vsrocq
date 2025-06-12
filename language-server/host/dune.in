@@ -5,7 +5,7 @@
  (modules :standard \ vsrocqtop_proof_worker vsrocqtop_tactic_worker)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
  (preprocessor_deps vsrocq_config.mlh)
- (libraries @@ROCQ_RUNTIME@@.gramlib @@ROCQ_RUNTIME@@.boot @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.kernel @@ROCQ_RUNTIME@@.engine @@ROCQ_RUNTIME@@.pretyping @@ROCQ_RUNTIME@@.printing @@ROCQ_RUNTIME@@.parsing @@ROCQ_RUNTIME@@.interp @@ROCQ_RUNTIME@@.lib @@ROCQ_RUNTIME@@.clib @@ROCQ_RUNTIME@@.library @@ROCQ_RUNTIME@@.proofs @@ROCQ_RUNTIME@@.tactics protocol sel lsp))
+ (libraries @@ROCQ_RUNTIME@@.gramlib @@ROCQ_RUNTIME@@.boot @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.kernel @@ROCQ_RUNTIME@@.engine @@ROCQ_RUNTIME@@.pretyping @@ROCQ_RUNTIME@@.printing @@ROCQ_RUNTIME@@.parsing @@ROCQ_RUNTIME@@.interp @@ROCQ_RUNTIME@@.lib @@ROCQ_RUNTIME@@.clib @@ROCQ_RUNTIME@@.library @@ROCQ_RUNTIME@@.proofs @@ROCQ_RUNTIME@@.tactics protocol sel lsp common_types))
 
 (executable
  (name vsrocqtop_proof_worker)

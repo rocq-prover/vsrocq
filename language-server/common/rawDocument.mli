@@ -12,7 +12,6 @@
 (*                                                                        *)
 (**************************************************************************)
 open Lsp.Types
-open Host
 open Types
 
 type text_edit = Range.t * string
@@ -26,7 +25,7 @@ val position_of_loc : t -> int -> Position.t
 val loc_of_position : t -> Position.t -> int
 val end_loc : t -> int
 
-val range_of_loc : t -> HLoc.t -> Range.t
+val range_of_loc : t -> loc_begin:int -> loc_end:int -> Range.t
 val word_at_position: t -> Position.t -> string option
 val string_in_range: t -> int -> int -> string
 

@@ -1,0 +1,5 @@
+(library
+ (name common_types)
+ (public_name vsrocq-language-server.common)
+ (wrapped true)
+ (libraries protocol lsp))

@@ -11,7 +11,7 @@
 (*   See LICENSE file.                                                    *)
 (*                                                                        *)
 (**************************************************************************)
-open Host.Types
+open Types
 open Protocol
 
 val update_processed_success : sentence_id -> exec_overview -> Document.document -> exec_overview
