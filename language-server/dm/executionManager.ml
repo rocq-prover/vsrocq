@@ -14,10 +14,10 @@
 
 open Protocol
 open Protocol.LspWrapper
-open Scheduler
-open Types
+open Host.Scheduler
+open Host.Types
 
-let Log log = Log.mk_log "executionManager"
+let Log log = Host.Log.mk_log "executionManager"
 
 type feedback_message = Feedback.level * Loc.t option * Quickfix.t list * Pp.t
 
@@ -36,7 +36,7 @@ module SM = Map.Make (Stateid)
 
 type sentence_state =
   | Done of execution_status
-  | Delegated of DelegationManager.job_handle * (execution_status -> unit) option
+  | Delegated of Host.DelegationManager.job_handle * (execution_status -> unit) option
 
 type delegation_mode =
   | CheckProofsInMaster
@@ -94,8 +94,27 @@ type state = {
   rocq_feeder : rocq_feedback_listener;
   sel_feedback_queue : (Feedback.route_id * sentence_id * feedback_message) Queue.t;
   sel_cancellation_handle : Sel.Event.cancellation_handle;
-  overview: exec_overview;
 }
+
+let cut_todo_list st = { st with todo = [] }
+let pop_todo st =
+  match st.todo with
+  | [] -> None, st
+  | task :: todo -> Some task, { st with todo }
+
+let get_all_Done state =
+  let sentence_ids = SM.bindings state.of_sentence in
+  let sentence_ids = List.map (fun x -> fst x) sentence_ids in
+  let sentences = List.filter_map (fun id ->
+    match SM.find_opt id state.of_sentence with
+    | Some (Done x, _) -> Some (id,x)
+    | _ -> None
+    ) sentence_ids in
+  List.partition_map (function
+    | id, Success _ -> Either.Left id
+    | id, Error _ -> Either.Right id
+    ) sentences
+
 
 let get_id_of_executed_task task =
   match task with
@@ -105,21 +124,8 @@ let get_id_of_executed_task task =
   | PQuery {id} -> id
   | PDelegate {terminator_id} -> terminator_id
 
-let print_exec_overview overview =
-  let {processing; processed; prepared } = overview in
-  log (fun () -> "--------- Prepared ranges ---------");
-  List.iter (fun r -> log (fun () -> Range.to_string r)) prepared;
-  log (fun () -> "-------------------------------------");
-  log (fun () -> "--------- Processing ranges ---------");
-  List.iter (fun r -> log (fun () -> Range.to_string r)) processing;
-  log (fun () -> "-------------------------------------");
-  log (fun () -> "--------- Processed ranges ---------");
-  List.iter (fun r -> log (fun () -> Range.to_string r)) processed;
-  log (fun () -> "-------------------------------------")
+let get_todo { todo } = List.map get_id_of_executed_task todo
 
-
-let print_exec_overview_of_state st = print_exec_overview st.overview
-  
 let options = ref default_options
 
 let set_options o = options := o
@@ -131,7 +137,7 @@ let get_options () = !options
 module ProofJob = struct
   type update_request =
     | UpdateExecStatus of sentence_id * execution_status
-    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
+    | AppendFeedback of Feedback.route_id * sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
   let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
 
   type t = {
@@ -146,7 +152,7 @@ module ProofJob = struct
 
 end
 
-module ProofWorker = DelegationManager.MakeWorker(ProofJob)
+module ProofWorker = Host.DelegationManager.MakeWorker(ProofJob)
 
 type event =
   | LocalFeedback of (Feedback.route_id * sentence_id * feedback_message) Queue.t * (Feedback.route_id * sentence_id * feedback_message) list
@@ -195,7 +201,7 @@ let interp_error_recovery strategy st : Vernacstate.t =
 (* just a wrapper around vernac interp *)
 let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
     Feedback.set_id_for_feedback doc_id state_id;
-    ParTactic.set_id_for_feedback doc_id state_id;
+    Host.ParTactic.set_id_for_feedback doc_id state_id;
     Sys.(set_signal sigint (Signal_handle(fun _ -> raise Break)));
     let result =
       try Ok(Vernacinterp.interp_entry ~st ast,[])
@@ -274,44 +280,6 @@ let interp_qed_delayed ~proof_using ~state_id ~st =
   let st = { st with interp } in
   st, success st, assign
 
-let cut_overview task state document =
-  let range = match task with
-  | PDelegate { terminator_id } -> Document.range_of_id_with_blank_space document terminator_id
-  | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } ->
-    Document.range_of_id_with_blank_space document id
-  in
-  let {prepared; processing; processed} = state.overview in
-  let prepared = RangeList.cut_from_range range prepared in
-  let processing = RangeList.cut_from_range range processing in
-  let overview = {prepared; processing; processed} in
-  {state with overview}
-
-let update_processed_as_Done s range overview =
-  let {prepared; processing; processed} = overview in
-  match s with
-  | Success _ ->
-    let processed = RangeList.insert_or_merge_range range processed in
-    let processing = RangeList.remove_or_truncate_range range processing in
-    let prepared = RangeList.remove_or_truncate_range range prepared in
-    {prepared; processing; processed}
-  | Error _ ->
-    let processing = RangeList.remove_or_truncate_range range processing in
-    let prepared = RangeList.remove_or_truncate_range range prepared in
-    {prepared; processing; processed}
-
-let update_processed id state document =
-  let range = Document.range_of_id_with_blank_space document id in
-  match SM.find id state.of_sentence with
-  | (s, _) ->
-    begin match s with
-    | Done s -> 
-      let overview = update_processed_as_Done s range state.overview in
-      {state with overview}
-    | _ -> assert false (* delegated sentences born as such, cannot become it later *)
-    end
-  | exception Not_found ->
-    log (fun () -> "Trying to get overview with non-existing state id " ^ Stateid.to_string id);
-    state
 
 let id_of_first_task ~default = function
   | [] -> default
@@ -320,7 +288,7 @@ let id_of_first_task ~default = function
 let id_of_last_task ~default l =
   id_of_first_task ~default (List.rev l)
 
-let update_processing task state document =
+(* let update_processing task state document =
   let {processing; prepared} = state.overview in
   match task with
   | PDelegate { opener_id; terminator_id; tasks } ->
@@ -340,27 +308,8 @@ let update_processing task state document =
     let prepared = RangeList.remove_or_truncate_range range prepared in
     let overview = {state.overview with processing; prepared} in
     {state with overview}
-
-let update_prepared task document state =
-  let {prepared} = state.overview in
-  match task with
-  | PDelegate { opener_id; terminator_id; tasks } ->
-    let proof_opener_id = id_of_first_task ~default:opener_id tasks in
-    let proof_closer_id = id_of_last_task ~default:terminator_id tasks in
-    let proof_begin_range = Document.range_of_id_with_blank_space document proof_opener_id in
-    let proof_end_range = Document.range_of_id_with_blank_space document proof_closer_id in
-    let range = Range.create ~end_:proof_end_range.end_ ~start:proof_begin_range.start in
-    (* When a job is delegated we shouldn't merge ranges (to get the proper progress report) *)
-    let prepared = List.append prepared [ range ] in
-    let overview = {state.overview with prepared} in
-    {state with overview}
-  | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } ->
-    let range = Document.range_of_id_with_blank_space document id in
-    let prepared = RangeList.insert_or_merge_range range prepared in
-    let overview = {state.overview with prepared} in
-    {state with overview}
-
-let update_overview task state document =
+ *)
+(* let update_overview task state document =
   let state = 
   match task with
   | PDelegate { terminator_id } ->
@@ -375,47 +324,7 @@ let update_overview task state document =
   in
   match state.todo with
   | [] -> state
-  | next :: _ -> update_processing next state document
-
-
-let build_prepared_overview state document =
-  List.fold_right (fun task st -> update_prepared task document st) state.todo state
-
-let build_processed_overview state document =
-  let sentence_ids = SM.bindings state.of_sentence in
-  let sentence_ids = List.map (fun x -> fst x) sentence_ids in
-  List.fold_right (fun id st -> update_processed id st document) sentence_ids state
-
-let reset_overview st document =
-  let overview = {processed=[]; prepared=[]; processing=[]} in
-  let st = build_processed_overview {st with overview} document in
-  build_prepared_overview st document
-
-let prepare_overview st prepared =
-  let overview = {st.overview with prepared} in
-  {st with overview}
-
-let overview st = st.overview
-
-let overview_until_range st range =
-  let find_final_range l = List.find_opt (fun (r: Range.t) -> Range.included ~in_:r range) l in
-  let {processed; processing; prepared} = st.overview in
-  let final_range = find_final_range processed  in
-  match final_range with
-  | None ->
-    let final_range = find_final_range processing in
-    begin match final_range with
-    | None -> { processed; processing; prepared }
-    | Some { start } ->
-      let processing = (List.filter (fun (r: Range.t) -> not @@ Range.included ~in_:r range) processing) in
-      let processing = List.append processing [Range.create ~start:start ~end_:range.end_] in
-      {processing; processed; prepared}
-    end
-  | Some { start } ->
-    let processed = (List.filter (fun (r: Range.t) -> (not @@ Range.included ~in_:r range) && (Position.compare r.start range.end_ <= 0)) processed) in
-    let processed = List.append processed [Range.create ~start:start ~end_:range.end_] in
-    print_exec_overview {processing; processed;prepared};
-    { processing; processed; prepared }
+  | next :: _ -> update_processing next state document *)
 
 
 let update_all id v fl state =
@@ -427,10 +336,10 @@ let update state id v =
 ;;
 
 let local_feedback feedback_queue : event Sel.Event.t =
-  Sel.On.queue_all ~name:"feedback" ~priority:PriorityManager.feedback feedback_queue (fun x xs -> LocalFeedback(feedback_queue, x :: xs))
+  Sel.On.queue_all ~name:"feedback" ~priority:Host.PriorityManager.feedback feedback_queue (fun x xs -> LocalFeedback(feedback_queue, x :: xs))
 
 let install_feedback_listener doc_id send =
-  Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
+  Host.Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
     if lvl != Feedback.Debug && doc = doc_id then send (route,span,(lvl,loc, qf, msg)))
 
 let init vernac_state =
@@ -447,7 +356,6 @@ let init vernac_state =
     rocq_feeder;
     sel_feedback_queue;
     sel_cancellation_handle;
-    overview = empty_overview;
   },
   event
 
@@ -526,12 +434,12 @@ let is_remotely_executed st id =
   | _ -> false
   
   
-let jobs : (DelegationManager.job_handle * Sel.Event.cancellation_handle * ProofJob.t) Queue.t = Queue.create ()
+let jobs : (Host.DelegationManager.job_handle * Sel.Event.cancellation_handle * ProofJob.t) Queue.t = Queue.create ()
 
 (* TODO: kill all Delegated... *)
 let destroy st =
   feedback_cleanup st;
-  Queue.iter (fun (h,c,_) -> DelegationManager.cancel_job h; Sel.Event.cancel c) jobs
+  Queue.iter (fun (h,c,_) -> Host.DelegationManager.cancel_job h; Sel.Event.cancel c) jobs
 
 
 let last_opt l = try Some (CList.last l).id with Failure _ -> None
@@ -652,7 +560,7 @@ let execute_task st (vs, events, interrupted) task =
           begin match find_fulfilled_opt opener_id st.of_sentence with
           | Some (Success _) ->
             let job =  { ProofJob.tasks; initial_vernac_state = vs; doc_id = st.doc_id; terminator_id } in
-            let job_id = DelegationManager.mk_job_handle (0,terminator_id) in
+            let job_id = Host.DelegationManager.mk_job_handle (0,terminator_id) in
             (* The proof was successfully opened *)
             let last_vs, _v, assign = interp_qed_delayed ~state_id:terminator_id ~proof_using ~st:vs in
             let complete_job status =
@@ -695,21 +603,10 @@ let execute_task st (vs, events, interrupted) task =
       let st = update st (id_of_prepared_task task) (Error ((None,Pp.str "interrupted"),None,None)) in
       (st, vs, events, true, None)
 
-let execute st document (vs, events, interrupted) task block_on_first_error =
+let execute st (vs, events, interrupted) task =
   let st, vst_for_next_todo, events, _, exec_error =
     execute_task st (vs, events, interrupted) task in
-  match block_on_first_error, exec_error with
-  | false, _ | _, None ->
-    let st = update_overview task st document in
-    let next, st = match st.todo with
-      | [] -> None, st
-      | task :: todo -> Some task, { st with todo }
-    in next, st, vst_for_next_todo, events, None
-  | true, Some _ ->
-    let st = cut_overview task st document in
-    let st = { st with todo=[]} in
-    None, st, vst_for_next_todo, events, exec_error
-
+  st, vst_for_next_todo, events, exec_error
 
 let build_tasks_for document sch st id block =
   let rec build_tasks id tasks st =
@@ -733,12 +630,12 @@ let build_tasks_for document sch st id block =
       end
     end
   in
-  let rec build_prepared_overview tasks state =
+  (* let rec build_prepared_overview tasks state =
     begin match tasks with
     | [] -> state
     | task :: l -> build_prepared_overview l (update_prepared task document state)
     end
-  in
+  in *)
   let vs, tasks, st, error_id = build_tasks id [] st in
   match error_id, block with
   | _, false | None, _ ->
@@ -746,7 +643,7 @@ let build_tasks_for document sch st id block =
     let task, st = match todo with
       | task :: todo ->
         let st = {st with todo} in
-        let st = build_prepared_overview todo st in
+        (* let st = build_prepared_overview todo st in *)
         Some task, st
       | [] ->
         None, {st with todo}
@@ -774,24 +671,6 @@ let feedback st id =
 
 let all_feedback st =
   List.fold_left (fun acc (id, (_,l)) -> List.map (fun x -> (id, x)) l @ acc) [] @@ SM.bindings st.of_sentence
-
-let shift_overview st ~before ~after ~start ~offset =
-  let shift_loc loc_start loc_end =
-    if loc_start >= start then (loc_start + offset, loc_end + offset)
-    else if loc_end > start then (loc_start, loc_end + offset)
-    else (loc_start, loc_end)
-  in
-  let shift_range range =
-    let r_start = RawDocument.loc_of_position before range.Range.start in
-    let r_stop = RawDocument.loc_of_position before range.Range.end_ in
-    let r_start', r_stop' = shift_loc r_start r_stop in
-    Range.create ~start:(RawDocument.position_of_loc after r_start') ~end_:(RawDocument.position_of_loc after r_stop')
-  in
-  let processed = CList.Smart.map shift_range st.overview.processed in
-  let processing = CList.Smart.map shift_range st.overview.processing in
-  let prepared = CList.Smart.map shift_range st.overview.prepared in
-  let overview = {processed; processing; prepared} in
-  {st with overview}
 
 let shift_diagnostics_locs st ~start ~offset =
   let shift_loc loc =
@@ -832,7 +711,7 @@ let invalidate1 of_sentence id =
     let p,_ = SM.find id of_sentence in
     match p with
     | Delegated (job_id,_) ->
-        DelegationManager.cancel_job job_id;
+        Host.DelegationManager.cancel_job job_id;
         SM.remove id of_sentence
     | _ -> SM.remove id of_sentence
   with Not_found -> of_sentence
@@ -844,7 +723,7 @@ let cancel1 todo invalid_id =
   in
   List.filter task_of_id todo
 
-let rec invalidate document schedule id st =
+let rec invalidate schedule id st =
   log (fun () -> "Invalidating: " ^ Stateid.to_string id);
   let of_sentence = invalidate1 st.of_sentence id in
   let todo = cancel1 st.todo id in
@@ -861,8 +740,8 @@ let rec invalidate document schedule id st =
   let of_sentence = List.fold_left invalidate1 of_sentence
     List.(concat (map (fun tasks -> map id_of_prepared_task tasks) !removed)) in
   if of_sentence == st.of_sentence then st else
-  let deps = Scheduler.dependents schedule id in
-  Stateid.Set.fold (invalidate document schedule) deps { st with of_sentence; todo }
+  let deps = Host.Scheduler.dependents schedule id in
+  Stateid.Set.fold (invalidate schedule) deps { st with of_sentence; todo }
 
 let context_of_state st =
     Vernacstate.Interp.unfreeze_interp_state st;

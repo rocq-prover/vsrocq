@@ -12,9 +12,8 @@
 (*                                                                        *)
 (**************************************************************************)
 open Base
-open Dm
 open Common
-open Types
+open Host.Types
 
 [@@@warning "-27"]
 

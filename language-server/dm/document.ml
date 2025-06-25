@@ -12,11 +12,11 @@
 (*                                                                        *)
 (**************************************************************************)
 open Gramlib
-open Types
+open Host.Types
 open Lsp.Types
-open Scheduler
+open Host.Scheduler
 
-let Log log = Log.mk_log "document"
+let Log log = Host.Log.mk_log "document"
 
 module LM = Map.Make (Int)
 
@@ -90,8 +90,8 @@ type sentence = {
   start : int;
   stop : int;
   synterp_state : Vernacstate.Synterp.t; (* synterp state after this sentence's synterp phase *)
-  scheduler_state_before : Scheduler.state;
-  scheduler_state_after : Scheduler.state;
+  scheduler_state_before : Host.Scheduler.state;
+  scheduler_state_after : Host.Scheduler.state;
   ast : sentence_state;
   id : sentence_id;
 }
@@ -101,7 +101,7 @@ type document = {
   sentences_by_end : sentence LM.t;
   parsing_errors_by_end : parsing_error LM.t;
   comments_by_end : comment LM.t;
-  schedule : Scheduler.schedule;
+  schedule : Host.Scheduler.schedule;
   outline : outline;
   parsed_loc : int;
   raw_doc : RawDocument.t;
@@ -140,7 +140,7 @@ let pp_event fmt = function
 type events = event Sel.Event.t list
 
 let create_parsing_event event =
-  let priority = Some PriorityManager.parsing in
+  let priority = Some Host.PriorityManager.parsing in
   Sel.now ?priority event
 
 let range_of_sentence raw (sentence : sentence) =
@@ -267,10 +267,10 @@ let add_sentence parsed parsing_start start stop (ast: sentence_state) synterp_s
   let scheduler_state_after, schedule = 
     match ast with
     | Error {msg} ->
-      scheduler_state_before, Scheduler.schedule_errored_sentence id msg parsed.schedule
+      scheduler_state_before, Host.Scheduler.schedule_errored_sentence id msg parsed.schedule
     | Parsed ast ->
       let ast' = (ast.ast, ast.classification, synterp_state) in
-      Scheduler.schedule_sentence (id, ast') scheduler_state_before parsed.schedule
+      Host.Scheduler.schedule_sentence (id, ast') scheduler_state_before parsed.schedule
   in
   (* FIXME may invalidate scheduler_state_XXX for following sentences -> propagate? *)
   let sentence = { parsing_start; start; stop; ast; id; synterp_state; scheduler_state_before; scheduler_state_after } in
@@ -388,7 +388,7 @@ let get_last_sentence parsed =
 let state_after_sentence parsed = function
   | Some (stop, { synterp_state; scheduler_state_after }) ->
     (stop, synterp_state, scheduler_state_after)
-  | None -> (-1, parsed.init_synterp_state, Scheduler.initial_state)
+  | None -> (-1, parsed.init_synterp_state, Host.Scheduler.initial_state)
 
 let state_at_pos parsed pos =
   state_after_sentence parsed @@
@@ -417,10 +417,10 @@ let patch_sentence parsed scheduler_state_before id ({ parsing_start; ast; start
   let scheduler_state_after, schedule =
     match ast with
     | Error {msg} ->
-      scheduler_state_before, Scheduler.schedule_errored_sentence id msg parsed.schedule
+      scheduler_state_before, Host.Scheduler.schedule_errored_sentence id msg parsed.schedule
     | Parsed ast ->
       let ast = (ast.ast, ast.classification, synterp_state) in
-      Scheduler.schedule_sentence (id,ast) scheduler_state_before parsed.schedule
+      Host.Scheduler.schedule_sentence (id,ast) scheduler_state_before parsed.schedule
   in
   let new_sentence = { old_sentence with ast; parsing_start; start; stop; scheduler_state_before; scheduler_state_after } in
   let sentences_by_id = SM.add id new_sentence parsed.sentences_by_id in
@@ -707,7 +707,7 @@ let validate_document ({ parsed_loc; raw_doc; cancel_handle } as document) =
   log (fun () -> Format.sprintf "Parsing more from pos %i" stop);
   let started = Unix.gettimeofday () in
   let parsed_state = {stop; top_id;synterp_state; stream; raw=raw_doc; parsed=[]; errors=[]; parsed_comments=[]; loc=None; started; previous_document=document} in
-  let priority = Some PriorityManager.parsing in
+  let priority = Some Host.PriorityManager.parsing in
   let event = Sel.now ?priority (ParseEvent parsed_state) in
   let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
   {document with cancel_handle}, [event]
