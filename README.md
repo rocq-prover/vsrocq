@@ -38,6 +38,12 @@ $ opam pin add coq 8.18.0
 $ opam install vscoq-language-server
 ```
 
+or on nixos
+
+```shell
+nix profile install nixpkgs#vscode-extensions.maximedenes.vscoq
+```
+
 After installation, check that you have `vscoqtop` in your shell
 and note the path to this executable:
 ```shell
