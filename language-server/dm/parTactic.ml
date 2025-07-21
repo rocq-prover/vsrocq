@@ -72,6 +72,12 @@ let get_ustate sigma = Evd.evar_universe_context sigma
 let get_ustate sigma = Evd.ustate sigma
 [%%endif]
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
+let comtactic_solve ~pstate ast = ComTactic.solve ~pstate SelectAll ~info:None ast ~with_end_tac:false
+[%%else]
+let comtactic_solve ~pstate ast = ComTactic.solve ~pstate SelectAll ~info:None ast
+[%%endif]
+
 let worker_solve_one_goal { TacticJob.state; ast; goalno; goal } ~send_back =
   let focus_cond = Proof.no_cond command_focus in
   let pr_goal g = string_of_int (Evar.repr g) in
@@ -79,7 +85,7 @@ let worker_solve_one_goal { TacticJob.state; ast; goalno; goal } ~send_back =
   try
     Vernacstate.LemmaStack.with_top (Option.get state.Vernacstate.interp.lemmas) ~f:(fun pstate ->
     let pstate = Declare.Proof.map pstate ~f:(Proof.focus focus_cond () goalno) in
-    let pstate = ComTactic.solve ~pstate Goal_select.SelectAll ~info:None ast ~with_end_tac:false in
+    let pstate = comtactic_solve ~pstate ast in
     let { Proof.sigma } = Declare.Proof.fold pstate ~f:Proof.data in
     let EvarInfo evi = Evd.find sigma goal in
     match Evd.(evar_body evi) with
@@ -105,7 +111,7 @@ let worker_solve_one_goal { TacticJob.state; ast; goalno; goal } ~send_back =
 let feedback_id = ref (0,Stateid.dummy)
 let set_id_for_feedback rid sid = feedback_id := (rid,sid)
 
-let interp_par ~pstate ~info ast ~abstract ~with_end_tac : Declare.Proof.t =
+let interp_par ~pstate ~info ast ~abstract : Declare.Proof.t =
   let state = Vernacstate.freeze_full_state () in
   let state = Vernacstate.Stm.make_shallow state in
   let queue = Queue.create () in
@@ -150,6 +156,12 @@ let interp_par ~pstate ~info ast ~abstract ~with_end_tac : Declare.Proof.t =
     let p,_,() = Proof.run_tactic (Global.env()) (assign_tac ~abstract results) p in
     p)
   [@@warning "-27"] (* FIXME: why are info and with_end_tac unused? *)
+
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
+let interp_par ~pstate ~info ast ~abstract ~with_end_tac:_ = interp_par ~pstate ~info ast ~abstract
+[%%else]
+let interp_par = interp_par
+[%%endif]
 
 let () = ComTactic.set_par_implementation interp_par
 
