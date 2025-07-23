@@ -491,6 +491,7 @@ let string_of_diff doc l =
   let get_keyword_state = Procq.get_keyword_state
 [%%endif]
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
 let rec stream_tok n_tok acc str begin_line begin_char =
   let e = LStream.next (get_keyword_state ()) str in
   match e with
@@ -498,6 +499,16 @@ let rec stream_tok n_tok acc str begin_line begin_char =
     List.rev acc
   | _ ->
     stream_tok (n_tok+1) (e::acc) str begin_line begin_char
+[%%else]
+let rec stream_tok n_tok acc str begin_line begin_char =
+  let e = LStream.next (get_keyword_state ()) str in
+  match e with
+  | Some Tok.EOI ->
+    List.rev acc
+  | Some e ->
+    stream_tok (n_tok+1) (e::acc) str begin_line begin_char
+  | None -> assert false (* should get EOI before None *)
+[%%endif]
     (*
 let parse_one_sentence stream ~st =
   let pa = Pcoq.Parsable.make stream in
