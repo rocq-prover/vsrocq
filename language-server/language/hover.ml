@@ -197,6 +197,27 @@ let ref_of_const = function
 | _ -> None
 [%%endif]
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0"]
+let arguments_names env x =
+  Arguments_renaming.arguments_names x
+let rename_type env x =
+  Arguments_renaming.rename_type x
+let find_arguments_scope env x =
+  Notation.find_arguments_scope x
+let get_bidirectionality_hint env x =
+  Pretyping.get_bidirectionality_hint x
+[%%else]
+let arguments_names env x =
+  Arguments_renaming.arguments_names env x
+let rename_type env x =
+  Arguments_renaming.rename_type env x
+let find_arguments_scope env x =
+  Notation.find_arguments_scope env x
+let get_bidirectionality_hint env x =
+  Pretyping.get_bidirectionality_hint env x
+[%%endif]
+
+
 let print_arguments ref =
   let flags, recargs, nargs_for_red =
     let open Reductionops.ReductionBehaviour in
@@ -210,13 +231,13 @@ let print_arguments ref =
       end
     | None -> [], [], None
   in
+  let env = Global.env () in
   let names, not_renamed =
-    try Arguments_renaming.arguments_names ref, false
+    try Arguments_renaming.arguments_names env ref, false
     with Not_found ->
-      let env = Global.env () in
       let ty, _ = Typeops.type_of_global_in_context env ref in
       List.map Util.pi1 (Impargs.compute_implicits_names env (Evd.from_env env) (EConstr.of_constr ty)), true in
-  let scopes = Notation.find_arguments_scope ref in
+  let scopes = find_arguments_scope env ref in
   let flags = if needs_extra_scopes ref scopes then `ExtraScopes::flags else flags in
   let impls = Impargs.extract_impargs_data (Impargs.implicits_of_global ref) in
   let impls, moreimpls = match impls with
@@ -225,7 +246,7 @@ let print_arguments ref =
   in
   let impls = main_implicits 0 names recargs scopes impls in
   let moreimpls = List.map (fun (_,i) -> List.map extra_implicit_kind_of_status i) moreimpls in
-  let bidi = Pretyping.get_bidirectionality_hint ref in
+  let bidi = get_bidirectionality_hint env ref in
   let impls = insert_fake_args nargs_for_red bidi impls in
   if List.for_all is_dummy impls && moreimpls = [] && flags = [] then mt ()
   else
@@ -252,7 +273,7 @@ let ref_info env _sigma ref udecl =
   let typ, _univs = Typeops.type_of_global_in_context env ref in
   let bl = Printer.universe_binders_with_opt_names (Environ.universes_of_global env ref) udecl in
   let sigma = Evd.from_ctx (UState.of_names bl) in
-  let typ = Arguments_renaming.rename_type typ ref in
+  let typ = Arguments_renaming.rename_type env typ ref in
   let impargs = Impargs.select_stronger_impargs (Impargs.implicits_of_global ref) in
   let impargs = List.map Impargs.binding_kind_of_status impargs in
   let typ = pr_ltype_env env sigma ~impargs typ in
