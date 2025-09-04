@@ -556,8 +556,10 @@ let rec junk_sentence_end stream =
 
 [%%if rocq = "8.18"]
 exception E = Stream.Error
-[%%else]
+[%%elif rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
 exception E = Grammar.Error
+[%%else]
+exception E = Grammar.ParseError
 [%%endif]
 
 [%%if rocq = "8.18" || rocq = "8.19"]
