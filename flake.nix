@@ -5,7 +5,7 @@
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
-    rocq-master = { url = "github:rocq-prover/rocq/52b1f585b39b80cab8d4634337089de71d118f33"; }; # Should be kept in sync with PIN_COQ in CI workflow
+    rocq-master = { url = "github:rocq-prover/rocq/aeabefe987b1a9aa6bfcaa1ed44b4dcb9124c1d6"; }; # Should be kept in sync with PIN_COQ in CI workflow
     rocq-master.inputs.nixpkgs.follows = "nixpkgs";
 
   };
