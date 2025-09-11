@@ -53,7 +53,7 @@ jobs:
         cd language-server
         git config --global user.name vscoqbot
         git config --global user.email vscoqbot@inria.fr
-        opam publish --no-confirmation --no-browser -v $VERSION https://github.com/coq/vscoq/releases/download/$VERSION_SLUG/vscoq-language-server-$VERSION.tar.gz vscoq-language-server.opam
+        opam publish --no-confirmation --no-browser -v $VERSION https://github.com/rocq-prover/vsrocq/releases/download/$GITHUB_REF_NAME/vsrocq-language-server-$VERSION_SLUG.tar.gz vsrocq-language-server.opam
 
     - name: Publish prerelease on coq/opam
       if: ${{ inputs.prerelease }}
@@ -64,4 +64,4 @@ jobs:
         cd language-server
         git config --global user.name vscoqbot
         git config --global user.email vscoqbot@inria.fr
-        opam publish --no-confirmation --no-browser --packages-directory=extra-dev/packages --repo=coq/opam -v $VERSION https://github.com/coq/vscoq/releases/download/$VERSION_SLUG/vscoq-language-server-$VERSION.tar.gz vscoq-language-server.opam
+        opam publish --no-confirmation --no-browser --packages-directory=extra-dev/packages --repo=rocq-prover/opam -v $VERSION https://github.com/rocq-prover/vsrocq/releases/download/$GITHUB_REF_NAME/vsrocq-language-server-$VERSION_SLUG.tar.gz vsrocq-language-server.opam
