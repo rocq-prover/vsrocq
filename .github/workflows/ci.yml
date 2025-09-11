@@ -49,7 +49,7 @@ jobs:
         cd client && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix"
         cd goal-view-ui && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix"
         cd ../search-ui && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix" && cd ..
-        nix fmt
+        nix fmt new_yarn.nix goal-view-ui/new_yarn.nix search-ui/new_yarn.nix
         diff new_yarn.nix yarn.nix
         diff goal-view-ui/new_yarn.nix goal-view-ui/yarn.nix
         diff search-ui/new_yarn.nix search-ui/yarn.nix
