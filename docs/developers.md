@@ -138,6 +138,9 @@ Since we now use opt comp and support all coq versions, version semantics are v2
 Once the CI has run, a draft release will be automatically created. Open the draft release and edit the change log to your liking.
 Finally, light a candle, do a little prayer and click release !
 
+Publishing the release on GH fires the `cd.yxml` job that in turn opens a PR
+on the opam repository.
+
 After the opam package has been published (PR merged by opam maintainers), the user should then use ```publish-extension.yml``` to publish the extensions on the vscode marketplace as well as vscodium.
 
 # CI/CD pipeline for release process
