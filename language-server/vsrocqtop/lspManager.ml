@@ -54,7 +54,7 @@ let conf_request_id = max_int
 
 let server_info = InitializeResult.create_serverInfo
   ~name:"vsrocq-language-server"
-  ~version:"2.2.6"
+  ~version:"2.3.0"
   ()
 
 type lsp_event = 

@@ -21,7 +21,7 @@
       vscodeExtPublisher = "rocq-prover";
       vscodeExtName = "vsrocq";
       vscodeExtUniqueId = "rocq-prover.vsrocq";
-      vsrocq_version = "2.2.6";
+      vsrocq_version = "2.3.0";
       rocq = rocq-master.packages.${system};
     in rec {
       formatter = nixpkgs.legacyPackages.${system}.alejandra;
