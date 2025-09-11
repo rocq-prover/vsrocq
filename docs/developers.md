@@ -116,11 +116,12 @@ want to be run by the test.
 To release a new version of VsCoq: 
 
 1. First make sure to bump the version number in the three folowing files: 
-    - flake.nix
-    - client/package.json
-    - language-server/vscoqtop/lspManager.ml
+    - flake.nix (look for `vsrocq_version`)
+    - client/package.json (llok for `"version":`)
+    - language-server/vscoqtop/lspManager.ml (look for `let server_info`)
 
-1.a Don't forget to add the version requirements in `client/src/utilities/versioning.ts`
+1.a Don't forget to add the version requirements in
+    `client/src/utilities/versioning.ts`, look for `versionRequirements`.
   
 2. Create a signed tag for the release with the new version number 
 ```shell
