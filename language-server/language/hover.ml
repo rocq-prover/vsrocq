@@ -233,7 +233,7 @@ let print_arguments ref =
   in
   let env = Global.env () in
   let names, not_renamed =
-    try Arguments_renaming.arguments_names env ref, false
+    try arguments_names env ref, false
     with Not_found ->
       let ty, _ = Typeops.type_of_global_in_context env ref in
       List.map Util.pi1 (Impargs.compute_implicits_names env (Evd.from_env env) (EConstr.of_constr ty)), true in
@@ -273,7 +273,7 @@ let ref_info env _sigma ref udecl =
   let typ, _univs = Typeops.type_of_global_in_context env ref in
   let bl = Printer.universe_binders_with_opt_names (Environ.universes_of_global env ref) udecl in
   let sigma = Evd.from_ctx (UState.of_names bl) in
-  let typ = Arguments_renaming.rename_type env typ ref in
+  let typ = rename_type env typ ref in
   let impargs = Impargs.select_stronger_impargs (Impargs.implicits_of_global ref) in
   let impargs = List.map Impargs.binding_kind_of_status impargs in
   let typ = pr_ltype_env env sigma ~impargs typ in

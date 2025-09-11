@@ -60,17 +60,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1749495228,
-        "narHash": "sha256-udotN8RZvmOrmRctX9QZGL5z8CsHy+n5VnviKeKYJ+s=",
+        "lastModified": 1757496998,
+        "narHash": "sha256-+uHY6iw/L7I7XF8DpYWTv1KriCy4caBPCBICigVsuE0=",
         "owner": "rocq-prover",
         "repo": "rocq",
-        "rev": "52b1f585b39b80cab8d4634337089de71d118f33",
+        "rev": "aeabefe987b1a9aa6bfcaa1ed44b4dcb9124c1d6",
         "type": "github"
       },
       "original": {
         "owner": "rocq-prover",
         "repo": "rocq",
-        "rev": "52b1f585b39b80cab8d4634337089de71d118f33",
+        "rev": "aeabefe987b1a9aa6bfcaa1ed44b4dcb9124c1d6",
         "type": "github"
       }
     },

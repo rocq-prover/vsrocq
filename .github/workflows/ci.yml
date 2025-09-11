@@ -41,7 +41,7 @@ jobs:
         (lang dune 3.2)
         (display short)
         EOF
-    - uses: cachix/install-nix-action@v22
+    - uses: cachix/install-nix-action@v31
       with:
         nix_path: nixpkgs=channel:nixos-unstable
     - name: Check each yarn.nix up to date
@@ -49,7 +49,8 @@ jobs:
         cd client && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix"
         cd goal-view-ui && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix"
         cd ../search-ui && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix" && cd ..
-        nix fmt
+        nix fmt new_yarn.nix goal-view-ui/new_yarn.nix search-ui/new_yarn.nix
+        nix fmt yarn.nix goal-view-ui/yarn.nix search-ui/yarn.nix
         diff new_yarn.nix yarn.nix
         diff goal-view-ui/new_yarn.nix goal-view-ui/yarn.nix
         diff search-ui/new_yarn.nix search-ui/yarn.nix
