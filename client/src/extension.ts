@@ -49,22 +49,9 @@ import {
 import { DocumentStateViewProvider } from './panels/DocumentStateViewProvider';
 import VsRocqToolchainManager, {ToolchainError, ToolChainErrorCode} from './utilities/toolchain';
 import { QUICKFIX_COMMAND, RocqWarningQuickFix } from './QuickFixProvider';
-import { getPrettifiedProofView, startMCPServer } from './mcpServer';
-import { stringOfPpString } from './utilities/pputils';
+import { getPrettifiedProofView, mcpPromiseBox, startMCPServer } from './mcpServer';
 
 let client: Client;
-
-export type McpPromiseBox = {
-    promise: Promise<string> | undefined,
-    setValue: ((value: string) => void) | undefined,
-    currentDocumentURI: string | undefined
-};
-
-let mcpPromiseBox: McpPromiseBox = {
-    promise: undefined,
-    setValue: undefined,
-    currentDocumentURI: undefined
-};
 
 export type ProofState = {
     lastProofViewNotification: ProofViewNotification | undefined

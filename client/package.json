@@ -314,11 +314,23 @@
         "title": "MCP",
         "type": "object",
         "properties": {
-          "vscoq.mcp.use": {
+          "vsrocq.mcp.use": {
             "scope": "window",
             "type": "boolean",
             "default": false,
-            "description": "Use VsCoq MCP Server"
+            "description": "Use VsRocq MCP Server"
+          }
+        }
+      },
+      {
+        "title": "MCP Server",
+        "type": "object",
+        "properties": {
+          "vsrocq.mcp.port": {
+            "scope": "window",
+            "type": "number",
+            "default": 2138,
+            "description": "Port for the MCP server."
           }
         }
       }

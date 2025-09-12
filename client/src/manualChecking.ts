@@ -1,15 +1,6 @@
 import {
-    TextEditor,
-    commands,
-    workspace
+    TextEditor
 } from 'vscode';
-
-import {
-    RequestType,
-    VersionedTextDocumentIdentifier,
-} from 'vscode-languageclient/node';
-
-import GoalPanel from './panels/GoalPanel';
 
 import Client from './client';
 import { makeVersionedDocumentId } from './utilities/utils';

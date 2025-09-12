@@ -1,6 +1,6 @@
 import { ExtensionContext, window, workspace, Position, Selection, TextEditorRevealType, Range } from 'vscode';
 import { sendInterpretToPoint, sendStepForward, sendStepBackward, sendInterpretToEnd } from './manualChecking';
-import { McpPromiseBox, ProofState } from './extension';
+import { ProofState } from './extension';
 import Client from './client';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as express from "express";
@@ -11,6 +11,26 @@ import * as path from 'path';
 import { stringOfPpString } from './utilities/pputils';
 import { ProofViewNotification } from './protocol/types';
 
+export type McpPromiseBox = {
+    promise: Promise<string> | undefined,
+    setValue: ((value: string) => void) | undefined,
+    currentDocumentURI: string | undefined
+};
+
+export let mcpPromiseBox: McpPromiseBox = {
+    promise: undefined,
+    setValue: undefined,
+    currentDocumentURI: undefined
+};
+
+function awaitMcpPromiseBox(editor: any, mcpPromiseBox: McpPromiseBox): Promise<string> {
+    mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
+    mcpPromiseBox.promise = new Promise((resolve) => {
+        mcpPromiseBox.setValue = resolve;
+    });
+    return mcpPromiseBox.promise;
+}
+
 function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client: Client) {
     const server = new McpServer({
         name: "VsRocq MCP Server",
@@ -19,33 +39,28 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
 
     server.tool(
         "interpretToPoint",
-        "Interpret to the given point (or current cursor) in the active Coq editor.",
+        "Interpret to the given point (or current cursor) in the active Rocq editor.",
         {
             line: z.number().optional(),
             character: z.number().optional()
         },
         async ({ line, character }) => {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
+            if (mode !== 'manual') {
+                return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
+            }
             let editor = window.activeTextEditor;
-            console.log('[MCP] interpretToPoint called', { line, character, editorExists: !!editor });
             if (editor && line !== undefined && character !== undefined) {
                 const pos = new Position(line, character);
                 const range = new Range(pos, pos);
                 editor.selections = [new Selection(range.start, range.end)];
                 editor.revealRange(range, TextEditorRevealType.Default);
-                console.log('[MCP] Cursor moved to', pos);
             }
             if (editor) {
                 await sendInterpretToPoint(editor, client);
-                console.log('[MCP] sendInterpretToPoint finished');
-                mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
-                mcpPromiseBox.promise = new Promise((resolve) => {
-                  mcpPromiseBox.setValue = resolve;
-                });
-                const res = await mcpPromiseBox.promise;
-                console.log('[MCP] interpretToPoint resolved with', res);
+                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox);
                 return { content: [{ type: "text", text: res }] };
             } else {
-                console.log('[MCP] No active editor for interpretToPoint');
                 return { content: [{ type: "text", text: "No active editor" }] };
             }
         }
@@ -53,23 +68,19 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
 
     server.tool(
         "stepForward",
-        "Step forward one command in the active Coq editor.",
+        "Step forward one command in the active Rocq editor.",
         {},
         async () => {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
+            if (mode !== 'manual') {
+                return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
+            }
             const editor = window.activeTextEditor;
-            console.log('[MCP] stepForward called', { editorExists: !!editor });
             if (editor) {
                 await sendStepForward(editor, client);
-                console.log('[MCP] sendStepForward finished');
-                mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
-                mcpPromiseBox.promise = new Promise((resolve) => {
-                  mcpPromiseBox.setValue = resolve;
-                });
-                const res = await mcpPromiseBox.promise;
-                console.log('[MCP] stepForward resolved with', res);
+                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox);
                 return { content: [{ type: "text", text: res }] };
             } else {
-                console.log('[MCP] No active editor for stepForward');
                 return { content: [{ type: "text", text: "No active editor" }] };
             }
         }
@@ -77,23 +88,19 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
 
     server.tool(
         "stepBackward",
-        "Step backward one command in the active Coq editor.",
+        "Step backward one command in the active Rocq editor.",
         {},
         async () => {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
+            if (mode !== 'manual') {
+                return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
+            }
             const editor = window.activeTextEditor;
-            console.log('[MCP] stepBackward called', { editorExists: !!editor });
             if (editor) {
                 await sendStepBackward(editor, client);
-                console.log('[MCP] sendStepBackward finished');
-                mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
-                mcpPromiseBox.promise = new Promise((resolve) => {
-                  mcpPromiseBox.setValue = resolve;
-                });
-                const res = await mcpPromiseBox.promise;
-                console.log('[MCP] stepBackward resolved with', res);
+                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox);
                 return { content: [{ type: "text", text: res }] };
             } else {
-                console.log('[MCP] No active editor for stepBackward');
                 return { content: [{ type: "text", text: "No active editor" }] };
             }
         }
@@ -101,22 +108,19 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
 
     server.tool(
         "interpretToEnd",
-        "Interpret to the end of the active Coq editor.",
+        "Interpret to the end of the active Rocq editor.",
         {},
         async () => {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
+            if (mode !== 'manual') {
+                return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
+            }
             const editor = window.activeTextEditor;
-            console.log('[MCP] interpretToEnd called', { editorExists: !!editor });
             if (editor) {
                 await sendInterpretToEnd(editor, client);
-                mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
-                mcpPromiseBox.promise = new Promise((resolve) => {
-                    mcpPromiseBox.setValue = resolve;
-                });
-                const res = await mcpPromiseBox.promise;
-                console.log('[MCP] interpretToEnd resolved with', res);
+                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox);
                 return { content: [{ type: "text", text: res }] };
             } else {
-                console.log('[MCP] No active editor for interpretToEnd');
                 return { content: [{ type: "text", text: "No active editor" }] };
             }
         }
@@ -127,6 +131,10 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
         "Get the current proof view and the current interpretation point.",
         {},
         async () => {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
+            if (mode !== 'manual') {
+                return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
+            }
             const editor = window.activeTextEditor;
             const currentDocumentURI = editor?.document.uri.toString();
             const result = getPrettifiedProofView(client, proofState.lastProofViewNotification, currentDocumentURI);
@@ -137,15 +145,20 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
     return server;
 }
 
-const vsCoqConfig = {
-    type: "http",
-    url: "http://localhost:2137/mcp"
-};
-const serversOfVsCoq = {
-    servers: {
-        "VsCoq": vsCoqConfig
-    }
-};
+function vsRocqConfig(port: number) {
+    return {
+        type: "http",
+        url: `http://localhost:${port}/mcp`
+    };
+}
+
+function serversOfVsRocq(port: number) {
+    return {
+        servers: {
+            "vsRocq": vsRocqConfig(port)
+        }
+    };
+}
 
 function writeMCPConfigToWorkspace() {
     try {
@@ -160,29 +173,29 @@ function writeMCPConfigToWorkspace() {
         if (!fs.existsSync(vscodeDir)) {
             fs.mkdirSync(vscodeDir);
         }
+        const portConfig = workspace.getConfiguration('vsrocq.mcp').get<number>('port');
+        const port = portConfig ?? 2138;
         if (fs.existsSync(mcpConfigPath)) {
             try {
                 const raw = fs.readFileSync(mcpConfigPath, 'utf8');
                 config = JSON.parse(raw);
                 if (!config.servers) { config.servers = {}; }
-                if (!config.servers["VsCoq"]) {
-                    config.servers["VsCoq"] = vsCoqConfig;
+                if (!config.servers["VsRocq"]) {
+                    config.servers["VsRocq"] = vsRocqConfig(port);
                     shouldWrite = true;
                 }
             } catch (e) {
                 // If file is corrupt, overwrite it
-                config = serversOfVsCoq;
+                config = serversOfVsRocq(port);
                 shouldWrite = true;
             }
         } else {
-            config = serversOfVsCoq;
+            config = serversOfVsRocq(port);
             shouldWrite = true;
         }
         if (shouldWrite) {
             fs.writeFileSync(mcpConfigPath, JSON.stringify(config, null, 2));
-            console.log('[MCP] Wrote .vscode/mcp.json with VsCoq server entry');
         } else {
-            console.log('[MCP] .vscode/mcp.json already contains VsCoq server entry');
         }
     } catch (err) {
         console.error('[MCP] Error ensuring .vscode/mcp.json:', err);
@@ -235,62 +248,44 @@ export async function startMCPServer(context: ExtensionContext, mcpPromiseBox: M
     app.use(express.json());
 
     app.post('/mcp', async (req: express.Request, res: express.Response) => {
-        console.log('[MCP] POST /mcp called', { body: req.body });
         try {
             const server = getServer(mcpPromiseBox, proofState, client);
             const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
                 sessionIdGenerator: undefined,
             });
             res.on('close', () => {
-                console.log('[MCP] Request closed');
                 transport.close();
                 server.close();
             });
             await server.connect(transport);
             await transport.handleRequest(req, res, req.body);
-            console.log('[MCP] transport.handleRequest finished');
         } catch (error) {
-            console.error('[MCP] Error handling MCP request:', error);
             if (!res.headersSent) {
-                res.status(500).json({
-                    jsonrpc: '2.0',
-                    error: {
-                        code: -32603,
-                        message: 'Internal server error',
-                    },
-                    id: null,
-                });
+                sendHttpError(res, 500, -32603, 'Internal server error');
             }
         }
     });
 
-    app.get('/mcp', async (req: express.Request, res: express.Response) => {
-        console.log('[MCP] Received GET MCP request');
-        res.writeHead(405).end(JSON.stringify({
+    function sendHttpError(res: express.Response, httpStatus: number, errorCode: number, message: string) {
+        res.status(httpStatus).json({
             jsonrpc: "2.0",
             error: {
-                code: -32000,
-                message: "Method not allowed."
+                code: errorCode,
+                message: message
             },
             id: null
-        }));
+        });
+    }
+
+    app.get('/mcp', async (req: express.Request, res: express.Response) => {
+        sendHttpError(res, 405, -32000, "Method not allowed.");
     });
 
     app.delete('/mcp', async (req: express.Request, res: express.Response) => {
-        console.log('[MCP] Received DELETE MCP request');
-        res.writeHead(405).end(JSON.stringify({
-            jsonrpc: "2.0",
-            error: {
-                code: -32000,
-                message: "Method not allowed."
-            },
-            id: null
-        }));
+        sendHttpError(res, 405, -32000, "Method not allowed.");
     });
 
-    // Start the server
-    const PORT = 2137;
-    app.listen(PORT, () => {
-        console.log(`[MCP] Stateless Streamable HTTP Server listening on port ${PORT}`);
-    });
+    const portConfig = workspace.getConfiguration('vsrocq.mcp').get<number>('port');
+    const PORT = portConfig ?? 2138;
+    app.listen(PORT);
 }
