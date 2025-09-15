@@ -383,7 +383,7 @@ let progress_hook uri () =
   | Some { st } -> update_view uri st
 
 let rocqtopInterpretToPoint params =
-  let Notification.Client.InterpretToPointParams.{ textDocument; position } = params in
+  let ExtProtocol.Request.Client.InterpretToPointParams.{ textDocument; position } = params in
   let uri = textDocument.uri in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
@@ -396,7 +396,7 @@ let rocqtopInterpretToPoint params =
     sel_events
  
 let rocqtopStepBackward params =
-  let Notification.Client.StepBackwardParams.{ textDocument = { uri } } = params in
+  let ExtProtocol.Request.Client.StepBackwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
   | Some { st; visible } ->
@@ -406,7 +406,7 @@ let rocqtopStepBackward params =
       inject_dm_events (uri,events)
 
 let rocqtopStepForward params =
-  let Notification.Client.StepForwardParams.{ textDocument = { uri } } = params in
+  let ExtProtocol.Request.Client.StepForwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
   | Some { st; visible } ->
@@ -465,7 +465,7 @@ let rocqtopResetRocq id params =
     Ok(()), (uri,events) |> inject_dm_events
 
 let rocqtopInterpretToEnd params =
-  let Notification.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
+  let ExtProtocol.Request.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
   | Some { st; visible } ->
@@ -569,6 +569,18 @@ let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) r
   | Search params -> rocqtopSearch id params
   | DocumentState params -> sendDocumentState id params
   | DocumentProofs params -> sendDocumentProofs id params
+  | InterpretToPoint params -> 
+    let events = rocqtopInterpretToPoint params in
+    (Ok (), events)
+  | InterpretToEnd params -> 
+    let events = rocqtopInterpretToEnd params in
+    (Ok (), events)
+  | StepBackward params -> 
+    let events = rocqtopStepBackward params in
+    (Ok (), events)
+  | StepForward params -> 
+    let events = rocqtopStepForward params in
+    (Ok (), events)
 
 let dispatch_std_notification = 
   let open Lsp.Client_notification in function
@@ -591,10 +603,6 @@ let dispatch_std_notification =
 
 let dispatch_notification =
   let open Notification.Client in function
-  | InterpretToPoint params -> log (fun () -> "Received notification: prover/interpretToPoint"); rocqtopInterpretToPoint params
-  | InterpretToEnd params -> log (fun () -> "Received notification: prover/interpretToEnd"); rocqtopInterpretToEnd params
-  | StepBackward params -> log (fun () -> "Received notification: prover/stepBackward"); rocqtopStepBackward params
-  | StepForward params -> log (fun () -> "Received notification: prover/stepForward"); rocqtopStepForward params
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function
@@ -608,9 +616,14 @@ let handle_lsp_event = function
       begin match rpc with
       | Request req ->
           log (fun () -> "ui request: " ^ req.method_);
+          log (fun () -> "Attempting to parse request method: " ^ req.method_);
           begin match Request.Client.t_of_jsonrpc req with
-          | Error(e) -> log (fun () -> "Error decoding request: " ^ e); []
+          | Error(e) -> 
+            log (fun () -> "Error decoding request: " ^ e); 
+            log (fun () -> "Failed method was: " ^ req.method_);
+            []
           | Ok(Pack r) ->
+            log (fun () -> "Successfully parsed request: " ^ req.method_);
             let resp, events = dispatch_request req.id r in
             begin match resp with
             | Error {code; message} ->

@@ -1,6 +1,5 @@
 import { ExtensionContext, window, workspace, Position, Selection, TextEditorRevealType, Range } from 'vscode';
 import { sendInterpretToPoint, sendStepForward, sendStepBackward, sendInterpretToEnd } from './manualChecking';
-import { ProofState } from './extension';
 import Client from './client';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as express from "express";
@@ -21,6 +20,14 @@ export let mcpPromiseBox: McpPromiseBox = {
     promise: undefined,
     setValue: undefined,
     currentDocumentURI: undefined
+};
+
+export type ProofState = {
+    lastProofViewNotification: ProofViewNotification | undefined
+};
+
+export let proofState: ProofState = {
+    lastProofViewNotification: undefined
 };
 
 function awaitMcpPromiseBox(editor: any, mcpPromiseBox: McpPromiseBox): Promise<string> {

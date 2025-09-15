@@ -13,11 +13,8 @@ import {workspace, window, commands, languages, ExtensionContext, env,
   version
 } from 'vscode';
 
-import * as os from 'node:os';
-
 import {
   LanguageClientOptions,
-  PublishDiagnosticsParams,
   RequestType,
   ServerOptions,
   TextDocumentIdentifier,
@@ -49,17 +46,9 @@ import {
 import { DocumentStateViewProvider } from './panels/DocumentStateViewProvider';
 import VsRocqToolchainManager, {ToolchainError, ToolChainErrorCode} from './utilities/toolchain';
 import { QUICKFIX_COMMAND, RocqWarningQuickFix } from './QuickFixProvider';
-import { getPrettifiedProofView, mcpPromiseBox, startMCPServer } from './mcpServer';
+import { getPrettifiedProofView, mcpPromiseBox, proofState, startMCPServer } from './mcpServer';
 
 let client: Client;
-
-export type ProofState = {
-    lastProofViewNotification: ProofViewNotification | undefined
-};
-
-let proofState: ProofState = {
-    lastProofViewNotification: undefined
-};
 
 export function activate(context: ExtensionContext) {
     const getDocumentProofs = (uri: Uri) => {
@@ -206,7 +195,7 @@ export function activate(context: ExtensionContext) {
             const req = new RequestType<ResetRocqRequest, ResetRocqResponse, void>("prover/resetRocq");
             Client.writeToVsrocqChannel(uri.toString());
             client.sendRequest(req, params).then(
-                (res) => {
+                (_) => {
                     GoalPanel.resetGoalPanel();
                 }, 
                 (err) => {
