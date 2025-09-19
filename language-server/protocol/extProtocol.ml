@@ -61,6 +61,7 @@ module Notification = struct
         messages: (DiagnosticSeverity.t * pp) list;
         pp_proof: PpProofState.t option;
         pp_messages: (DiagnosticSeverity.t *string) list;
+        request_id: Jsonrpc.Id.t option;
       } [@@deriving yojson]
 
     end
@@ -251,6 +252,38 @@ module Request = struct
 
   end
 
+  module InterpretToPointResult = struct
+
+    type t = {
+      request_id : Jsonrpc.Id.t;
+    } [@@deriving yojson]
+
+  end
+
+  module InterpretToEndResult = struct
+
+    type t = {
+      request_id : Jsonrpc.Id.t;
+    } [@@deriving yojson]
+
+  end
+
+  module StepBackwardResult = struct
+
+    type t = {
+      request_id : Jsonrpc.Id.t;
+    } [@@deriving yojson]
+
+  end
+
+  module StepForwardResult = struct
+
+    type t = {
+      request_id : Jsonrpc.Id.t;
+    } [@@deriving yojson]
+
+  end
+
   type 'a t =
   | Std : 'a Lsp.Client_request.t -> 'a t
   | Reset : ResetParams.t -> unit t
@@ -261,10 +294,10 @@ module Request = struct
   | Search : SearchParams.t -> unit t
   | DocumentState : DocumentStateParams.t -> DocumentStateResult.t t
   | DocumentProofs : DocumentProofsParams.t -> DocumentProofsResult.t t
-  | InterpretToPoint : InterpretToPointParams.t -> unit t
-  | InterpretToEnd : InterpretToEndParams.t -> unit t
-  | StepBackward : StepBackwardParams.t -> unit t
-  | StepForward : StepForwardParams.t -> unit t
+  | InterpretToPoint : InterpretToPointParams.t -> InterpretToPointResult.t t
+  | InterpretToEnd : InterpretToEndParams.t -> InterpretToEndResult.t t
+  | StepBackward : StepBackwardParams.t -> StepBackwardResult.t t
+  | StepForward : StepForwardParams.t -> StepForwardResult.t t
 
   type packed = Pack : 'a t -> packed
 
@@ -328,10 +361,10 @@ module Request = struct
       | Search _ -> yojson_of_unit resp
       | DocumentState _ -> DocumentStateResult.(yojson_of_t resp)
       | DocumentProofs _ -> DocumentProofsResult.(yojson_of_t resp)
-      | InterpretToPoint _ -> yojson_of_unit resp
-      | InterpretToEnd _ -> yojson_of_unit resp
-      | StepBackward _ -> yojson_of_unit resp
-      | StepForward _ -> yojson_of_unit resp
+      | InterpretToPoint _ -> InterpretToPointResult.(yojson_of_t resp)
+      | InterpretToEnd _ -> InterpretToEndResult.(yojson_of_t resp)
+      | StepBackward _ -> StepBackwardResult.(yojson_of_t resp)
+      | StepForward _ -> StepForwardResult.(yojson_of_t resp)
       | Std req -> Lsp.Client_request.yojson_of_result req resp
 
   end

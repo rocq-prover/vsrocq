@@ -194,7 +194,6 @@ export default class SearchViewProvider implements vscode.WebviewViewProvider {
                     if(type === "check") {
                         const params: CheckRocqRequest = {textDocument, pattern, position};
                         const req = new RequestType<CheckRocqRequest, CheckRocqResponse, void>("prover/check");
-                            
                         client.sendRequest(req, params).then(
                             (result: CheckRocqResponse) => {
                                 const notification = {"statement": result, "id": id};

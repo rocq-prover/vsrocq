@@ -4,25 +4,30 @@ import {
 
 import Client from './client';
 import { makeVersionedDocumentId } from './utilities/utils';
+import { WithRequestId } from './protocol/types';
 
-export const sendInterpretToPoint = (editor: TextEditor, client: Client) => {
+export const sendInterpretToPoint = async (editor: TextEditor, client: Client) => {
     const textDocument = makeVersionedDocumentId(editor);
     const position = editor.selection.active;
-    client.sendRequest("prover/interpretToPoint", {textDocument: textDocument, position: position });
+    const response = await client.sendRequest<WithRequestId>("prover/interpretToPoint", {textDocument: textDocument, position: position });
+    return response.request_id;
 };
 
-export const sendInterpretToEnd = (editor: TextEditor,  client: Client) => {
+export const sendInterpretToEnd = async (editor: TextEditor,  client: Client) => {
     const textDocument = makeVersionedDocumentId(editor);
-    client.sendRequest("prover/interpretToEnd", {textDocument: textDocument});
+    const response = await client.sendRequest<WithRequestId>("prover/interpretToEnd", {textDocument: textDocument});
+    return response.request_id;
 };
 
-export const sendStepForward = (editor: TextEditor,  client: Client) => {
+export const sendStepForward = async (editor: TextEditor,  client: Client) => {
     const textDocument = makeVersionedDocumentId(editor);
-    client.sendRequest("prover/stepForward", {textDocument: textDocument});
+    const response = await client.sendRequest<WithRequestId>("prover/stepForward", {textDocument: textDocument});
+    return response.request_id;
 };
 
-export const sendStepBackward = (editor: TextEditor,  client: Client) => {
+export const sendStepBackward = async (editor: TextEditor,  client: Client) => {
     const textDocument = makeVersionedDocumentId(editor);
-    client.sendRequest("prover/stepBackward", {textDocument: textDocument});
+    const response = await client.sendRequest<WithRequestId>("prover/stepBackward", {textDocument: textDocument});
+    return response.request_id;
 };
 

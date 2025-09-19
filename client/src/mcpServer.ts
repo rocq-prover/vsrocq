@@ -13,13 +13,15 @@ import { ProofViewNotification } from './protocol/types';
 export type McpPromiseBox = {
     promise: Promise<string> | undefined,
     setValue: ((value: string) => void) | undefined,
-    currentDocumentURI: string | undefined
+    currentDocumentURI: string | undefined,
+    pendingRequestId: string | undefined
 };
 
 export let mcpPromiseBox: McpPromiseBox = {
     promise: undefined,
     setValue: undefined,
-    currentDocumentURI: undefined
+    currentDocumentURI: undefined,
+    pendingRequestId: undefined
 };
 
 export type ProofState = {
@@ -30,8 +32,11 @@ export let proofState: ProofState = {
     lastProofViewNotification: undefined
 };
 
-function awaitMcpPromiseBox(editor: any, mcpPromiseBox: McpPromiseBox): Promise<string> {
+function awaitMcpPromiseBox(editor: any, mcpPromiseBox: McpPromiseBox, requestId: string | undefined): Promise<string> {
     mcpPromiseBox.currentDocumentURI = editor.document.uri.toString();
+    mcpPromiseBox.pendingRequestId = requestId;
+    console.log("requestId:");
+    console.log(requestId);
     mcpPromiseBox.promise = new Promise((resolve) => {
         mcpPromiseBox.setValue = resolve;
     });
@@ -52,8 +57,8 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
             character: z.number().optional()
         },
         async ({ line, character }) => {
-            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
-            if (mode !== 'manual') {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<number>('mode');
+            if (mode !== 0) {
                 return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
             }
             let editor = window.activeTextEditor;
@@ -64,8 +69,8 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
                 editor.revealRange(range, TextEditorRevealType.Default);
             }
             if (editor) {
-                await sendInterpretToPoint(editor, client);
-                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox);
+                const requestId = await sendInterpretToPoint(editor, client);
+                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox, requestId);
                 return { content: [{ type: "text", text: res }] };
             } else {
                 return { content: [{ type: "text", text: "No active editor" }] };
@@ -78,14 +83,14 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
         "Step forward one command in the active Rocq editor.",
         {},
         async () => {
-            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
-            if (mode !== 'manual') {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<number>('mode');
+            if (mode !== 0) {
                 return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
             }
             const editor = window.activeTextEditor;
             if (editor) {
-                await sendStepForward(editor, client);
-                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox);
+                const requestId = await sendStepForward(editor, client);
+                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox, requestId);
                 return { content: [{ type: "text", text: res }] };
             } else {
                 return { content: [{ type: "text", text: "No active editor" }] };
@@ -98,14 +103,14 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
         "Step backward one command in the active Rocq editor.",
         {},
         async () => {
-            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
-            if (mode !== 'manual') {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<number>('mode');
+            if (mode !== 0) {
                 return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
             }
             const editor = window.activeTextEditor;
             if (editor) {
-                await sendStepBackward(editor, client);
-                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox);
+                const requestId = await sendStepBackward(editor, client);
+                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox, requestId);
                 return { content: [{ type: "text", text: res }] };
             } else {
                 return { content: [{ type: "text", text: "No active editor" }] };
@@ -118,14 +123,15 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
         "Interpret to the end of the active Rocq editor.",
         {},
         async () => {
-            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
-            if (mode !== 'manual') {
+            const mode = workspace.getConfiguration('vsrocq.proof').get<number>('mode');
+            if (mode !== 0) {
                 return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
             }
             const editor = window.activeTextEditor;
             if (editor) {
-                await sendInterpretToEnd(editor, client);
-                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox);
+                const requestId = await sendInterpretToEnd(editor, client);
+                console.log(requestId);
+                const res = await awaitMcpPromiseBox(editor, mcpPromiseBox, requestId);
                 return { content: [{ type: "text", text: res }] };
             } else {
                 return { content: [{ type: "text", text: "No active editor" }] };
@@ -138,10 +144,6 @@ function getServer(mcpPromiseBox: McpPromiseBox, proofState: ProofState, client:
         "Get the current proof view and the current interpretation point.",
         {},
         async () => {
-            const mode = workspace.getConfiguration('vsrocq.proof').get<string>('mode');
-            if (mode !== 'manual') {
-                return { content: [{ type: 'text', text: 'Proof mode must be manual to use this tool.' }] };
-            }
             const editor = window.activeTextEditor;
             const currentDocumentURI = editor?.document.uri.toString();
             const result = getPrettifiedProofView(client, proofState.lastProofViewNotification, currentDocumentURI);

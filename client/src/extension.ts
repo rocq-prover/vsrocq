@@ -216,7 +216,6 @@ export function activate(context: ExtensionContext) {
         registerVsrocqTextCommand('stepForward', (editor) => sendStepForward(editor, client));
         registerVsrocqTextCommand('stepBackward', (editor) => sendStepBackward(editor, client));
         registerVsrocqTextCommand('documentState', async (editor) => {
-                
             documentStateProvider.setDocumentUri(editor.document.uri);
 
             const document = await workspace.openTextDocument(documentStateProvider.uri);
@@ -289,10 +288,13 @@ export function activate(context: ExtensionContext) {
             const autoDisplay = workspace.getConfiguration('vsrocq.goals').auto;
             GoalPanel.proofViewNotification(context.extensionUri, editor, proofView, autoDisplay);
             proofState.lastProofViewNotification = proofView;
-            if (mcpPromiseBox.setValue) {
+            if (mcpPromiseBox.setValue && 
+                mcpPromiseBox.pendingRequestId !== undefined &&
+                proofView.request_id === mcpPromiseBox.pendingRequestId) { // Only resolve MCP promise if the request ID matches
                 const res = getPrettifiedProofView(client, proofView, mcpPromiseBox.currentDocumentURI);
                 mcpPromiseBox.setValue(res);
                 mcpPromiseBox.setValue = undefined; // Clear to avoid double resolution
+                mcpPromiseBox.pendingRequestId = undefined; // Clear the pending request ID
             }
         });
 

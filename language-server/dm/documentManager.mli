@@ -67,24 +67,24 @@ val get_next_range : state -> Position.t -> Range.t option
 val get_previous_range : state -> Position.t -> Range.t option
 (** [get_previous_pos st pos] get the range of the previous sentence relative to pos *)
 
-val interpret_to_position : state -> Position.t -> Settings.Mode.t -> point_interp_mode:Settings.PointInterpretationMode.t -> (state * events)
-(** [interpret_to_position state pos check_mode point_interp_mode] navigates to the 
+val interpret_to_position : Jsonrpc.Id.t -> state -> Position.t -> Settings.Mode.t -> point_interp_mode:Settings.PointInterpretationMode.t -> (state * events)
+(** [interpret_to_position req_id state pos check_mode point_interp_mode] navigates to the 
     last sentence ending before or at [pos] and returns the resulting state, events that need to take place, and a possible blocking error. *)
 
-val interpret_to_next_position : state -> Position.t -> Settings.Mode.t -> (state * events)
-(** [interpret_to_next_position state pos check_mode] navigates
+val interpret_to_next_position : Jsonrpc.Id.t -> state -> Position.t -> Settings.Mode.t -> (state * events)
+(** [interpret_to_next_position req_id state pos check_mode] navigates
     to the first sentence after or at [pos] (excluding whitespace) and returns the resulting state, events that need to take place, a possible blocking error. *)
 
-val interpret_to_previous : state -> Settings.Mode.t -> (state * events)
-(** [interpret_to_previous doc check_mode] navigates to the previous sentence in [doc]
+val interpret_to_previous : Jsonrpc.Id.t -> state -> Settings.Mode.t -> (state * events)
+(** [interpret_to_previous req_id doc check_mode] navigates to the previous sentence in [doc]
     and returns the resulting state. *)
 
-val interpret_to_next : state -> Settings.Mode.t -> (state * events)
-(** [interpret_to_next doc] navigates to the next sentence in [doc]
+val interpret_to_next : Jsonrpc.Id.t -> state -> Settings.Mode.t -> (state * events)
+(** [interpret_to_next req_id doc] navigates to the next sentence in [doc]
     and returns the resulting state. *)
 
-val interpret_to_end : state -> Settings.Mode.t -> (state * events)
-(** [interpret_to_end doc] navigates to the last sentence in [doc]
+val interpret_to_end : Jsonrpc.Id.t -> state -> Settings.Mode.t -> (state * events)
+(** [interpret_to_end req_id doc] navigates to the last sentence in [doc]
     and returns the resulting state. *)
 
 val interpret_in_background : state -> should_block_on_error:bool -> (state * events)
