@@ -383,7 +383,7 @@ let progress_hook uri () =
   | Some { st } -> update_view uri st
 
 let rocqtopInterpretToPoint req_id params =
-  let ExtProtocol.Request.Client.InterpretToPointParams.{ textDocument; position } = params in
+  let Request.Client.InterpretToPointParams.{ textDocument; position } = params in
   let uri = textDocument.uri in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
@@ -396,7 +396,7 @@ let rocqtopInterpretToPoint req_id params =
     sel_events
  
 let rocqtopStepBackward req_id params =
-  let ExtProtocol.Request.Client.StepBackwardParams.{ textDocument = { uri } } = params in
+  let Request.Client.StepBackwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
   | Some { st; visible } ->
@@ -406,7 +406,7 @@ let rocqtopStepBackward req_id params =
       inject_dm_events (uri,events)
 
 let rocqtopStepForward req_id params =
-  let ExtProtocol.Request.Client.StepForwardParams.{ textDocument = { uri } } = params in
+  let Request.Client.StepForwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
   | Some { st; visible } ->
@@ -465,7 +465,7 @@ let rocqtopResetRocq id params =
     Ok(()), (uri,events) |> inject_dm_events
 
 let rocqtopInterpretToEnd req_id params =
-  let ExtProtocol.Request.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
+  let Request.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
   | Some { st; visible } ->
@@ -571,19 +571,19 @@ let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) r
   | DocumentProofs params -> sendDocumentProofs id params
   | InterpretToPoint params -> 
     let events = rocqtopInterpretToPoint id params in
-    let result = Protocol.ExtProtocol.Request.Client.InterpretToPointResult.{ request_id = id } in
+    let result = Request.Client.InterpretToPointResult.{ request_id = id } in
     (Ok result, events)
   | InterpretToEnd params -> 
     let events = rocqtopInterpretToEnd id params in
-    let result = Protocol.ExtProtocol.Request.Client.InterpretToEndResult.{ request_id = id } in
+    let result = Request.Client.InterpretToEndResult.{ request_id = id } in
     (Ok result, events)
   | StepBackward params -> 
     let events = rocqtopStepBackward id params in
-    let result = Protocol.ExtProtocol.Request.Client.StepBackwardResult.{ request_id = id } in
+    let result = Request.Client.StepBackwardResult.{ request_id = id } in
     (Ok result, events)
   | StepForward params -> 
     let events = rocqtopStepForward id params in
-    let result = Protocol.ExtProtocol.Request.Client.StepForwardResult.{ request_id = id } in
+    let result = Request.Client.StepForwardResult.{ request_id = id } in
     (Ok result, events)
 
 let dispatch_std_notification = 
@@ -620,14 +620,9 @@ let handle_lsp_event = function
       begin match rpc with
       | Request req ->
           log (fun () -> "ui request: " ^ req.method_);
-          log (fun () -> "Attempting to parse request method: " ^ req.method_);
           begin match Request.Client.t_of_jsonrpc req with
-          | Error(e) -> 
-            log (fun () -> "Error decoding request: " ^ e); 
-            log (fun () -> "Failed method was: " ^ req.method_);
-            []
+          | Error(e) -> log (fun () -> "Error decoding request: " ^ e); []
           | Ok(Pack r) ->
-            log (fun () -> "Successfully parsed request: " ^ req.method_);
             let resp, events = dispatch_request req.id r in
             begin match resp with
             | Error {code; message} ->

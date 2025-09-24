@@ -303,7 +303,6 @@ module Request = struct
 
   let t_of_jsonrpc (Jsonrpc.Request.{ method_; params } as req) =
     let open Lsp.Import.Result.O in
-    Printf.eprintf "[DEBUG] Parsing request method: %s\n%!" method_;
     match method_ with
     | "prover/resetRocq" ->
       let+ params = Lsp.Import.Json.message_params params ResetParams.t_of_yojson in
@@ -330,23 +329,18 @@ module Request = struct
       let+ params = Lsp.Import.Json.message_params params DocumentProofsParams.t_of_yojson in
       Pack (DocumentProofs params)
     | "prover/interpretToPoint" ->
-      Printf.eprintf "[DEBUG] Matched prover/interpretToPoint\n%!";
       let+ params = Lsp.Import.Json.message_params params InterpretToPointParams.t_of_yojson in
       Pack (InterpretToPoint params)
     | "prover/interpretToEnd" ->
-      Printf.eprintf "[DEBUG] Matched prover/interpretToEnd\n%!";
       let+ params = Lsp.Import.Json.message_params params InterpretToEndParams.t_of_yojson in
       Pack (InterpretToEnd params)
     | "prover/stepBackward" ->
-      Printf.eprintf "[DEBUG] Matched prover/stepBackward\n%!";
       let+ params = Lsp.Import.Json.message_params params StepBackwardParams.t_of_yojson in
       Pack (StepBackward params)
     | "prover/stepForward" ->
-      Printf.eprintf "[DEBUG] Matched prover/stepForward\n%!";
       let+ params = Lsp.Import.Json.message_params params StepForwardParams.t_of_yojson in
       Pack (StepForward params)
     | _ ->
-      Printf.eprintf "[DEBUG] Request method '%s' not matched, falling back to Std\n%!" method_;
       let+ E req = Lsp.Client_request.of_jsonrpc req in
       Pack (Std req)
 
