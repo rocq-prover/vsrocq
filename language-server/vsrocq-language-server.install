@@ -1,0 +1,146 @@
+lib: [
+  "_build/install/default/lib/vsrocq-language-server/META"
+  "_build/install/default/lib/vsrocq-language-server/dm/completionItems.ml" {"dm/completionItems.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/completionSuggester.ml" {"dm/completionSuggester.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/completionSuggester.mli" {"dm/completionSuggester.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/delegationManager.ml" {"dm/delegationManager.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/delegationManager.mli" {"dm/delegationManager.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm.a" {"dm/dm.a"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm.cma" {"dm/dm.cma"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm.cmi" {"dm/dm.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm.cmt" {"dm/dm.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm.cmx" {"dm/dm.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm.cmxa" {"dm/dm.cmxa"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm.ml" {"dm/dm.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__CompletionItems.cmi" {"dm/dm__CompletionItems.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__CompletionItems.cmt" {"dm/dm__CompletionItems.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__CompletionItems.cmx" {"dm/dm__CompletionItems.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__CompletionSuggester.cmi" {"dm/dm__CompletionSuggester.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__CompletionSuggester.cmt" {"dm/dm__CompletionSuggester.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__CompletionSuggester.cmti" {"dm/dm__CompletionSuggester.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__CompletionSuggester.cmx" {"dm/dm__CompletionSuggester.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__DelegationManager.cmi" {"dm/dm__DelegationManager.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__DelegationManager.cmt" {"dm/dm__DelegationManager.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__DelegationManager.cmti" {"dm/dm__DelegationManager.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__DelegationManager.cmx" {"dm/dm__DelegationManager.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Document.cmi" {"dm/dm__Document.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Document.cmt" {"dm/dm__Document.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Document.cmti" {"dm/dm__Document.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Document.cmx" {"dm/dm__Document.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__DocumentManager.cmi" {"dm/dm__DocumentManager.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__DocumentManager.cmt" {"dm/dm__DocumentManager.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__DocumentManager.cmti" {"dm/dm__DocumentManager.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__DocumentManager.cmx" {"dm/dm__DocumentManager.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__ExecutionManager.cmi" {"dm/dm__ExecutionManager.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__ExecutionManager.cmt" {"dm/dm__ExecutionManager.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__ExecutionManager.cmti" {"dm/dm__ExecutionManager.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__ExecutionManager.cmx" {"dm/dm__ExecutionManager.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Log.cmi" {"dm/dm__Log.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Log.cmt" {"dm/dm__Log.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Log.cmti" {"dm/dm__Log.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Log.cmx" {"dm/dm__Log.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__ParTactic.cmi" {"dm/dm__ParTactic.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__ParTactic.cmt" {"dm/dm__ParTactic.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__ParTactic.cmti" {"dm/dm__ParTactic.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__ParTactic.cmx" {"dm/dm__ParTactic.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__PriorityManager.cmi" {"dm/dm__PriorityManager.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__PriorityManager.cmt" {"dm/dm__PriorityManager.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__PriorityManager.cmx" {"dm/dm__PriorityManager.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__RawDocument.cmi" {"dm/dm__RawDocument.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__RawDocument.cmt" {"dm/dm__RawDocument.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__RawDocument.cmti" {"dm/dm__RawDocument.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__RawDocument.cmx" {"dm/dm__RawDocument.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Scheduler.cmi" {"dm/dm__Scheduler.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Scheduler.cmt" {"dm/dm__Scheduler.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Scheduler.cmti" {"dm/dm__Scheduler.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Scheduler.cmx" {"dm/dm__Scheduler.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__SearchQuery.cmi" {"dm/dm__SearchQuery.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__SearchQuery.cmt" {"dm/dm__SearchQuery.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__SearchQuery.cmti" {"dm/dm__SearchQuery.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__SearchQuery.cmx" {"dm/dm__SearchQuery.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Types.cmi" {"dm/dm__Types.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Types.cmt" {"dm/dm__Types.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/dm/dm__Types.cmx" {"dm/dm__Types.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/dm/document.ml" {"dm/document.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/document.mli" {"dm/document.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/documentManager.ml" {"dm/documentManager.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/documentManager.mli" {"dm/documentManager.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/executionManager.ml" {"dm/executionManager.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/executionManager.mli" {"dm/executionManager.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/log.ml" {"dm/log.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/log.mli" {"dm/log.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/parTactic.ml" {"dm/parTactic.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/parTactic.mli" {"dm/parTactic.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/priorityManager.ml" {"dm/priorityManager.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/rawDocument.ml" {"dm/rawDocument.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/rawDocument.mli" {"dm/rawDocument.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/scheduler.ml" {"dm/scheduler.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/scheduler.mli" {"dm/scheduler.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/searchQuery.ml" {"dm/searchQuery.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dm/searchQuery.mli" {"dm/searchQuery.mli"}
+  "_build/install/default/lib/vsrocq-language-server/dm/types.ml" {"dm/types.ml"}
+  "_build/install/default/lib/vsrocq-language-server/dune-package"
+  "_build/install/default/lib/vsrocq-language-server/language/hover.ml" {"language/hover.ml"}
+  "_build/install/default/lib/vsrocq-language-server/language/hover.mli" {"language/hover.mli"}
+  "_build/install/default/lib/vsrocq-language-server/language/language.a" {"language/language.a"}
+  "_build/install/default/lib/vsrocq-language-server/language/language.cma" {"language/language.cma"}
+  "_build/install/default/lib/vsrocq-language-server/language/language.cmi" {"language/language.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/language/language.cmt" {"language/language.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/language/language.cmx" {"language/language.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/language/language.cmxa" {"language/language.cmxa"}
+  "_build/install/default/lib/vsrocq-language-server/language/language.ml" {"language/language.ml"}
+  "_build/install/default/lib/vsrocq-language-server/language/language__Hover.cmi" {"language/language__Hover.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/language/language__Hover.cmt" {"language/language__Hover.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/language/language__Hover.cmti" {"language/language__Hover.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/language/language__Hover.cmx" {"language/language__Hover.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/extProtocol.ml" {"lsp/extProtocol.ml"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/lspWrapper.ml" {"lsp/lspWrapper.ml"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/ppProofState.ml" {"lsp/ppProofState.ml"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/printing.ml" {"lsp/printing.ml"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/printing.mli" {"lsp/printing.mli"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/proofState.ml" {"lsp/proofState.ml"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/proofState.mli" {"lsp/proofState.mli"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol.a" {"lsp/protocol.a"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol.cma" {"lsp/protocol.cma"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol.cmi" {"lsp/protocol.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol.cmt" {"lsp/protocol.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol.cmx" {"lsp/protocol.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol.cmxa" {"lsp/protocol.cmxa"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol.ml" {"lsp/protocol.ml"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__ExtProtocol.cmi" {"lsp/protocol__ExtProtocol.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__ExtProtocol.cmt" {"lsp/protocol__ExtProtocol.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__ExtProtocol.cmx" {"lsp/protocol__ExtProtocol.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__LspWrapper.cmi" {"lsp/protocol__LspWrapper.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__LspWrapper.cmt" {"lsp/protocol__LspWrapper.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__LspWrapper.cmx" {"lsp/protocol__LspWrapper.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__PpProofState.cmi" {"lsp/protocol__PpProofState.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__PpProofState.cmt" {"lsp/protocol__PpProofState.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__PpProofState.cmx" {"lsp/protocol__PpProofState.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__Printing.cmi" {"lsp/protocol__Printing.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__Printing.cmt" {"lsp/protocol__Printing.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__Printing.cmti" {"lsp/protocol__Printing.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__Printing.cmx" {"lsp/protocol__Printing.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__ProofState.cmi" {"lsp/protocol__ProofState.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__ProofState.cmt" {"lsp/protocol__ProofState.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__ProofState.cmti" {"lsp/protocol__ProofState.cmti"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__ProofState.cmx" {"lsp/protocol__ProofState.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__Settings.cmi" {"lsp/protocol__Settings.cmi"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__Settings.cmt" {"lsp/protocol__Settings.cmt"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol__Settings.cmx" {"lsp/protocol__Settings.cmx"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/settings.ml" {"lsp/settings.ml"}
+  "_build/install/default/lib/vsrocq-language-server/opam"
+]
+libexec: [
+  "_build/install/default/lib/vsrocq-language-server/dm/dm.cmxs" {"dm/dm.cmxs"}
+  "_build/install/default/lib/vsrocq-language-server/language/language.cmxs" {"language/language.cmxs"}
+  "_build/install/default/lib/vsrocq-language-server/lsp/protocol.cmxs" {"lsp/protocol.cmxs"}
+]
+bin: [
+  "_build/install/default/bin/vsrocq_version_parser"
+  "_build/install/default/bin/vsrocqtop"
+  "_build/install/default/bin/vsrocqtop_proof_worker.opt"
+  "_build/install/default/bin/vsrocqtop_tactic_worker.opt"
+]
+doc: [
+  "_build/install/default/doc/vsrocq-language-server/README.md"
+]

@@ -46,7 +46,9 @@ import {
 import { DocumentStateViewProvider } from './panels/DocumentStateViewProvider';
 import VsRocqToolchainManager, {ToolchainError, ToolChainErrorCode} from './utilities/toolchain';
 import { QUICKFIX_COMMAND, RocqWarningQuickFix } from './QuickFixProvider';
-import { getPrettifiedProofView, mcpPromiseBox, proofState, startMCPServer } from './mcpServer';
+import { startMCPServer } from './mcp/MCPHttpServer';
+import { mcpPromiseBox, proofState } from './mcp/MCPState';
+import { getPrettifiedProofView } from './mcp/MCPServer';
 
 let client: Client;
 
