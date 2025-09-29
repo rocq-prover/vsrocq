@@ -904,6 +904,70 @@
           "light": "#ffa500",
           "highContrast": "#ffa500"
         }
+      },
+      { 
+        "id": "rocq.prepared.ruler",
+        "description": "Ruler color of prepared region.",
+        "defaults": {
+          "dark": "#00ffff",
+          "light": "#00bcd4",
+          "highContrast": "#00ffff"
+        }
+      },
+      { 
+        "id": "rocq.prepared.outline",
+        "description": "Outline color of prepared region.",
+        "defaults": {
+          "dark": "#20a5dab3",
+          "light": "#20a5dab3",
+          "highContrast":  "#20a5dab3"
+        }
+      },
+      {
+        "id": "rocq.prepared.background",
+        "description": "Outline color of prepared region.",
+        "defaults": {
+          "dark": "#00ffff33",
+          "light": "#00ffff33",
+          "highContrast":  "#00ffff33"
+        }
+      },
+      { 
+        "id": "rocq.processing.ruler",
+        "description": "Ruler color of processing region.",
+        "defaults": {
+          "dark": "#0000ff",
+          "light": "#0000cc",
+          "highContrast": "#0066ff"
+        }
+      },
+      {
+        "id": "rocq.processing.background",
+        "description": "Bazckground color of processing region.",
+        "defaults": {
+          "dark": "#0000ff4d",
+          "light": "#0000ff4d",
+          "highContrast": "#0000ff4d"
+        }
+      },
+
+      { 
+        "id": "rocq.processed.ruler",
+        "description": "Ruler color of processed region.",
+        "defaults": {
+          "dark": "#20b2aa", 
+          "light": "#20b2aa",
+          "highContrast":"#20b2aa"
+        }
+      },
+      {
+        "id": "rocq.processed.background",
+        "description": "Bazckground color of processed region.",
+        "defaults": {
+          "dark": "#01100133",
+          "light": "#00960033",
+          "highContrast": "#01100133"
+        }
       }
     ],
     "walkthroughs": [
