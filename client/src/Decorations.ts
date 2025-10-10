@@ -22,11 +22,11 @@ export function initializeDecorations(context: vscode.ExtensionContext) {
 
     decorationsContinuous = {
         prepared: create({
-            overviewRulerColor: new vscode.ThemeColor('rocq.processing.ruler'),
+            overviewRulerColor: new vscode.ThemeColor('rocq.prepared.ruler'),
             overviewRulerLane: vscode.OverviewRulerLane.Right,
         }),
         processing: create({
-            overviewRulerColor: new vscode.ThemeColor('rocq.prepared.ruler'),
+            overviewRulerColor: new vscode.ThemeColor('rocq.processing.ruler'),
             overviewRulerLane: vscode.OverviewRulerLane.Center,
         }),
         processed: create({
