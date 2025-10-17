@@ -419,6 +419,22 @@
             '';
           };
 
+        vsrocq-9-1 = with import nixpkgs {inherit system;}; let
+          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+        in
+          mkShell {
+            buildInputs =
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-rocq-9-1.buildInputs
+              ++ (with ocamlPackages; [
+                ocaml-lsp
+              ])
+              ++ ([git]);
+            shellHook = ''
+              export PATH="$PWD/language-server/.wrappers:$PATH"
+            '';
+          };
+
         vsrocq-master = with import nixpkgs {inherit system;}; let
           ocamlPackages = ocaml-ng.ocamlPackages_4_14;
         in
