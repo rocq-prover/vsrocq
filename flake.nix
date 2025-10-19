@@ -70,6 +70,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-coq-8-19 =
@@ -113,6 +116,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-coq-8-20 =
@@ -156,6 +162,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-rocq-9 =
@@ -199,6 +208,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-rocq-9-1 =
@@ -242,6 +254,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-coq-master =
@@ -285,6 +300,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-client = with import nixpkgs {inherit system;}; let
