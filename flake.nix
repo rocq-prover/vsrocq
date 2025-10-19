@@ -50,10 +50,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   findlib
                   yojson
@@ -96,10 +92,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
@@ -142,10 +134,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
@@ -188,10 +176,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
@@ -234,10 +218,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
@@ -280,10 +260,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
