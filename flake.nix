@@ -4,6 +4,7 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     rocq-master = { url = "github:rocq-prover/rocq/aeabefe987b1a9aa6bfcaa1ed44b4dcb9124c1d6"; }; # Should be kept in sync with PIN_COQ in CI workflow
     rocq-master.inputs.nixpkgs.follows = "nixpkgs";
@@ -13,6 +14,7 @@
   outputs = {
     self,
     nixpkgs,
+    nixpkgs-unstable,
     flake-utils,
     rocq-master,
   }:
@@ -178,11 +180,11 @@
               version = vsrocq_version;
               src = ./language-server;
               nativeBuildInputs = [
-                rocq-core
+                coq_9_0
               ];
               buildInputs =
                 [
-                  rocq-core
+                  coq_9_0
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
@@ -215,7 +217,7 @@
 
         vsrocq-language-server-rocq-9-1 =
           # Notice the reference to nixpkgs here.
-          with import nixpkgs {inherit system;}; let
+          with import nixpkgs-unstable {inherit system;}; let
             ocamlPackages = ocaml-ng.ocamlPackages_4_14;
           in
             ocamlPackages.buildDunePackage {
@@ -224,11 +226,11 @@
               version = vsrocq_version;
               src = ./language-server;
               nativeBuildInputs = [
-                rocq-core
+                coq_9_1
               ];
               buildInputs =
                 [
-                  rocq-core
+                  coq_9_1
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
