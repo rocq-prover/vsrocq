@@ -186,8 +186,15 @@ jobs:
       with:
         node-version: 16
 
+    - run: |
+        eval $(opam env)
+        echo vsrocqlib="$( echo -n "-coqlib "; (rocq -where || coqc -where) 2>/dev/null )" >> $GITHUB_ENV
+
     - run: cd client && yarn run install:all && yarn run build:all && yarn run compile
     - run: cd client && xvfb-run yarn test
+      env:
+        VSROCQARGS: "${{ env.vsrocqlib }}"
+
     - if: ${{ failure() }}
       run: cat /tmp/vsrocq_init_log.*
 
