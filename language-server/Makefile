@@ -46,6 +46,7 @@ build: $(DUNE_IN_FILES)
 .PHONY: build
 
 test: $(DUNE_IN_FILES)
+	ROCQLIB=`rocq -where 2>/dev/null` COQLIB=`coqc -where 2>/dev/null` \
 	$(call dune_no_stop,runtest)
 .PHONY: test
 

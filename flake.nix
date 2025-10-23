@@ -4,6 +4,7 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     rocq-master = { url = "github:rocq-prover/rocq/aeabefe987b1a9aa6bfcaa1ed44b4dcb9124c1d6"; }; # Should be kept in sync with PIN_COQ in CI workflow
     rocq-master.inputs.nixpkgs.follows = "nixpkgs";
@@ -13,6 +14,7 @@
   outputs = {
     self,
     nixpkgs,
+    nixpkgs-unstable,
     flake-utils,
     rocq-master,
   }:
@@ -48,10 +50,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   findlib
                   yojson
@@ -70,6 +68,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-coq-8-19 =
@@ -91,10 +92,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
@@ -113,6 +110,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-coq-8-20 =
@@ -134,10 +134,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
@@ -156,6 +152,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-rocq-9 =
@@ -169,18 +168,14 @@
               version = vsrocq_version;
               src = ./language-server;
               nativeBuildInputs = [
-                rocq-core
+                coq_9_0
               ];
               buildInputs =
                 [
-                  rocq-core
+                  coq_9_0
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
@@ -199,6 +194,51 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
+            };
+
+        vsrocq-language-server-rocq-9-1 =
+          # Notice the reference to nixpkgs here.
+          with import nixpkgs-unstable {inherit system;}; let
+            ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+          in
+            ocamlPackages.buildDunePackage {
+              duneVersion = "3";
+              pname = "vsrocq-language-server";
+              version = vsrocq_version;
+              src = ./language-server;
+              nativeBuildInputs = [
+                coq_9_1
+              ];
+              buildInputs =
+                [
+                  coq_9_1
+                  dune_3
+                ]
+                ++ (with coq.ocamlPackages; [
+                  ocaml
+                  yojson
+                  findlib
+                  ppx_inline_test
+                  ppx_assert
+                  ppx_sexp_conv
+                  ppx_deriving
+                  ppx_optcomp
+                  ppx_import
+                  sexplib
+                  ppx_yojson_conv
+                  lsp
+                  sel
+                ]);
+              propagatedBuildInputs= (with coq.ocamlPackages;
+                [
+                  zarith
+                ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-language-server-coq-master =
@@ -220,10 +260,6 @@
                   dune_3
                 ]
                 ++ (with coq.ocamlPackages; [
-                  lablgtk3-sourceview3
-                  glib
-                  pkgs.adwaita-icon-theme
-                  wrapGAppsHook
                   ocaml
                   yojson
                   findlib
@@ -242,6 +278,9 @@
                 [
                   zarith
                 ]);
+              preBuild = ''
+                make dune-files
+              '';
             };
 
         vsrocq-client = with import nixpkgs {inherit system;}; let
@@ -367,6 +406,22 @@
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-rocq-9.buildInputs
+              ++ (with ocamlPackages; [
+                ocaml-lsp
+              ])
+              ++ ([git]);
+            shellHook = ''
+              export PATH="$PWD/language-server/.wrappers:$PATH"
+            '';
+          };
+
+        vsrocq-9-1 = with import nixpkgs {inherit system;}; let
+          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+        in
+          mkShell {
+            buildInputs =
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-rocq-9-1.buildInputs
               ++ (with ocamlPackages; [
                 ocaml-lsp
               ])

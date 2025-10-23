@@ -197,7 +197,7 @@ let ref_of_const = function
 | _ -> None
 [%%endif]
 
-[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0"]
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
 let arguments_names env x =
   Arguments_renaming.arguments_names x
 let rename_type env x =
