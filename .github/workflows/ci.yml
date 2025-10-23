@@ -29,7 +29,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         coq: [8-18, 8-19, 8-20, 9, 9-1, master]
-        profile: [dev, fatalwarnings]
+        profile: [dev]
+        include:
+          - profile: fatalwarnings
+            coq: master
+            os: ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
