@@ -9,7 +9,7 @@ assignees: ""
 **IMPORTANT: Before You Submit This Issue**
 
 - [ ] I have searched the [existing VsRocq issues](https://github.com/rocq-prover/vsrocq/issues)
-- [ ] I have reviewed the [VsRocq FAQ.md](https://github.com/rocq-prover/vsrocq/blob/main/FAQ.md) and my issue is not addressed there.
+- [ ] I have reviewed the [VsRocq FAQ.md](https://github.com/rocq-prover/vsrocq/blob/main/docs/FAQ.md) and my issue is not addressed there.
 
 **Describe the Bug**
 
