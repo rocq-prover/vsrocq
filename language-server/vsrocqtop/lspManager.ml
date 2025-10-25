@@ -382,35 +382,35 @@ let progress_hook uri () =
   | None -> log (fun () -> "ignoring non existent document")
   | Some { st } -> update_view uri st
 
-let rocqtopInterpretToPoint params =
-  let Notification.Client.InterpretToPointParams.{ textDocument; position } = params in
+let rocqtopInterpretToPoint req_id params =
+  let Request.Client.InterpretToPointParams.{ textDocument; position } = params in
   let uri = textDocument.uri in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let (st, events) = Dm.DocumentManager.interpret_to_position st position !check_mode ~point_interp_mode:!point_interp_mode
+    let (st, events) = Dm.DocumentManager.interpret_to_position req_id st position !check_mode ~point_interp_mode:!point_interp_mode
     in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
     let sel_events = inject_dm_events (uri, events) in
     sel_events
  
-let rocqtopStepBackward params =
-  let Notification.Client.StepBackwardParams.{ textDocument = { uri } } = params in
+let rocqtopStepBackward req_id params =
+  let Request.Client.StepBackwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let (st, events) = Dm.DocumentManager.interpret_to_previous st !check_mode in
+      let (st, events) = Dm.DocumentManager.interpret_to_previous req_id st !check_mode in
       replace_state (DocumentUri.to_path uri) st visible;
       update_view uri st;
       inject_dm_events (uri,events)
 
-let rocqtopStepForward params =
-  let Notification.Client.StepForwardParams.{ textDocument = { uri } } = params in
+let rocqtopStepForward req_id params =
+  let Request.Client.StepForwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let (st, events) = Dm.DocumentManager.interpret_to_next st !check_mode in
+      let (st, events) = Dm.DocumentManager.interpret_to_next req_id st !check_mode in
       replace_state (DocumentUri.to_path uri) st visible;
       update_view uri st;
       inject_dm_events (uri,events) 
@@ -464,12 +464,12 @@ let rocqtopResetRocq id params =
     update_view uri st;
     Ok(()), (uri,events) |> inject_dm_events
 
-let rocqtopInterpretToEnd params =
-  let Notification.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
+let rocqtopInterpretToEnd req_id params =
+  let Request.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let (st, events) = Dm.DocumentManager.interpret_to_end st !check_mode in
+    let (st, events) = Dm.DocumentManager.interpret_to_end req_id st !check_mode in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
     inject_dm_events (uri,events)
@@ -569,6 +569,22 @@ let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) r
   | Search params -> rocqtopSearch id params
   | DocumentState params -> sendDocumentState id params
   | DocumentProofs params -> sendDocumentProofs id params
+  | InterpretToPoint params -> 
+    let events = rocqtopInterpretToPoint id params in
+    let result = Request.Client.InterpretToPointResult.{ request_id = id } in
+    (Ok result, events)
+  | InterpretToEnd params -> 
+    let events = rocqtopInterpretToEnd id params in
+    let result = Request.Client.InterpretToEndResult.{ request_id = id } in
+    (Ok result, events)
+  | StepBackward params -> 
+    let events = rocqtopStepBackward id params in
+    let result = Request.Client.StepBackwardResult.{ request_id = id } in
+    (Ok result, events)
+  | StepForward params -> 
+    let events = rocqtopStepForward id params in
+    let result = Request.Client.StepForwardResult.{ request_id = id } in
+    (Ok result, events)
 
 let dispatch_std_notification = 
   let open Lsp.Client_notification in function
@@ -591,10 +607,6 @@ let dispatch_std_notification =
 
 let dispatch_notification =
   let open Notification.Client in function
-  | InterpretToPoint params -> log (fun () -> "Received notification: prover/interpretToPoint"); rocqtopInterpretToPoint params
-  | InterpretToEnd params -> log (fun () -> "Received notification: prover/interpretToEnd"); rocqtopInterpretToEnd params
-  | StepBackward params -> log (fun () -> "Received notification: prover/stepBackward"); rocqtopStepBackward params
-  | StepForward params -> log (fun () -> "Received notification: prover/stepForward"); rocqtopStepForward params
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function

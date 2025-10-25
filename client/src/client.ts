@@ -66,6 +66,10 @@ export default class Client extends LanguageClient {
         }
     }
 
+    public getHighlights(uri: String) {
+        return this._decorationsProcessed.get(uri);
+    }
+
     public createErrorAnimation(uri: String, ranges: vscode.Range[]) {
         const timing = 50;
         const editors = this.getDocumentEditors(uri);
