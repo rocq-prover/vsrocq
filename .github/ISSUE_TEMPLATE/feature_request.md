@@ -9,7 +9,7 @@ assignees: ""
 **IMPORTANT: Before You Submit This Feature Request**
 
 - [ ] I have searched the [existing VsRocq issues](https://github.com/rocq-prover/vsrocq/issues) to ensure this feature has not already been requested.
-- [ ] I have reviewed the [VsRocq FAQ.md](https://github.com/rocq-prover/vsrocq/blob/main/FAQ.md) to see if this relates to existing or planned functionality.
+- [ ] I have reviewed the [VsRocq FAQ.md](https://github.com/rocq-prover/vsrocq/blob/main/docs/FAQ.md) to see if this relates to existing or planned functionality.
 - [ ] I have checked the [VsRocq Roadmap](https://github.com/rocq-prover/vsrocq/wiki/The-VsCoq-VsRocq-roadmap-2024-2025) to see if this feature is already planned.
 
 **Is your feature request related to a problem? Please describe.**
