@@ -44,3 +44,4 @@ available: arch != "arm32" & arch != "x86_32"
 description: """
 LSP based language server for Rocq and its VSRocq user interface
 """
+x-maintenance-intent: ["(latest)"]
