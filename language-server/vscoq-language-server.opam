@@ -11,3 +11,4 @@ depends: [
 ]
 synopsis: "Compatibility meta package for the VsRocq language server after the Rocq renaming"
 available: arch != "arm32" & arch != "x86_32"
+x-maintenance-intent: ["(latest)"]
