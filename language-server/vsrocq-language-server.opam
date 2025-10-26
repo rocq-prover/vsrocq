@@ -37,7 +37,7 @@ depends: [
   "sel" {>= "0.6.0"}
 ]
 conflicts: [
-    "vscoq-language-server" {< "2.7~"}
+    "vscoq-language-server" {< "2.2.7~"}
 ]
 synopsis: "VSRocq language server"
 available: arch != "arm32" & arch != "x86_32"
