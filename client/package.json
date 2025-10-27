@@ -158,16 +158,6 @@
             "default": "List",
             "description": "Determines whether multiple goals should be displayed in different tabs or as a list of collapsible items."
           },
-          "vsrocq.goals.diff.mode": {
-            "type": "string",
-            "enum": [
-              "off",
-              "on",
-              "removed"
-            ],
-            "default": "off",
-            "markdownDescription": "Controls vsrocq's diff mode. If `on`, only added characters are displayed. If `removed` is selected, both added and removed characters are shown."
-          },
           "vsrocq.goals.ppmode": {
             "type": "string",
             "enum": ["Pp"],
