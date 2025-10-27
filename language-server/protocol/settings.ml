@@ -139,7 +139,7 @@ module Goals = struct
   end
 
   type t = {
-    diff: Diff.t;
+    diff: Diff.t [@default { mode = Diff.Mode.Off }];
     messages: Messages.t;
     ppmode: PrettyPrint.t option;
   } [@@deriving yojson] [@@yojson.allow_extra_fields]

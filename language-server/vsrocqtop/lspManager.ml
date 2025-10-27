@@ -128,7 +128,8 @@ let do_configuration settings =
     enableDiagnostics = settings.diagnostics.enable;
   };
   check_mode := settings.proof.mode;
-  diff_mode := settings.goals.diff.mode;
+  (* Diff mode is broken, cfr #1163 #1164 *)
+  (* diff_mode := settings.goals.diff.mode; *)
   full_diagnostics := settings.diagnostics.full;
   full_messages := settings.goals.messages.full;
   max_memory_usage := settings.memory.limit * 1000000000;
