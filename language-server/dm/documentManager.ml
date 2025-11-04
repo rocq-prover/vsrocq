@@ -716,7 +716,7 @@ let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.Pret
       else
         {state=(Some st); events=[]; update_view; notification=None}
     end
-  | SendProofView (Some id) ->
+  | SendProofView (Some id) when Document.has_sentence st.document id ->
     let proof, pp_proof = match pp_mode with
     | Pp -> get_proof st diff_mode (Some id), None 
     | String -> None, get_string_proof st (Some id)
@@ -730,7 +730,7 @@ let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.Pret
     let notification = Some (Notification.Server.ProofView params) in
     let update_view = true in
     {state=(Some st); events=[]; update_view; notification}
-  | SendProofView None ->
+  | SendProofView _ ->
     let params = Notification.Server.ProofViewParams.{ proof=None; pp_proof=None; messages=[]; pp_messages=[]; range=Range.top() } in
     let notification = Some (Notification.Server.ProofView params) in
     let update_view = true in

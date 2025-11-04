@@ -162,6 +162,9 @@ let string_of_id document id =
   | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
   | Some sentence -> string_of_sentence document.raw_doc sentence
 
+let has_sentence document id =
+  None <> SM.find_opt id document.sentences_by_id
+
 let range_of_id document id =
   match SM.find_opt id document.sentences_by_id with
   | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)

@@ -164,6 +164,9 @@ val get_last_sentence : document  -> sentence option
 
 val schedule : document -> Scheduler.schedule
 
+val has_sentence : document -> Stateid.t -> bool
+(** [has_sentence doc id] tells if id is in the document *)
+
 val range_of_id : document -> Stateid.t -> Range.t
 (** [range_of_id doc id] returns a Range object coressponding to the sentence id given in argument *)
 
