@@ -65,7 +65,12 @@ let parse_extra _ x =
 [%%endif]
 
 let get_local_args dir =
-  match CoqProject_file.find_project_file ~from:dir ~projfile_name:"_CoqProject" with
+  let find_project_file = CoqProject_file.find_project_file ~from:dir in
+  let project_file = match find_project_file ~projfile_name:"_RocqProject" with
+  | Some f as x -> x
+  | None -> find_project_file ~projfile_name:"_CoqProject"
+  in
+  match project_file with
   | None ->
     log (fun () -> Printf.sprintf "No project file found for %s" dir);
     parse_args_default ()
