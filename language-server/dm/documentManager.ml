@@ -938,6 +938,16 @@ let print_located_qualid _ qid = Prettyp.print_located_qualid qid
 let print_located_qualid = Prettyp.print_located_qualid
 [%%endif]
 
+[%%if rocq ="8.18" || rocq ="8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
+let pr_glob_without_symbols env sigma c =
+  Constrextern.without_symbols (Printer.pr_glob_constr_env env sigma) c
+[%%else]
+let pr_glob_without_symbols env sigma c =
+  let flags = PrintingFlags.Extern.current() in
+  let flags = { flags with notations = false } in
+  Printer.pr_glob_constr_env ~flags env sigma c
+[%%endif]
+
 let locate st pos ~pattern = 
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
   match get_context st pos with
@@ -947,7 +957,7 @@ let locate st pos ~pattern =
     | { v = AN qid } -> Ok (pp_of_rocqpp @@ print_located_qualid env qid)
     | { v = ByNotation (ntn, sc)} ->
       Ok( pp_of_rocqpp @@ Notation.locate_notation
-        (Constrextern.without_symbols (Printer.pr_glob_constr_env env sigma)) ntn sc)
+        (pr_glob_without_symbols env sigma) ntn sc)
 
 [%%if rocq ="8.18" || rocq ="8.19"]
   let print_name = Prettyp.print_name
