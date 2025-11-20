@@ -50,6 +50,12 @@ type state = {
   cancel_handle : Sel.Event.cancellation_handle option;
   document_state: document_state;
 }
+type interp_target = Next | Previous | Point of Position.t * Settings.PointInterpretationMode.t | End
+let show_interp_target = function
+  | End -> "End"
+  | Next -> "Next"
+  | Previous -> "Previous"
+  | Point(p,_) -> Position.to_string p
 
 type event =
   | Execute of { (* we split the computation to help interruptibility *)
@@ -67,6 +73,7 @@ type event =
   | DocumentEvent of Document.event
   | SendBlockOnError of Types.sentence_id
   | SendMoveCursor of Range.t
+  | InterpretTo of Settings.Mode.t * interp_target
 
 type handled_event = {
     state : state option;
@@ -74,6 +81,8 @@ type handled_event = {
     update_view: bool;
     notification: Notification.Server.t option;
 }
+let make_handled_event ?state ?(events=[]) ?(update_view=false) ?notification () =
+  { state ; events; update_view; notification; }
 
 let pp_event fmt = function
   | Execute { id; started; _ } ->
@@ -91,6 +100,8 @@ let pp_event fmt = function
     Stdlib.Format.fprintf fmt "SendBlockOnError %d" @@ (Stateid.to_int id)
   | SendMoveCursor range ->
     Stdlib.Format.fprintf fmt "SendBlockOnError %s" @@ (Range.to_string range)
+  | InterpretTo(_mode,tgt) ->
+    Stdlib.Format.fprintf fmt "InterpretTo %s" (show_interp_target tgt)
 
 let inject_em_event x = Sel.Event.map (fun e -> ExecutionManagerEvent e) x
 let inject_em_events events = List.map inject_em_event events
@@ -100,6 +111,10 @@ let mk_proof_view_event id =
   Sel.now ~priority:PriorityManager.proof_view (SendProofView (Some id))
 let mk_proof_view_event_empty =
   Sel.now ~priority:PriorityManager.proof_view (SendProofView None)
+
+let mk_interp_to_event mode tgt =
+  [Sel.now ~priority:PriorityManager.interp_to (InterpretTo(mode,tgt))]
+
 let mk_observe_event id =
   Sel.now ~priority:PriorityManager.execution (Observe id)
 let mk_move_cursor_event id = 
@@ -440,7 +455,7 @@ let interpret_to_next_position st pos check_mode =
     let st, events = interpret_to st id check_mode in
     (st, events)
 
-let interpret_to_position st pos check_mode ~point_interp_mode =
+let real_interpret_to_position st pos check_mode ~point_interp_mode =
   match point_interp_mode with
   | Settings.PointInterpretationMode.Cursor ->
     begin match id_of_pos st pos with
@@ -472,7 +487,7 @@ let get_previous_range st pos =
       | None -> Some (Document.range_of_id st.document id)
       | Some { id } -> Some (Document.range_of_id st.document id)
 
-let interpret_to_previous st check_mode =
+let real_interpret_to_previous st check_mode =
   match st.observe_id with
   | Top -> (st, [])
   | (Id id) ->
@@ -490,7 +505,7 @@ let interpret_to_previous st check_mode =
         let mv_cursor = mk_move_cursor_event range in
         st, [mv_cursor] @ events
 
-let interpret_to_next st check_mode =
+let real_interpret_to_next st check_mode =
   match st.observe_id with
   | Top ->
     begin match Document.get_first_sentence st.document with
@@ -513,12 +528,18 @@ let interpret_to_next st check_mode =
         let mv_cursor = mk_move_cursor_event range in
         st, [mv_cursor] @ events
 
-let interpret_to_end st check_mode =
+let real_interpret_to_end st check_mode =
   match Document.get_last_sentence st.document with
   | None -> (st, [])
   | Some {id} -> 
     log (fun () -> "interpret_to_end id = " ^ Stateid.to_string id);
     interpret_to st id check_mode
+
+let interpret_to_end check_mode = mk_interp_to_event check_mode End
+let interpret_to_next check_mode = mk_interp_to_event check_mode Next
+let interpret_to_previous check_mode = mk_interp_to_event check_mode Previous
+let interpret_to_position p check_mode ~point_interp_mode = mk_interp_to_event check_mode (Point(p,point_interp_mode))
+
 
 let interpret_in_background st ~should_block_on_error =
   match Document.get_last_sentence st.document with
@@ -690,31 +711,27 @@ let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.Pret
   | ExecutionManagerEvent ev ->
     handle_execution_manager_event st ev
   | Observe id ->
-    let update_view = true in
-    let st, events = observe st id ~should_block_on_error:block ~background in
-    {state=Some st; events; update_view; notification=None}
+    let state, events = observe st id ~should_block_on_error:block ~background in
+    make_handled_event ~state ~update_view:true ~events ()
   | ParseBegin ->
     let document, events = Document.validate_document st.document in
-    let update_view = true in
-    let state = Some {st with document} in
+    let state = {st with document} in
     let events = inject_doc_events events in
-    {state; events; update_view; notification=None}
+    make_handled_event ~state ~update_view:true ~events ()
   | DocumentEvent ev ->
     let document, events, parsing_end_info = Document.handle_event st.document ev in
     begin match parsing_end_info with
     | None ->
-      let update_view = false in
-      let state = Some {st with document} in
+      let state = {st with document} in
       let events = inject_doc_events events in
-      {state; events; update_view; notification=None}
+      make_handled_event ~state ~update_view:false ~events ()
     | Some parsing_end_info ->
       let st = validate_document st parsing_end_info in
-      let update_view = true in
       if background then
         let (st, events) = interpret_in_background st ~should_block_on_error:block in
-        {state=(Some st); events; update_view; notification=None}
+        make_handled_event ~state:st ~events ~update_view:true ()
       else
-        {state=(Some st); events=[]; update_view; notification=None}
+        make_handled_event ~state:st ~update_view:true ()
     end
   | SendProofView (Some id) when Document.has_sentence st.document id ->
     let proof, pp_proof = match pp_mode with
@@ -727,23 +744,33 @@ let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.Pret
     in
     let range = Document.range_of_id st.document id in
     let params = Notification.Server.ProofViewParams.{ proof; messages; pp_proof; pp_messages; range} in
-    let notification = Some (Notification.Server.ProofView params) in
-    let update_view = true in
-    {state=(Some st); events=[]; update_view; notification}
+    let notification = Notification.Server.ProofView params in
+    make_handled_event ~state:st ~notification ~update_view:true ()
   | SendProofView _ ->
     let params = Notification.Server.ProofViewParams.{ proof=None; pp_proof=None; messages=[]; pp_messages=[]; range=Range.top() } in
-    let notification = Some (Notification.Server.ProofView params) in
-    let update_view = true in
-    {state=(Some st); events=[]; update_view; notification}
+    let notification = Notification.Server.ProofView params in
+    make_handled_event ~state:st ~notification ~update_view:true ()
   | SendBlockOnError id ->
     let {uri} = st in
     let range = Document.range_of_id st.document id in
-    let notification = Some (Notification.Server.BlockOnError {uri; range}) in
-    {state=(Some st); events=[]; update_view=false; notification}
+    let notification = Notification.Server.BlockOnError {uri; range} in
+    make_handled_event ~state:st ~notification ()
   | SendMoveCursor range ->
     let {uri} = st in
-    let notification = Some (Notification.Server.MoveCursor {uri; range}) in
-    {state=(Some st); events=[]; update_view=false; notification}
+    let notification = Notification.Server.MoveCursor {uri; range} in
+    make_handled_event ~state:st ~notification ()
+  | InterpretTo (mode,End) ->
+    let state, events = real_interpret_to_end st mode in
+    make_handled_event ~state ~events ()
+  | InterpretTo (mode,Next) ->
+    let state, events = real_interpret_to_next st mode in
+    make_handled_event ~state ~events ()
+  | InterpretTo (mode,Point(p,point_interp_mode)) ->
+    let state, events = real_interpret_to_position st p mode ~point_interp_mode in
+    make_handled_event ~state ~events ()
+  | InterpretTo (mode,Previous) ->
+    let state, events = real_interpret_to_previous st mode in
+    make_handled_event ~state ~events ()
 
 let context_of_id st = function
   | None -> Some (ExecutionManager.get_initial_context st.execution_state)

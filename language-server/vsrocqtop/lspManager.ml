@@ -389,10 +389,7 @@ let rocqtopInterpretToPoint params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let (st, events) = Dm.DocumentManager.interpret_to_position st position !check_mode ~point_interp_mode:!point_interp_mode
-    in
-    replace_state (DocumentUri.to_path uri) st visible;
-    update_view uri st;
+    let events = Dm.DocumentManager.interpret_to_position position !check_mode ~point_interp_mode:!point_interp_mode in
     let sel_events = inject_dm_events (uri, events) in
     sel_events
  
@@ -401,9 +398,7 @@ let rocqtopStepBackward params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let (st, events) = Dm.DocumentManager.interpret_to_previous st !check_mode in
-      replace_state (DocumentUri.to_path uri) st visible;
-      update_view uri st;
+      let events = Dm.DocumentManager.interpret_to_previous !check_mode in
       inject_dm_events (uri,events)
 
 let rocqtopStepForward params =
@@ -411,9 +406,7 @@ let rocqtopStepForward params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let (st, events) = Dm.DocumentManager.interpret_to_next st !check_mode in
-      replace_state (DocumentUri.to_path uri) st visible;
-      update_view uri st;
+      let events = Dm.DocumentManager.interpret_to_next !check_mode in
       inject_dm_events (uri,events) 
 
   let make_CompletionItem i item : CompletionItem.t = 
@@ -470,9 +463,7 @@ let rocqtopInterpretToEnd params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let (st, events) = Dm.DocumentManager.interpret_to_end st !check_mode in
-    replace_state (DocumentUri.to_path uri) st visible;
-    update_view uri st;
+    let events = Dm.DocumentManager.interpret_to_end !check_mode in
     inject_dm_events (uri,events)
 
 let rocqtopLocate id params = 
