@@ -21,61 +21,12 @@ module Notification = struct
 
   module Client = struct
 
-    module InterpretToPointParams = struct
-
-      type t = {
-        textDocument : VersionedTextDocumentIdentifier.t;
-        position : Position.t;
-      } [@@deriving yojson]
-
-    end
-
-    module InterpretToEndParams = struct
-
-      type t = {
-        textDocument : VersionedTextDocumentIdentifier.t;
-      } [@@deriving yojson]
-
-    end
-
-    module StepBackwardParams = struct
-
-      type t = {
-        textDocument : VersionedTextDocumentIdentifier.t;
-      } [@@deriving yojson]
-
-    end
-
-    module StepForwardParams = struct
-
-      type t = {
-        textDocument : VersionedTextDocumentIdentifier.t;
-      } [@@deriving yojson]
-
-    end
-
     type t =
     | Std of Lsp.Client_notification.t
-    | InterpretToEnd of InterpretToEndParams.t
-    | InterpretToPoint of InterpretToPointParams.t
-    | StepForward of StepForwardParams.t
-    | StepBackward of StepBackwardParams.t
 
-    let of_jsonrpc (Jsonrpc.Notification.{ method_; params } as notif) =
+    let of_jsonrpc (Jsonrpc.Notification.{ method_; params = _ } as notif) =
       let open Lsp.Import.Result.O in
       match method_ with
-      | "prover/interpretToPoint" ->
-        let+ params = Lsp.Import.Json.message_params params InterpretToPointParams.t_of_yojson in
-        InterpretToPoint params
-      | "prover/stepBackward" ->
-        let+ params = Lsp.Import.Json.message_params params StepBackwardParams.t_of_yojson in
-        StepBackward params
-      | "prover/stepForward" ->
-        let+ params = Lsp.Import.Json.message_params params StepForwardParams.t_of_yojson in
-        StepForward params
-      | "prover/interpretToEnd" ->
-        let+ params = Lsp.Import.Json.message_params params InterpretToEndParams.t_of_yojson in
-        InterpretToEnd params
       | _ ->
         let+ notif = Lsp.Client_notification.of_jsonrpc notif in
         Std notif 
@@ -110,6 +61,7 @@ module Notification = struct
         messages: (DiagnosticSeverity.t * pp) list;
         pp_proof: PpProofState.t option;
         pp_messages: (DiagnosticSeverity.t *string) list;
+        request_id: Jsonrpc.Id.t option;
       } [@@deriving yojson]
 
     end
@@ -267,6 +219,71 @@ module Request = struct
 
   end
 
+  module InterpretToPointParams = struct
+
+    type t = {
+      textDocument : VersionedTextDocumentIdentifier.t;
+      position : Position.t;
+    } [@@deriving yojson]
+
+  end
+
+  module InterpretToEndParams = struct
+
+    type t = {
+      textDocument : VersionedTextDocumentIdentifier.t;
+    } [@@deriving yojson]
+
+  end
+
+  module StepBackwardParams = struct
+
+    type t = {
+      textDocument : VersionedTextDocumentIdentifier.t;
+    } [@@deriving yojson]
+
+  end
+
+  module StepForwardParams = struct
+
+    type t = {
+      textDocument : VersionedTextDocumentIdentifier.t;
+    } [@@deriving yojson]
+
+  end
+
+  module InterpretToPointResult = struct
+
+    type t = {
+      request_id : Jsonrpc.Id.t;
+    } [@@deriving yojson]
+
+  end
+
+  module InterpretToEndResult = struct
+
+    type t = {
+      request_id : Jsonrpc.Id.t;
+    } [@@deriving yojson]
+
+  end
+
+  module StepBackwardResult = struct
+
+    type t = {
+      request_id : Jsonrpc.Id.t;
+    } [@@deriving yojson]
+
+  end
+
+  module StepForwardResult = struct
+
+    type t = {
+      request_id : Jsonrpc.Id.t;
+    } [@@deriving yojson]
+
+  end
+
   type 'a t =
   | Std : 'a Lsp.Client_request.t -> 'a t
   | Reset : ResetParams.t -> unit t
@@ -277,6 +294,10 @@ module Request = struct
   | Search : SearchParams.t -> unit t
   | DocumentState : DocumentStateParams.t -> DocumentStateResult.t t
   | DocumentProofs : DocumentProofsParams.t -> DocumentProofsResult.t t
+  | InterpretToPoint : InterpretToPointParams.t -> InterpretToPointResult.t t
+  | InterpretToEnd : InterpretToEndParams.t -> InterpretToEndResult.t t
+  | StepBackward : StepBackwardParams.t -> StepBackwardResult.t t
+  | StepForward : StepForwardParams.t -> StepForwardResult.t t
 
   type packed = Pack : 'a t -> packed
 
@@ -307,6 +328,18 @@ module Request = struct
     | "prover/documentProofs" ->
       let+ params = Lsp.Import.Json.message_params params DocumentProofsParams.t_of_yojson in
       Pack (DocumentProofs params)
+    | "prover/interpretToPoint" ->
+      let+ params = Lsp.Import.Json.message_params params InterpretToPointParams.t_of_yojson in
+      Pack (InterpretToPoint params)
+    | "prover/interpretToEnd" ->
+      let+ params = Lsp.Import.Json.message_params params InterpretToEndParams.t_of_yojson in
+      Pack (InterpretToEnd params)
+    | "prover/stepBackward" ->
+      let+ params = Lsp.Import.Json.message_params params StepBackwardParams.t_of_yojson in
+      Pack (StepBackward params)
+    | "prover/stepForward" ->
+      let+ params = Lsp.Import.Json.message_params params StepForwardParams.t_of_yojson in
+      Pack (StepForward params)
     | _ ->
       let+ E req = Lsp.Client_request.of_jsonrpc req in
       Pack (Std req)
@@ -322,6 +355,10 @@ module Request = struct
       | Search _ -> yojson_of_unit resp
       | DocumentState _ -> DocumentStateResult.(yojson_of_t resp)
       | DocumentProofs _ -> DocumentProofsResult.(yojson_of_t resp)
+      | InterpretToPoint _ -> InterpretToPointResult.(yojson_of_t resp)
+      | InterpretToEnd _ -> InterpretToEndResult.(yojson_of_t resp)
+      | StepBackward _ -> StepBackwardResult.(yojson_of_t resp)
+      | StepForward _ -> StepForwardResult.(yojson_of_t resp)
       | Std req -> Lsp.Client_request.yojson_of_result req resp
 
   end

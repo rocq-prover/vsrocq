@@ -63,7 +63,7 @@ type event =
   | ExecutionManagerEvent of ExecutionManager.event
   | ParseBegin
   | Observe of Types.sentence_id
-  | SendProofView of (Types.sentence_id option)
+  | SendProofView of (Types.sentence_id option * Jsonrpc.Id.t option)
   | DocumentEvent of Document.event
   | SendBlockOnError of Types.sentence_id
   | SendMoveCursor of Range.t
@@ -84,7 +84,7 @@ let pp_event fmt = function
     Stdlib.Format.fprintf fmt "ParseBegin"
   | Observe id ->
     Stdlib.Format.fprintf fmt "Observe %d" (Stateid.to_int id)
-  | SendProofView id_opt ->
+  | SendProofView (id_opt, _req_id_opt) ->
     Stdlib.Format.fprintf fmt "SendProofView %s" @@ (Option.cata Stateid.to_string "None" id_opt)
   | DocumentEvent event -> Stdlib.Format.fprintf fmt "DocumentEvent event: "; Document.pp_event fmt event
   | SendBlockOnError id ->
@@ -96,10 +96,12 @@ let inject_em_event x = Sel.Event.map (fun e -> ExecutionManagerEvent e) x
 let inject_em_events events = List.map inject_em_event events
 let inject_doc_event x = Sel.Event.map (fun e -> DocumentEvent e) x
 let inject_doc_events events = List.map inject_doc_event events
-let mk_proof_view_event id =
-  Sel.now ~priority:PriorityManager.proof_view (SendProofView (Some id))
-let mk_proof_view_event_empty =
-  Sel.now ~priority:PriorityManager.proof_view (SendProofView None)
+let mk_proof_view_event req_id id =
+  Sel.now ~priority:PriorityManager.proof_view (SendProofView (Some id, Some req_id))
+let mk_proof_view_event_empty req_id =
+  Sel.now ~priority:PriorityManager.proof_view (SendProofView (None, Some req_id))
+let mk_proof_view_event_no_req id =
+  Sel.now ~priority:PriorityManager.proof_view (SendProofView (Some id, None))
 let mk_observe_event id =
   Sel.now ~priority:PriorityManager.execution (Observe id)
 let mk_move_cursor_event id = 
@@ -107,7 +109,7 @@ let mk_move_cursor_event id =
   Sel.now ~priority @@ SendMoveCursor id
 
 let mk_block_on_error_event last_range error_id background =
-  let update_goal_view = [mk_proof_view_event error_id] in
+  let update_goal_view = [mk_proof_view_event_no_req error_id] in
   if background then
     update_goal_view
   else
@@ -420,35 +422,35 @@ let get_document_symbols st =
   let outline = List.rev @@ Document.outline st.document in
   get_document_symbols outline [] []
 
-let interpret_to st id check_mode =
+let interpret_to req_id st id check_mode =
   let observe_id = (Id id) in
   let st = { st with observe_id} in
   match check_mode with
   | Settings.Mode.Manual ->
     let event = mk_observe_event id in
-    let pv_event = mk_proof_view_event id in
+    let pv_event = mk_proof_view_event req_id id in
     st, [event] @ [pv_event]
   | Settings.Mode.Continuous ->
     match ExecutionManager.is_locally_executed st.execution_state id with
-    | true -> st, [mk_proof_view_event id]
+    | true -> st, [mk_proof_view_event req_id id]
     | false -> st, []
 
-let interpret_to_next_position st pos check_mode =
+let interpret_to_next_position req_id st pos check_mode =
   match id_of_sentence_after_pos st pos with
   | None -> (st, []) (* document is empty *)
   | Some id ->
-    let st, events = interpret_to st id check_mode in
+    let st, events = interpret_to req_id st id check_mode in
     (st, events)
 
-let interpret_to_position st pos check_mode ~point_interp_mode =
+let interpret_to_position req_id st pos check_mode ~point_interp_mode =
   match point_interp_mode with
   | Settings.PointInterpretationMode.Cursor ->
     begin match id_of_pos st pos with
     | None -> (st, []) (* document is empty *)
-    | Some id -> interpret_to st id check_mode
+    | Some id -> interpret_to req_id st id check_mode
     end
   | Settings.PointInterpretationMode.NextCommand ->
-    interpret_to_next_position st pos check_mode
+    interpret_to_next_position req_id st pos check_mode
 
 let get_next_range st pos =
   match id_of_pos st pos with
@@ -472,7 +474,7 @@ let get_previous_range st pos =
       | None -> Some (Document.range_of_id st.document id)
       | Some { id } -> Some (Document.range_of_id st.document id)
 
-let interpret_to_previous st check_mode =
+let interpret_to_previous req_id st check_mode =
   match st.observe_id with
   | Top -> (st, [])
   | (Id id) ->
@@ -483,20 +485,20 @@ let interpret_to_previous st check_mode =
       | None -> 
         Vernacstate.unfreeze_full_state st.init_vs;
         let range = Range.top () in
-        { st with observe_id=Top }, [mk_move_cursor_event range; mk_proof_view_event_empty]
+        { st with observe_id=Top }, [mk_move_cursor_event range; mk_proof_view_event_empty req_id]
       | Some { id } -> 
-        let st, events = interpret_to st id check_mode in
+        let st, events = interpret_to req_id st id check_mode in
         let range = Document.range_of_id st.document id in
         let mv_cursor = mk_move_cursor_event range in
         st, [mv_cursor] @ events
 
-let interpret_to_next st check_mode =
+let interpret_to_next req_id st check_mode =
   match st.observe_id with
   | Top ->
     begin match Document.get_first_sentence st.document with
     | None -> st, [] (*The document is empty*)
     | Some { id } -> 
-      let st, events = interpret_to st id check_mode in
+      let st, events = interpret_to req_id st id check_mode in
       let range = Document.range_of_id st.document id in
       let mv_cursor = mk_move_cursor_event range in
       st, [mv_cursor] @ events
@@ -508,17 +510,17 @@ let interpret_to_next st check_mode =
       match Document.find_sentence_after st.document (stop+1) with
       | None -> st, []
       | Some { id } -> 
-        let st, events = interpret_to st id check_mode in
+        let st, events = interpret_to req_id st id check_mode in
         let range = Document.range_of_id st.document id in
         let mv_cursor = mk_move_cursor_event range in
         st, [mv_cursor] @ events
 
-let interpret_to_end st check_mode =
+let interpret_to_end req_id st check_mode =
   match Document.get_last_sentence st.document with
   | None -> (st, [])
   | Some {id} -> 
     log (fun () -> "interpret_to_end id = " ^ Stateid.to_string id);
-    interpret_to st id check_mode
+    interpret_to req_id st id check_mode
 
 let interpret_in_background st ~should_block_on_error =
   match Document.get_last_sentence st.document with
@@ -617,7 +619,7 @@ let execute st id vst_for_next_todo started task background block =
       | Id o_id ->
         let s_id = ExecutionManager.get_id_of_executed_task task in
         if o_id = s_id then
-          [mk_proof_view_event s_id]
+          [mk_proof_view_event_no_req s_id]
         else []
     end
     else
@@ -716,7 +718,7 @@ let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.Pret
       else
         {state=(Some st); events=[]; update_view; notification=None}
     end
-  | SendProofView (Some id) ->
+  | SendProofView (Some id, req_id_opt) ->
     let proof, pp_proof = match pp_mode with
     | Pp -> get_proof st diff_mode (Some id), None 
     | String -> None, get_string_proof st (Some id)
@@ -726,12 +728,12 @@ let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.Pret
     | String ->[], get_string_messages st id
     in
     let range = Document.range_of_id st.document id in
-    let params = Notification.Server.ProofViewParams.{ proof; messages; pp_proof; pp_messages; range} in
+    let params = Notification.Server.ProofViewParams.{ proof; messages; pp_proof; pp_messages; range; request_id = req_id_opt } in
     let notification = Some (Notification.Server.ProofView params) in
     let update_view = true in
     {state=(Some st); events=[]; update_view; notification}
-  | SendProofView None ->
-    let params = Notification.Server.ProofViewParams.{ proof=None; pp_proof=None; messages=[]; pp_messages=[]; range=Range.top() } in
+  | SendProofView (None, req_id_opt) ->
+    let params = Notification.Server.ProofViewParams.{ proof=None; pp_proof=None; messages=[]; pp_messages=[]; range=Range.top(); request_id = req_id_opt } in
     let notification = Some (Notification.Server.ProofView params) in
     let update_view = true in
     {state=(Some st); events=[]; update_view; notification}
