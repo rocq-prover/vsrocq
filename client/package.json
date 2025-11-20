@@ -964,7 +964,7 @@
         "id": "rocq.processed.background",
         "description": "Bazckground color of processed region.",
         "defaults": {
-          "dark": "#01100133",
+          "dark": "#00960033",
           "light": "#00960033",
           "highContrast": "#01100133"
         }
