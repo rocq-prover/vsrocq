@@ -596,7 +596,7 @@ let handle_lsp_event = function
     begin try
       let json = Jsonrpc.Packet.yojson_of_t rpc in
       let msg = Yojson.Safe.pretty_to_string ~std:true json in
-      log (fun () -> "recieved: " ^ msg);
+      log (fun () -> "received: " ^ msg);
       begin match rpc with
       | Request req ->
           log (fun () -> "ui request: " ^ req.method_);
