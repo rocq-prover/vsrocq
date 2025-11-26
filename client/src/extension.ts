@@ -13,8 +13,6 @@ import {workspace, window, commands, languages, ExtensionContext, env,
   version
 } from 'vscode';
 
-import * as os from 'node:os';
-
 import {
   LanguageClientOptions,
   RequestType,
@@ -48,6 +46,9 @@ import {
 import { DocumentStateViewProvider } from './panels/DocumentStateViewProvider';
 import VsRocqToolchainManager, {ToolchainError, ToolChainErrorCode} from './utilities/toolchain';
 import { QUICKFIX_COMMAND, RocqWarningQuickFix } from './QuickFixProvider';
+import { startMCPServer } from './mcp/MCPHttpServer';
+import { mcpPromiseBox, proofState } from './mcp/MCPState';
+import { getPrettifiedProofView } from './mcp/MCPServer';
 
 let client: Client;
 
@@ -157,6 +158,11 @@ export function activate(context: ExtensionContext) {
         const searchProvider = new SearchViewProvider(context.extensionUri, client);
         context.subscriptions.push(window.registerWebviewViewProvider(SearchViewProvider.viewType, searchProvider));
 
+        if (workspace.getConfiguration('vscoq.mcp').use) {
+            // Start MCP server
+            startMCPServer(context, mcpPromiseBox, proofState, client);
+        }
+
         const documentStateProvider = new DocumentStateViewProvider(client); 
         context.subscriptions.push(workspace.registerTextDocumentContentProvider("vsrocq-document-state", documentStateProvider));
 
@@ -191,7 +197,7 @@ export function activate(context: ExtensionContext) {
             const req = new RequestType<ResetRocqRequest, ResetRocqResponse, void>("prover/resetRocq");
             Client.writeToVsrocqChannel(uri.toString());
             client.sendRequest(req, params).then(
-                (res) => {
+                (_) => {
                     GoalPanel.resetGoalPanel();
                 }, 
                 (err) => {
@@ -212,7 +218,6 @@ export function activate(context: ExtensionContext) {
         registerVsrocqTextCommand('stepForward', (editor) => sendStepForward(editor, client));
         registerVsrocqTextCommand('stepBackward', (editor) => sendStepBackward(editor, client));
         registerVsrocqTextCommand('documentState', async (editor) => {
-                
             documentStateProvider.setDocumentUri(editor.document.uri);
 
             const document = await workspace.openTextDocument(documentStateProvider.uri);
@@ -284,6 +289,15 @@ export function activate(context: ExtensionContext) {
             const editor = window.activeTextEditor ? window.activeTextEditor : window.visibleTextEditors[0];
             const autoDisplay = workspace.getConfiguration('vsrocq.goals').auto;
             GoalPanel.proofViewNotification(context.extensionUri, editor, proofView, autoDisplay);
+            proofState.lastProofViewNotification = proofView;
+            if (mcpPromiseBox.setValue && 
+                mcpPromiseBox.pendingRequestId !== undefined &&
+                proofView.request_id === mcpPromiseBox.pendingRequestId) { // Only resolve MCP promise if the request ID matches
+                const res = getPrettifiedProofView(client, proofView, mcpPromiseBox.currentDocumentURI);
+                mcpPromiseBox.setValue(res);
+                mcpPromiseBox.setValue = undefined; // Clear to avoid double resolution
+                mcpPromiseBox.pendingRequestId = undefined; // Clear the pending request ID
+            }
         });
 
         client.onNotification("prover/blockOnError", (notification: ErrorAlertNotification) => {

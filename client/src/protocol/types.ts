@@ -52,6 +52,11 @@ export type RocqMessage = [MessageSeverity, PpString];
 export interface ProofViewNotification {
     proof: Nullable<ProofViewGoals>;
     messages: RocqMessage[];
+    request_id?: string | number | null;
+}
+
+export interface WithRequestId {
+    request_id: string;
 }
 
 export interface RocqLogMessage {
@@ -152,7 +157,7 @@ export interface DocumentProofsRequest {
 type ProofStatement = {
     range: Range;
     statement: string;
-}
+};
 
 type ProofStep = {
     range: Range;
