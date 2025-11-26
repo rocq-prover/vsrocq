@@ -8,7 +8,7 @@
 
     rocq-master = { url = "github:rocq-prover/rocq/3b3cb2ce5750611d0fea03c987da1715d3617615"; }; # Should be kept in sync with PIN_COQ in CI workflow
     rocq-master.inputs.nixpkgs.follows = "nixpkgs";
-
+    rocq-master.inputs.flake-utils.follows = "flake-utils";
   };
 
   outputs = {
