@@ -76,10 +76,16 @@ let mk_goal env sigma g =
     goal = pp_of_rocqpp ccl;
   }
 
+[%%if coq ="8.18" || coq ="8.19" || coq = "8.20" || coq = "9.0" || coq = "9.1"]
+let diff_goal = Proof_diffs.diff_goal
+[%%else]
+let diff_goal ?og_s g = Proof_diffs.diff_goal ~flags:(PrintingFlags.current()) ?og_s g
+[%%endif]
+
 let mk_goal_diff diff_goal_map env sigma g =
   let id = Evar.repr g in
   let og_s = Proof_diffs.map_goal g diff_goal_map in
-  let (hyps, ccl) = Proof_diffs.diff_goal ?og_s (Proof_diffs.make_goal env sigma g) in
+  let (hyps, ccl) = diff_goal ?og_s (Proof_diffs.make_goal env sigma g) in
   {
     id;
     hypotheses = List.rev_map pp_of_rocqpp hyps;

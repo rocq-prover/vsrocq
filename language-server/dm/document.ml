@@ -537,10 +537,19 @@ let parse_one_sentence ?loc stream ~st =
   let sentence = Pcoq.Entry.parse entry pa in
   let comments = Pcoq.Parsable.comments pa in
   (sentence, comments)
-[%%else]
+[%%elif rocq = "9.0" || rocq = "9.1"]
 let parse_one_sentence ?loc stream ~st =
   Vernacstate.Synterp.unfreeze st;
   Flags.record_comments := true;
+  let entry = Pvernac.main_entry (Some (Synterp.get_default_proof_mode ())) in
+  let pa = Procq.Parsable.make ?loc stream in
+  let sentence = Procq.Entry.parse entry pa in
+  let comments = Procq.Parsable.comments pa in
+  (sentence, comments)
+[%%else]
+let parse_one_sentence ?loc stream ~st =
+  Vernacstate.Synterp.unfreeze st;
+  CLexer.record_comments := true;
   let entry = Pvernac.main_entry (Some (Synterp.get_default_proof_mode ())) in
   let pa = Procq.Parsable.make ?loc stream in
   let sentence = Procq.Entry.parse entry pa in
