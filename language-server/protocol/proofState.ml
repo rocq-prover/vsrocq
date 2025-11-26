@@ -76,7 +76,7 @@ let mk_goal env sigma g =
     goal = pp_of_rocqpp ccl;
   }
 
-[%%if coq ="8.18" || coq ="8.19" || coq = "8.20" || coq = "9.0" || coq = "9.1"]
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
 let diff_goal = Proof_diffs.diff_goal
 [%%else]
 let diff_goal ?og_s g = Proof_diffs.diff_goal ~flags:(PrintingFlags.current()) ?og_s g

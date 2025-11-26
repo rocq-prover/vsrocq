@@ -3,4 +3,4 @@
  (public_name vsrocq-language-server.lsp)
  (libraries sexplib yojson @@ROCQ_RUNTIME@@.sysinit lsp)
  (preprocess
-   (staged_pps ppx_import ppx_sexp_conv ppx_yojson_conv ppx_optcomp -- -cookie "ppx_optcomp.env=env ~coq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")")))
+   (staged_pps ppx_import ppx_sexp_conv ppx_yojson_conv ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")")))
