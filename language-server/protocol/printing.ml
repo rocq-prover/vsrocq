@@ -62,7 +62,7 @@ let rec regroup_tags_aux acc = function
 and regroup_tags l =
  match regroup_tags_aux [[]] l with [l] -> List.rev l | _ -> failwith "tag not closed"
 
-[%%if coq = "8.18" || coq = "8.19" || coq = "8.20" || coq = "9.0"]
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0"]
 let rec pp_of_rocqpp t = match Pp.repr t with
   | Pp.Ppcmd_empty -> Ppcmd_empty
   | Pp.Ppcmd_string s -> Ppcmd_string s
