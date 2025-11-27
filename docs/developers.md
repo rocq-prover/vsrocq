@@ -118,7 +118,7 @@ To release a new version of VsCoq:
 1. First make sure to bump the version number in the three folowing files: 
     - flake.nix (look for `vsrocq_version`)
     - client/package.json (llok for `"version":`)
-    - language-server/vscoqtop/lspManager.ml (look for `let server_info`)
+    - language-server/vsrocqtop/lspManager.ml (look for `let server_info`)
 
 1.a Don't forget to add the version requirements in
     `client/src/utilities/versioning.ts`, look for `versionRequirements`.
