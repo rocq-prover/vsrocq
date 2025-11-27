@@ -14,6 +14,6 @@ EOF
 
 chmod +x .wrappers/coqc
 
-export PATH="$PWD/.wrappers:$PATH"
+export PATH="$PWD/.wrappers;:$PWD/.wrappers:$PATH"
 
 "$@"
