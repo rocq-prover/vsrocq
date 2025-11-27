@@ -4,7 +4,7 @@
   "description": "VsRocq is an extension for Visual Studio Code with support for the Rocq Prover",
   "publisher": "rocq-prover",
   "license": "MIT",
-  "version": "2.3.3",
+  "version": "2.3.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/rocq-prover/vsrocq.git"
