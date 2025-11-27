@@ -14,6 +14,9 @@ EOF
 
 chmod +x .wrappers/coqc
 
-export PATH="$PWD/.wrappers;:$PWD/.wrappers:$PATH"
+case "$OSTYPE" in
+cygwin)  export PATH="`cygpath -ma $PWD/.wrappers`;$PATH" ;;
+*)       export PATH="$PWD/.wrappers:$PATH" ;;
+esac
 
 "$@"
