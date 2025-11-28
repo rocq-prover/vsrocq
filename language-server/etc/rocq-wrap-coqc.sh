@@ -3,8 +3,8 @@
 set -ex
 
 rocq=$(command -v rocq)
-rocq=$(command -v dune)
-rocq=$(command -v dune.exe)
+dune=$(command -v dune)
+dune=$(command -v dune.exe)
 
 rm -rf .wrappers
 mkdir .wrappers
