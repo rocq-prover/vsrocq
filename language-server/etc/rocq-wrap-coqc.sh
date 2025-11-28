@@ -1,10 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -ex
 
 rocq=$(command -v rocq)
-dune=$(command -v dune)
-dune=$(command -v dune.exe)
 
 rm -rf .wrappers
 mkdir .wrappers
@@ -17,8 +15,14 @@ EOF
 chmod +x .wrappers/coqc
 
 case "$OSTYPE" in
-cygwin)  export PATH="`cygpath -ma $PWD/.wrappers`;$PATH" ;;
-*)       export PATH="$PWD/.wrappers:$PATH" ;;
+cygwin) 
+    export PATH="`cygpath -ma $PWD/.wrappers`;$PATH" 
+    shift
+    dune=$(command -v dune.exe)
+    $dune "$@"
+    ;;
+*)  
+    export PATH="$PWD/.wrappers:$PATH" 
+    "$@"
+    ;;
 esac
-
-"$@"
