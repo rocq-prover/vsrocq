@@ -18,7 +18,7 @@ case "$OSTYPE" in
 cygwin) 
     export PATH="`cygpath -ma $PWD/.wrappers`;$PATH" 
     shift
-    dune=$(command -v dune.exe)
+    dune=$(command -v dune)
     $dune "$@"
     ;;
 *)  
