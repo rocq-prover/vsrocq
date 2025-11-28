@@ -152,6 +152,92 @@ jobs:
         VSROCQPATH: ${{ env.vsrocqtop }}
         VSROCQARGS: "-bt"
 
+  # taken from ocaml/opam-repository
+  install-opam-windows:
+    env:
+      OPAMROOT: D:\opamroot
+      OPAMSOLVERTIMEOUT: 120
+      MSYS: winsymlinks:native
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+        windows_env:
+          - cygwin
+          - msys2
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout tree
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Download install.ps1
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          (New-Object System.Net.WebClient).DownloadFile("https://raw.githubusercontent.com/ocaml/opam/master/shell/install.ps1", ".\install.ps1")
+
+      - name: Restore opam cache
+        id: cache-opam
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            D:\opam\bin
+            D:\opamroot
+          key: ${{ runner.os }}-${{ matrix.windows_env }}-opam-${{ hashFiles('install.ps1') }}
+
+      - name: Add MSys2 to PATH and install prerequisites
+        if: matrix.windows_env == 'msys2'
+        run: |
+          "C:\msys64" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          C:\msys64\usr\bin\pacman.exe --noconfirm -Syuu  # Core update (in case any core packages are outdated)
+          C:\msys64\usr\bin\pacman.exe --noconfirm -Syuu m4 make mingw-w64-i686-gcc mingw-w64-x86_64-gcc rsync unzip
+
+      - name: Install opam
+        if: steps.cache-opam.outputs.cache-hit != 'true'
+        run: |
+          Invoke-Expression "& ./install.ps1 -OpamBinDir 'D:\opam\bin'"
+
+      - name: Add opam to PATH
+        run: |
+          D:\opam\bin\opam --version
+          "D:\opam\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Init opam
+        if: steps.cache-opam.outputs.cache-hit != 'true'
+        run: opam init --yes --no-setup ${{ matrix.windows_env == 'msys2' && '--cygwin-local-install' || '' }}
+
+      - name: Restrict testing to available compilers
+        if: steps.cache-opam.outputs.cache-hit != 'true'
+        # TODO Amend this lowerbound as older compiler packages are updated
+        run: opam switch set-invariant --formula "`"ocaml`" {>= `"4.13`"}"
+
+      - name: Save opam cache
+        if: steps.cache-opam.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            D:\opam\bin
+            D:\opamroot
+          key: ${{ steps.cache-opam.outputs.cache-primary-key }}
+
+      - name: Print version information
+        run: |
+          opam --version
+          opam exec -- ocaml -version
+          opam var
+
+      - name: Install packages
+        if: github.event_name != 'push'
+        run: |
+          opam update
+          opam install --color=always --confirm-level=unsafe-yes .\language-server\vsrocq-language-server.opam
+          switch ($LASTEXITCODE) {
+            0 { Exit }
+            default { throw "fail to build" }
+          }
+
   dev-setup-opam:
     strategy:
       matrix:
