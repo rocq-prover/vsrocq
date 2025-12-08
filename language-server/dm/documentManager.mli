@@ -46,7 +46,8 @@ val apply_text_edits : state -> text_edit list -> state * events
 (** [apply_text_edits doc edits] updates the text of [doc] with [edits]. 
     A ParseEvent is triggered, once processed: the new
     document is parsed, outdated executions states are invalidated, and the observe
-    id is updated. *)
+    id is updated. An empty [edits] list leaves [doc] unchanged and triggers no
+    event. *)
 
 val reset_to_top : state -> state
 (** [reset_to_top state] updates the state to make the observe_id Top *)

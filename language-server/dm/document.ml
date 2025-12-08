@@ -17,8 +17,14 @@ open Lsp.Types
 open Scheduler
 
 let log = Log.mk_log "document"
+let log_parsing = Log.mk_log "document.parsing"
+let log_diff = Log.mk_log "document.diff"
+let log_validate = Log.mk_log "document.validate"
 
-module LM = Map.Make (Int)
+module LM = struct
+  include Map.Make (Int)
+  let shift fk fv m = fold (fun k v m -> add (fk k) (fv v) m) m empty
+end
 
 module SM = Map.Make (Stateid)
 
@@ -68,9 +74,20 @@ type sentence = {
   scheduler_state_before : Scheduler.state;
   scheduler_state_after : Scheduler.state;
   ast : sentence_state;
+  ast_shift : int; (* how far the sentence moved since [ast] was parsed; the
+                      locations inside [ast] are behind by this amount *)
   id : sentence_id;
   messages : feedback_message list;
   checked : sentence_checking_result option;
+}
+
+(* The range of the last parsed text that is touched by the edits since then.
+   [start, stop) is in the offsets of the last parsed text, and
+   [shift_after_stop] is how far the text from [stop] on has moved. *)
+type pending_edits_range = {
+  start : int;
+  stop : int;
+  shift_after_stop : int;
 }
 
 type document = {
@@ -79,7 +96,7 @@ type document = {
   parsing_errors_by_end : parsing_error LM.t;
   comments_by_end : comment LM.t;
   schedule : Scheduler.schedule;
-  parsed_loc : int;
+  pending_edits_range : pending_edits_range option; (* [None] when nothing changed since the last parse *)
   raw_doc : RawDocument.t;
   init_synterp_state : Vernacstate.Synterp.t;
   cancel_handle: Sel.Event.cancellation_handle option;
@@ -93,9 +110,16 @@ let sentence_of_id { sentences_by_id } id =
   | None -> assert false
   | Some s -> s
 
+type parsing_request_range = {
+    start : int; (* begin of edits *)
+    stop : int;  (* end of edits *)
+    shift_after_stop: int; (* size of edit, negative for removal *)
+  }
+
 type parse_state = {
   started: float;
-  stop: int;
+  parsing_request_range: parsing_request_range;
+  stopped_here: int option; (* where parsing stopped before EOF; None = reached end of stream *)
   top_id: sentence_id option;
   loc: Loc.t option;
   synterp_state : Vernacstate.Synterp.t;
@@ -141,6 +165,11 @@ let token_at_loc sentence loc =
   let contains (Loc.{ bp; ep }) = bp <= loc && loc <= ep in
   List.find_opt (fun (token_loc, _) -> contains token_loc) (tokens_of_sentence sentence) |> Option.map snd
 
+let ast_shift document id =
+  match SM.find_opt id document.sentences_by_id with
+  | Some { ast_shift } -> ast_shift
+  | None -> 0
+
 let has_sentence document id =
   None <> SM.find_opt id document.sentences_by_id
 
@@ -178,7 +207,7 @@ let add_sentence parsed id parsing_start start stop (ast: sentence_state) synter
   in
   (* FIXME may invalidate scheduler_state_XXX for following sentences -> propagate? *)
   (* What about messages generated during parsing? *)
-  let sentence = { parsing_start; start; stop; ast; id; synterp_state; scheduler_state_before; scheduler_state_after; messages = []; checked = None } in
+  let sentence = { parsing_start; start; stop; ast; id; synterp_state; scheduler_state_before; scheduler_state_after; ast_shift = 0; messages = []; checked = None } in
   let document = {
     parsed with sentences_by_end = LM.add stop id parsed.sentences_by_end;
     sentences_by_id = SM.add id sentence parsed.sentences_by_id;
@@ -235,28 +264,17 @@ let sentences_before parsed loc =
   let before = Option.cata (fun v -> LM.add loc v before) before ov in
   List.map (fun (_id,s) -> sentence_of_id parsed s) @@ LM.bindings before
 
-let sentences_after parsed loc =
-  let (_before,ov,after) = LM.split loc parsed.sentences_by_end in
-  let after = Option.cata (fun v -> LM.add loc v after) after ov in
-  List.map (fun (_id,s) -> s) @@ LM.bindings after
-
-let parsing_errors_before parsed loc =
-  LM.filter (fun stop _v -> stop <= loc) parsed.parsing_errors_by_end
-
-let comments_before parsed loc =
-  LM.filter (fun stop _v -> stop <= loc) parsed.comments_by_end
-
 let comments parsed =
   List.map snd @@ LM.bindings parsed.comments_by_end
 
 let get_sentence parsed id =
   SM.find_opt id parsed.sentences_by_id
 
-let find_sentence parsed loc =
-  match LM.find_first_opt (fun k -> loc <= k) parsed.sentences_by_end with
+let find_sentence document loc =
+  match LM.find_first_opt (fun k -> loc <= k) document.sentences_by_end with
   | Some (_, sentence_id) ->
-      let sentence = sentence_of_id parsed sentence_id in
-      if sentence.start <= loc then Some sentence else None
+      let sentence = sentence_of_id document sentence_id in
+      if sentence.start < loc then Some sentence else None
   | _ -> None
 
 let find_sentence_before parsed loc =
@@ -340,11 +358,6 @@ let state_strictly_before parsed pos =
   state_after_sentence parsed @@
     LM.find_last_opt (fun stop -> stop < pos) parsed.sentences_by_end
 
-let pos_at_end parsed =
-  match LM.max_binding_opt parsed.sentences_by_end with
-  | Some (stop, _) -> stop
-  | None -> -1
-
 let is_sentence_above st id1 id2 =
   let range1 = range_of_id st id1 in
   let range2 = range_of_id st id2 in
@@ -426,12 +439,43 @@ let string_of_parsed_ast { tokens } =
   "[" ^ String.concat "--" (List.map (fun (_, tok) -> Tok.extract_string false tok) tokens) ^ "]"
 
 let string_of_parsed_ast = function
-| Error e -> "[errored sentence]: " ^ (e.str)
+| Error e -> "Er [" ^ e.str ^ "]"
 | Parsed ast -> string_of_parsed_ast ast
 
-let patch_sentence parsed scheduler_state_before id ({ parsing_start; ast; start; stop; synterp_state } : pre_sentence) =
-  let old_sentence = SM.find id parsed.sentences_by_id in
-  log.debug (fun () -> Format.sprintf "Patching sentence %s , %s" (Stateid.to_string id) (string_of_parsed_ast old_sentence.ast));
+let string_of_sentence ({ ast; parsing_start; stop } : sentence) = string_of_parsed_ast ast ^ Printf.sprintf " %d-%d" parsing_start stop
+let string_of_presentence ({ ast; parsing_start; stop } : pre_sentence) = string_of_parsed_ast ast ^ Printf.sprintf " %d-%d" parsing_start stop
+
+type sentence_update = Reparsed of pre_sentence | NotReparsed of int * sentence
+
+let shift_qf i x = Quickfix.make ~loc:(Loc.shift_loc i i (Quickfix.loc x)) (Quickfix.pp x)
+let shift_located i (loc, x) = Option.map (Loc.shift_loc i i) loc, x
+(* The locations inside [x.ast] cannot be shifted, the sentence records the
+   shift instead, see [ast_shift] *)
+let shift_parsed_ast i (x : parsed_ast) =
+  { x with tokens = List.map (fun (loc, tok) -> Loc.shift_loc i i loc, tok) x.tokens }
+
+let shift_error i { qf; start; stop; msg; str } =
+  { qf = Option.map (List.map (shift_qf i)) qf; start = start + i; stop = stop + i; msg = shift_located i msg; str }
+
+let shift_ast i = function
+  | Parsed x -> Parsed (shift_parsed_ast i x)
+  | Error x -> Error (shift_error i x)
+let shift_sentence_locations i (x : sentence) = { x with start = x.start + i; stop = x.stop + i; parsing_start = x.parsing_start + i; ast = shift_ast i x.ast }
+
+let shift_comment i {start; stop; content } =
+  {start = start + i; stop = stop + i; content }
+
+let patch_sentence parsed scheduler_state_before id x =
+  let o = SM.find id parsed.sentences_by_id in
+  log_diff.debug (fun () -> Format.sprintf "Patching sentence %s , %s" (Stateid.to_string id) (string_of_sentence o));
+  let parsing_start, ast, ast_shift, start, stop, synterp_state =
+    match x with
+    | Reparsed { parsing_start; ast; start; stop; synterp_state } -> parsing_start, ast, 0, start, stop, synterp_state
+    | NotReparsed (shift,s) ->
+      let { parsing_start; ast; start; stop; synterp_state } = shift_sentence_locations shift s in
+      log_diff.debug (fun () -> Format.sprintf "Shifting it by %d" shift);
+      let ast_shift = match ast with Parsed _ -> s.ast_shift + shift | Error _ -> 0 in
+      parsing_start, ast, ast_shift, start, stop, synterp_state in
   let scheduler_state_after, schedule =
     match ast with
     | Error {msg} ->
@@ -440,20 +484,25 @@ let patch_sentence parsed scheduler_state_before id ({ parsing_start; ast; start
       let ast = (ast.ast, ast.classification, synterp_state) in
       Scheduler.schedule_sentence (id,ast) scheduler_state_before parsed.schedule
   in
-  let new_sentence = { old_sentence with ast; parsing_start; start; stop; scheduler_state_before; scheduler_state_after } in
-  let sentences_by_id = SM.add id new_sentence parsed.sentences_by_id in
-  let sentences_by_end = match LM.find_opt old_sentence.stop parsed.sentences_by_end with
-  | Some id when Stateid.equal id new_sentence.id ->
-    LM.remove old_sentence.stop parsed.sentences_by_end
+  let n = { o with ast; ast_shift; parsing_start; start; stop; scheduler_state_before; scheduler_state_after } in
+  let sentences_by_id = SM.add id n parsed.sentences_by_id in
+  let sentences_by_end = match LM.find_opt o.stop parsed.sentences_by_end with
+  | Some id when Stateid.equal id n.id ->
+    LM.remove o.stop parsed.sentences_by_end
   | _ -> parsed.sentences_by_end
   in
-  let sentences_by_end = LM.add new_sentence.stop id sentences_by_end in
+  let sentences_by_end = LM.add n.stop id sentences_by_end in
   { parsed with sentences_by_end; sentences_by_id; schedule }, scheduler_state_after
+
 
 type diff =
   | Deleted of sentence_id list
   | Added of pre_sentence list
-  | Equal of (sentence_id * pre_sentence) list
+  | Equal of (sentence_id * sentence_update) list
+
+let mk_deleted ids = if ids = [] then [] else [Deleted ids]
+let mk_equal updates = if updates = [] then [] else [Equal updates]
+
 
 let tok_equal t1 t2 =
   let open Tok in
@@ -472,41 +521,100 @@ let tok_equal t1 t2 =
 let same_errors (e1 : parsing_error) (e2 : parsing_error) =
   (String.compare e1.str e2.str = 0) && (e1.start = e2.start) && (e1.stop = e2.stop)
 
-let same_tokens (s1 : sentence) (s2 : pre_sentence) =
-  match s1.ast, s2.ast with
+let same_tokens (ast1 : sentence_state) (ast2 : sentence_state) =
+  match ast1, ast2 with
   | Error e1, Error e2 -> same_errors e1 e2
-  | Parsed ast1, Parsed ast2 ->
+  | Parsed parsed1, Parsed parsed2 ->
     let tok_pair_equal (_, t1) (_, t2) = tok_equal t1 t2 in
-    CList.equal tok_pair_equal ast1.tokens ast2.tokens
+    CList.equal tok_pair_equal parsed1.tokens parsed2.tokens
   | _, _ -> false
 
-(* TODO improve diff strategy (insertions,etc) *)
-let rec diff old_sentences new_sentences =
-  match old_sentences, new_sentences with
-  | [], [] -> []
-  | [], new_sentences -> [Added new_sentences]
-  | old_sentences, [] -> [Deleted (List.map (fun s -> s.id) old_sentences)]
-    (* FIXME something special should be done when `Deleted` is applied to a parsing effect *)
-  | old_sentence::old_sentences, new_sentence::new_sentences ->
-    if same_tokens old_sentence new_sentence then
-      Equal [(old_sentence.id,new_sentence)] :: diff old_sentences new_sentences
-    else
-      Deleted [old_sentence.id] :: Added [new_sentence] :: diff old_sentences new_sentences
+(* How many new sentences an insertion may add before an old sentence that is
+   still matched. Bounded so that a reparse of the whole document stays linear. *)
+let insertion_lookahead = 16
+
+let rec matches_soon (reparsed : sentence) lookahead = function
+  | [] -> false
+  | (new_sentence : pre_sentence) :: new_sentences ->
+    lookahead > 0
+    && (same_tokens reparsed.ast new_sentence.ast
+        || matches_soon reparsed (lookahead - 1) new_sentences)
+
+let equal_kept shift_after_stop kept_sentences =
+  mk_equal
+    (List.map
+       (fun kept -> kept.id, NotReparsed (shift_after_stop, kept))
+       kept_sentences)
+
+(* Computes the changes from the old sentences to the new ones, in text order.
+   [reparsed_sentences] are the old sentences that the new parse replaced, and
+   they are compared with [new_sentences]. [kept_sentences] are the old
+   sentences that the parse did not reach. They stay, moved by
+   [shift_after_stop]. *)
+let rec diff (reparsed_sentences : sentence list)
+    (new_sentences : pre_sentence list) shift_after_stop
+    (kept_sentences : sentence list) =
+  match reparsed_sentences, new_sentences, kept_sentences with
+  (* Only kept sentences are left. They stay, moved by the shift. *)
+  | [], [], _ :: _ ->
+    equal_kept shift_after_stop kept_sentences
+  (* No reparsed sentence is left, so the new sentence is added. *)
+  | [], new_sentence :: new_sentences, _ ->
+    Added [new_sentence]
+    :: diff [] new_sentences shift_after_stop kept_sentences
+
+  (* No new sentence is left, so the remaining reparsed sentences are
+     deleted. *)
+  | _, [], _ ->
+    mk_deleted (List.map (fun reparsed -> reparsed.id) reparsed_sentences)
+    @ equal_kept shift_after_stop kept_sentences
+  (* The new sentence has the same tokens as the reparsed one, so it keeps the
+     old id. *)
+  | reparsed :: reparsed_sentences, new_sentence :: new_sentences, _
+    when same_tokens reparsed.ast new_sentence.ast ->
+    Equal [reparsed.id, Reparsed new_sentence]
+    :: diff reparsed_sentences new_sentences shift_after_stop kept_sentences
+  (* The reparsed sentence matches one of the next new sentences, so this new
+     sentence is added before it. *)
+  | reparsed :: _, new_sentence :: new_sentences, _
+    when matches_soon reparsed insertion_lookahead new_sentences ->
+    Added [new_sentence]
+    :: diff reparsed_sentences new_sentences shift_after_stop kept_sentences
+  (* The reparsed sentence matches none of the next new sentences, so it is
+     deleted. *)
+  | reparsed :: reparsed_sentences, _, _ ->
+    Deleted [reparsed.id]
+    :: diff reparsed_sentences new_sentences shift_after_stop kept_sentences
 
 let string_of_diff_item doc = function
   | Deleted ids ->
-      let get_str id = match get_sentence doc id with
-      | None -> "missing from doc"
-      | Some s -> string_of_parsed_ast s.ast
-      in
-       ids |> List.map (fun id -> Printf.sprintf "- (id: %d) %s" (Stateid.to_int id) (get_str id))
-  | Added sentences ->
-       sentences |> List.map (fun (s : pre_sentence) -> Printf.sprintf "+ %s" (string_of_parsed_ast s.ast))
-  | Equal l ->
-       l |> List.map (fun (id, (s : pre_sentence)) -> Printf.sprintf "= (id: %d) %s" (Stateid.to_int id) (string_of_parsed_ast s.ast))
+    List.map
+      (fun id ->
+        let sentence_string =
+          match get_sentence doc id with
+          | None -> "missing from doc"
+          | Some sentence -> string_of_sentence sentence
+        in
+        Printf.sprintf "- (id: %d) %s" (Stateid.to_int id) sentence_string)
+      ids
+  | Added new_sentences ->
+    List.map
+      (fun new_sentence ->
+        Printf.sprintf "+ %s" (string_of_presentence new_sentence))
+      new_sentences
+  | Equal updates ->
+    List.map
+      (function
+        | id, Reparsed new_sentence ->
+          Printf.sprintf "= (id: %d) %s" (Stateid.to_int id)
+            (string_of_presentence new_sentence)
+        | id, NotReparsed (shift, sentence) ->
+          Printf.sprintf "= (id: %d) %d >> %s" (Stateid.to_int id) shift
+            (string_of_sentence sentence))
+      updates
 
-let string_of_diff doc l =
-  String.concat "\n" (List.flatten (List.map (string_of_diff_item doc) l))
+let string_of_diff doc diff =
+  String.concat "\n" (List.concat_map (string_of_diff_item doc) diff)
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
   let get_keyword_state = Pcoq.get_keyword_state
@@ -615,10 +723,22 @@ let get_entry ast =
   Synterp.synterp_control ~intern ast
 [%%endif]
 
+let get_raw_text_tokens raw_doc begin_char end_char ast_loc =
+  let str = String.sub (RawDocument.text raw_doc) begin_char (end_char - begin_char) in
+  let sstr = Stream.of_string str in
+  let lex = CLexer.Lexer.tok_func sstr in
+  stream_tok [] lex ast_loc
+
+let changes_grammar entry classification =
+  match entry.CAst.v.Vernacexpr.expr with
+  | Vernacexpr.VernacSynPure _ -> false        (* Lemma, Definition, Check, ...: no synterp effect *)
+  | _ -> match classification with
+         | Vernacextend.VtProofStep _ -> false
+         | _ -> true                           (* Notation, Require, Import, Section, Module, ... *)
 
 let rec handle_parse_error id start parsing_start msg qf ({stream; errors; parsed;} as parse_state) synterp_state =
-  log.debug (fun () -> "handling parse error at " ^ string_of_int start);
   let stop = Stream.count stream in
+  log_parsing.debug (fun () -> Printf.sprintf "handling parse error %d - %d" start stop);
   let str = String.sub (RawDocument.text parse_state.raw) parsing_start (stop - parsing_start) in
   let parsing_error = { msg; start; stop; qf; str} in
   let sentence = { id; parsing_start; ast = Error parsing_error; start; stop; synterp_state } in
@@ -628,13 +748,27 @@ let rec handle_parse_error id start parsing_start msg qf ({stream; errors; parse
   (* TODO: we could count the \n between start and stop and increase Loc.line_nb *)
   true, parse_state
 
-and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as parse_state) : bool * parse_state =
+and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsing_request_range} as parse_state) : bool * parse_state =
   let start = Stream.count stream in
-  log.debug (fun () -> "Start of parse is: " ^ (string_of_int start));
-  begin
+  (* Stops parsing past the edit's impact range, at a location where an old
+     sentence ended. The old sentences after it then start where the new ones
+     end, so they can be kept. The range and the old sentences are in the
+     offsets of the last parsed text, the stream in the current one. *)
+  let { stop; shift_after_stop } = parsing_request_range in
+  let start_before_edits = start - shift_after_stop in
+  if stop <> max_int && start_before_edits >= stop
+     && LM.mem start_before_edits parse_state.previous_document.sentences_by_end
+  then begin
+    log_parsing.debug (fun () -> "End of unparsed area");
+    false, { parse_state with stopped_here = Some start }
+  end else
+    begin
+    log_parsing.debug (fun () -> Printf.sprintf "Start of parse is %d <= %d" start parsing_request_range.stop);
     (* FIXME should we save lexer state? *)
     match parse_one_sentence ?loc stream ~st:synterp_state with
-    | None, _ (* EOI *) -> false, parse_state
+    | None, _ (* EOI *) ->
+        log_parsing.debug (fun () -> "End of stream");
+        false, parse_state
     | Some ast, comments ->
       let id = Stateid.fresh () in
       let stop = Stream.count stream in
@@ -643,13 +777,10 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
         | None -> assert false
       in
       let begin_char, end_char = ast_loc.bp, ast_loc.ep in
-      let str = String.sub (RawDocument.text raw) begin_char (end_char - begin_char) in
-      let sstr = Stream.of_string str in
-      let lex = CLexer.Lexer.tok_func sstr in
-      let tokens = stream_tok [] lex ast_loc in
+      let tokens = get_raw_text_tokens raw begin_char end_char ast_loc in
       begin
         try
-          log.debug (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
+          log_parsing.debug (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
           Feedback.set_id_for_feedback parse_state.previous_document.doc_id id;
           let entry = get_entry ast in
           let classification = Vernac_classifier.classify_vernac ast in
@@ -660,7 +791,8 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
           let comments = List.map (fun ((start, stop), content) -> {start; stop; content}) comments in
           let parsed_comments = List.append comments parsed_comments in
           let loc = ast.loc in
-          let parse_state = {parse_state with parsed_comments; parsed; loc; synterp_state} in
+          let parsing_request_range = if changes_grammar entry classification then { parsing_request_range with stop = max_int } else parsing_request_range in
+          let parse_state = {parse_state with parsing_request_range; parsed_comments; parsed; loc; synterp_state} in
           true, parse_state
         with exn ->
           let e, info = Exninfo.capture exn in
@@ -694,119 +826,239 @@ and create_parse_event ~doc_id parse_state =
   let priority = Some PriorityManager.parsing in
   Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id ~name:"create_parse_event" (fun () -> parse_more parse_state)) (fun x -> Parse x)
 
+let ast_of = function Reparsed s -> s.ast | NotReparsed(_,s) -> s.ast
 
 let rec unchanged_id id = function
   | [] -> id
   | Equal s :: diffs ->
-    let get_id_ignore_error id_option (id, (s: pre_sentence)) =
-      match s.ast with
+    let get_id_ignore_error id_option (id, s) =
+      match ast_of s with
         | Error _ -> id_option
         | Parsed _ ->  Some id
     in
     unchanged_id (List.fold_left get_id_ignore_error id s) diffs
   | (Added _ | Deleted _) :: _ -> id
 
-let invalidate top_edit top_id parsed_doc new_sentences =
-  let rec add_new_or_patch parsed_doc scheduler_state = function
-    | [] -> parsed_doc
-    | Deleted _ :: diffs -> add_new_or_patch parsed_doc scheduler_state diffs
-    | Equal s :: diffs ->
-      let patch_sentence (parsed_doc,scheduler_state) (id,new_s) =
-        patch_sentence parsed_doc scheduler_state id new_s
-      in
-      let parsed_doc, scheduler_state = List.fold_left patch_sentence (parsed_doc, scheduler_state) s in
-      add_new_or_patch parsed_doc scheduler_state diffs
-    | Added new_sentences :: diffs ->
+let rec add_new_or_patch parsed_doc scheduler_state = function
+  | [] -> parsed_doc
+  | Deleted _ :: diffs -> add_new_or_patch parsed_doc scheduler_state diffs
+  | Equal s :: diffs ->
+    let parsed_doc, scheduler_state =
+      List.fold_left
+        (fun (parsed_doc, scheduler_state) (id, new_s) ->
+          patch_sentence parsed_doc scheduler_state id new_s)
+        (parsed_doc, scheduler_state) s
+    in
+    add_new_or_patch parsed_doc scheduler_state diffs
+  | Added news :: diffs ->
     (* FIXME could have side effect on the following, unchanged sentences *)
-      let add_sentence (parsed_doc,scheduler_state) ({ id; parsing_start; start; stop; ast; synterp_state } : pre_sentence) =
-        add_sentence parsed_doc id parsing_start start stop ast synterp_state scheduler_state
-      in
-      let parsed_doc, scheduler_state = List.fold_left add_sentence (parsed_doc,scheduler_state) new_sentences in
-      add_new_or_patch parsed_doc scheduler_state diffs
+    let parsed_doc, scheduler_state =
+      List.fold_left
+        (fun (parsed_doc, scheduler_state)
+             ({ id; parsing_start; start; stop; ast; synterp_state } : pre_sentence) ->
+          add_sentence parsed_doc id parsing_start start stop ast synterp_state
+            scheduler_state)
+        (parsed_doc, scheduler_state) news
+    in
+    add_new_or_patch parsed_doc scheduler_state diffs
+
+(* [after_deletion] tells whether the additions being walked follow a
+   deletion, whose dependents include the sentence kept after them. *)
+let rec remove_old ~after_deletion parsed_doc invalid_ids = function
+  | [] -> parsed_doc, invalid_ids
+  | Deleted ids :: diffs ->
+    let invalid_ids =
+      List.fold_left (fun ids id -> Stateid.Set.add id ids) invalid_ids ids
+    in
+    let parsed_doc = List.fold_left remove_sentence parsed_doc ids in
+    (* FIXME update scheduler state, maybe invalidate after diff zone *)
+    remove_old ~after_deletion:true parsed_doc invalid_ids diffs
+  | Added _ :: (Equal ((id, _) :: _) :: _ as diffs) when not after_deletion ->
+    (* The first sentence kept after an insertion runs from another state;
+       invalidating it also invalidates its dependents. *)
+    let invalid_ids = Stateid.Set.add id invalid_ids in
+    remove_old ~after_deletion:false parsed_doc invalid_ids diffs
+  | Added _ :: diffs -> remove_old ~after_deletion parsed_doc invalid_ids diffs
+  | Equal _ :: diffs ->
+    remove_old ~after_deletion:false parsed_doc invalid_ids diffs
+
+let log_diff_inputs reparsed_sentences new_sentences ~shift_after_stop
+    ~kept_sentences =
+  log_diff.debug (fun () ->
+      Printf.sprintf "diff: reparsed:\n  %s"
+        (String.concat "\n  " @@ List.map string_of_sentence reparsed_sentences));
+  log_diff.debug (fun () ->
+      Printf.sprintf "diff: new:\n  %s"
+        (String.concat "\n  " @@ List.map string_of_presentence new_sentences));
+  log_diff.debug (fun () ->
+      Printf.sprintf "diff: kept, shifted by %d:\n  %s" shift_after_stop
+        (String.concat "\n  " @@ List.map string_of_sentence kept_sentences))
+
+let invalidate top_edit top_id parsed_doc reparsed_sentences new_sentences
+    ~shift_after_stop ~kept_sentences =
+  let _, _, scheduler_state = state_at_pos parsed_doc top_edit in
+  log_diff_inputs reparsed_sentences new_sentences ~shift_after_stop
+    ~kept_sentences;
+  let diff =
+    diff reparsed_sentences new_sentences shift_after_stop kept_sentences
   in
-  let rec remove_old parsed_doc invalid_ids = function
-    | [] -> parsed_doc, invalid_ids
-    | Deleted ids :: diffs ->
-      let invalid_ids = List.fold_left (fun ids id -> Stateid.Set.add id ids) invalid_ids ids in
-      let parsed_doc = List.fold_left remove_sentence parsed_doc ids in
-      (* FIXME update scheduler state, maybe invalidate after diff zone *)
-      remove_old parsed_doc invalid_ids diffs
-    | Equal _ :: diffs
-    | Added _ :: diffs -> remove_old parsed_doc invalid_ids diffs in
-  let (_,_synterp_state,scheduler_state) = state_at_pos parsed_doc top_edit in
-  log.debug (fun () ->
-    let sentence_strings = LM.bindings @@ LM.map (fun s -> string_of_parsed_ast (sentence_of_id parsed_doc s).ast) parsed_doc.sentences_by_end in
-    let sentence_strings = List.map (fun s -> snd s) sentence_strings in
-    let sentence_string = String.concat " " sentence_strings in
-    let sentence_strings_id = SM.bindings @@ SM.map (fun s -> string_of_parsed_ast s.ast) parsed_doc.sentences_by_id in
-    let sentence_strings_id = List.map (fun s -> snd s) sentence_strings_id in
-    let sentence_string_id = String.concat " " sentence_strings_id in
-    Format.sprintf "Top edit: %i, Doc: %s, Doc by id: %s" top_edit sentence_string sentence_string_id);
-  let old_sentences = List.map (sentence_of_id parsed_doc) @@ sentences_after parsed_doc top_edit in
-  let diff = diff old_sentences new_sentences in
-  let parsed_doc, invalid_ids = remove_old parsed_doc Stateid.Set.empty diff in
+  log_diff.debug (fun () ->
+      Printf.sprintf "diff:\n%s" (string_of_diff parsed_doc diff));
+  let parsed_doc, invalid_ids =
+    remove_old ~after_deletion:false parsed_doc Stateid.Set.empty diff
+  in
   let parsed_doc = add_new_or_patch parsed_doc scheduler_state diff in
   let unchanged_id = unchanged_id top_id diff in
-  log.debug (fun () -> "diff:\n" ^ string_of_diff parsed_doc diff);
-  unchanged_id, invalid_ids, parsed_doc
+  unchanged_id, invalid_ids, { parsed_doc with pending_edits_range = None }
 
-(** Validate document when raw text has changed *)
-let validate_document ({ parsed_loc; raw_doc; cancel_handle; doc_id } as document) =
-  (* Cancel any previous parsing event *)
-  Option.iter Sel.Event.cancel cancel_handle;
-  (* We take the state strictly before parsed_loc to cover the case when the
-  end of the sentence is editted *)
-  let (stop, synterp_state, _scheduler_state) = state_strictly_before document parsed_loc in
-  (* let top_id = find_sentence_strictly_before document parsed_loc with None -> Top | Some sentence -> Id sentence.id in *)
-  let top_id = find_sentence_strictly_before document parsed_loc in
+let sentence_changes_grammar document id =
+  match (sentence_of_id document id).ast with
+  | Parsed { ast; classification } -> changes_grammar ast classification
+  | Error _ -> false
+
+(* Whether an old sentence touched by an edit of [start, stop] changes the
+   grammar. Once edited it may be gone, so the sentences after it must be parsed
+   again even if no new sentence changes the grammar. The touched sentences
+   are the ones ending in [start, stop] and the first one ending after it,
+   whose parsing starts at or before [stop]. *)
+let edits_grammar_change document start stop =
+  let _, at_start, after_start = LM.split start document.sentences_by_end in
+  let inside, at_stop, after_stop = LM.split stop after_start in
+  Option.cata (fun id -> sentence_changes_grammar document id) false at_start
+  || LM.exists (fun _ id -> sentence_changes_grammar document id) inside
+  || Option.cata (fun id -> sentence_changes_grammar document id) false at_stop
+  || match LM.min_binding_opt after_stop with
+     | Some (_, id) -> (sentence_of_id document id).parsing_start <= stop && sentence_changes_grammar document id
+     | None -> false
+
+let flush_sentences_before_edit raw_doc sentence_before_stop =
   let text = RawDocument.text raw_doc in
   let stream = Stream.of_string text in
-  while Stream.count stream < stop do Stream.junk () stream done;
-  log.debug (fun () -> Format.sprintf "Parsing more from pos %i" stop);
+  while Stream.count stream < sentence_before_stop do Stream.junk () stream done;
+  stream
+
+(** Validate document when raw text has changed *)
+let validate_document ({ pending_edits_range; raw_doc; cancel_handle; doc_id } as document) =
+  match pending_edits_range with
+  | None -> CErrors.anomaly Pp.(str "validate_document called with nothing to parse")
+  | Some { start; stop; shift_after_stop } ->
+  (* Cancel any previous parsing event *)
+  Option.iter Sel.Event.cancel cancel_handle;
+  (* We take the state strictly before the `start` of the edit, to cover the case when the
+     end of the sentence is edited *)
+  (* CHECK: What to do with scheduler_state ? *)
+  let (sentence_before_stop, synterp_state, _scheduler_state) = state_strictly_before document start in
+  (* We extend the range if the edit stops inside a sentence, or in the blank
+     before it where its parsing starts *)
+  let sentence_after_stop =
+    match LM.find_first_opt (fun k -> stop <= k) document.sentences_by_end with
+    | Some (_, id) when (sentence_of_id document id).parsing_start < stop -> (sentence_of_id document id).stop
+    | _ -> stop in
+  let sentence_after_stop = if edits_grammar_change document start stop then max_int else sentence_after_stop in
+  log_validate.debug (fun () -> Format.sprintf "Parsing more from pos %i to pos %i" sentence_before_stop sentence_after_stop);
+  (* Build parse state *)
+  let top_id = find_sentence_strictly_before document start in
+  let stream = flush_sentences_before_edit raw_doc sentence_before_stop in
   let started = Unix.gettimeofday () in
-  let parsed_state = {stop; top_id;synterp_state; stream; raw=raw_doc; parsed=[]; errors=[]; parsed_comments=[]; loc=None; started; previous_document=document} in
+  let parsing_request_range = { shift_after_stop; start = sentence_before_stop; stop = sentence_after_stop; } in
+  let parsed_state = {
+    parsing_request_range; stopped_here = None;
+    top_id;synterp_state; stream; raw=raw_doc; parsed=[]; errors=[]; parsed_comments=[]; loc=None; started; previous_document=document} in
+  (* Build Parse event *)
   let event = create_parse_event ~doc_id parsed_state in
   let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
   {document with cancel_handle}, [event]
 
-let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; previous_document} document =
-  let end_ = Unix.gettimeofday ()in
-  let time = end_ -. started in
-  log.debug (fun () -> Format.sprintf "Parsing phase ended in %5.3f" time);
+
+(* Gets the sentences of [document] listed in [ids], a map from sentence ends
+   to ids, sorted by end. *)
+let sentences_of_ids document ids =
+  List.map (fun (_, id) -> sentence_of_id document id) (LM.bindings ids)
+
+(* Separates the old sentences that the new parse replaced from the ones it
+   did not reach. Only the first ones are compared with the new sentences,
+   and the others are kept as they were, moved by [shift_after_stop]. *)
+let split_reparsed_sentences document ~parse_start ~shift_after_stop stopped_here =
+  (* The old sentences we consider are those that end *after* where parsing started. *)
+  let _, _, sentences_from_parse_start = LM.split parse_start document.sentences_by_end in
+  match stopped_here with
+  | None ->
+    (* parsing reached the end of the text, so all old sentences were reparsed. *)
+    sentences_of_ids document sentences_from_parse_start, []
+  | Some stopped_here ->
+    (* [stopped_here] is a location in the text *after* the edits, while the old
+       sentences use locations in the text *before* the edits, so we subtract
+       the shift. If an old sentence ends exactly there, the new parse read it
+       again, so it goes with the replaced ones. *)
+    let stop_before_edits = stopped_here - shift_after_stop in
+    let reparsed, sentence_at_stop, kept = LM.split stop_before_edits sentences_from_parse_start in
+    let reparsed = Option.cata (fun id -> LM.add stop_before_edits id reparsed) reparsed sentence_at_stop in
+    sentences_of_ids document reparsed, sentences_of_ids document kept
+
+(* Merges the comments that the new parse found with the old comments it did
+   not read again. Old comments before [parse_start] keep their location, and
+   those after [stopped_here] move by [shift_after_stop] to their location in
+   the text *after* the edits. *)
+let merge_comments document ~parse_start ~shift_after_stop stopped_here new_comments =
+  let comments_before = LM.filter (fun end_ _ -> end_ <= parse_start) document.comments_by_end in
+  let comments_after = match stopped_here with
+    | None -> LM.empty
+    | Some stopped_here ->
+      let stop_before_edits = stopped_here - shift_after_stop in
+      LM.filter (fun end_ _ -> end_ > stop_before_edits) document.comments_by_end in
+  let comments_after = LM.shift ((+) shift_after_stop) (shift_comment shift_after_stop) comments_after in
+  (* A comment before the edits never ends where one after them does. *)
+  let kept_comments = LM.union (fun _ _ _ -> assert false) comments_before comments_after in
+  (* A new comment overwrites an old one with the same end. *)
+  List.fold_left (fun acc (comment : comment) -> LM.add comment.stop comment acc) kept_comments new_comments
+
+let collect_parsing_errors document =
+  LM.filter_map (fun _ id ->
+      match (sentence_of_id document id).ast with
+      | Parsed _ -> None
+      | Error e -> Some e)
+    document.sentences_by_end
+
+(* Applies the result of a parse to [document]. [document] has the text *after*
+   the edits, but its sentences and comments are still those of the last
+   parse, at locations in the text *before* the edits. The new sentences and
+   comments are at locations in the text *after* the edits. [previous_document]
+   is the document as it was when parsing started. Its sentence locations and
+   comments are the same as those of [document]. *)
+let handle_invalidate {parsed; parsed_comments; parsing_request_range = { shift_after_stop; start }; top_id; previous_document; stopped_here = parsing_stopped_here } document =
+  let reparsed_sentences, kept_sentences = split_reparsed_sentences document ~parse_start:start ~shift_after_stop parsing_stopped_here in
   let new_sentences = List.rev parsed in
+  let unchanged_id, invalid_ids, document_with_new_sentences = invalidate (start + 1) top_id document reparsed_sentences new_sentences ~shift_after_stop ~kept_sentences in
   let new_comments = List.rev parsed_comments in
-  let new_errors = errors in
-  log.debug (fun () -> Format.sprintf "%i new sentences" (List.length new_sentences));
-  log.debug (fun () -> Format.sprintf "%i new comments" (List.length new_comments));
-  let errors = parsing_errors_before document stop in
-  let comments = comments_before document stop in
-  let unchanged_id, invalid_ids, document = invalidate (stop+1) top_id document new_sentences in
-  let parsing_errors_by_end =
-    List.fold_left (fun acc (error : parsing_error) -> LM.add error.stop error acc) errors new_errors
-  in
-  let comments_by_end =
-    List.fold_left (fun acc (comment : comment) -> LM.add comment.stop comment acc) comments new_comments
-  in
-  let parsed_loc = pos_at_end document in
-  let parsed_document = {document with parsed_loc; parsing_errors_by_end; comments_by_end} in
-  Some {parsed_document; unchanged_id; invalid_ids; previous_document}
+  let comments_by_end = merge_comments document ~parse_start:start ~shift_after_stop parsing_stopped_here new_comments in
+  let parsing_errors_by_end = collect_parsing_errors document_with_new_sentences in
+  let parsed_document = { document_with_new_sentences with parsing_errors_by_end; comments_by_end } in
+  Some { parsed_document; unchanged_id; invalid_ids; previous_document }
+
+let log_parsing_ended { parsed; errors; parsed_comments; started; parsing_request_range = { stop }; stopped_here } =
+  log_validate.debug (fun () -> Format.sprintf "Parsing phase ended in %5.3f at %s (request was %d)"
+    (Unix.gettimeofday () -. started) (Option.cata string_of_int "EOF" stopped_here) stop);
+  log_validate.debug (fun () -> Format.sprintf "%i new sentences" (List.length parsed));
+  log_validate.debug (fun () -> Format.sprintf "%i new errors" (List.length errors));
+  log_validate.debug (fun () -> Format.sprintf "%i new comments" (List.length parsed_comments))
 
 let handle_event document = function
 | Parse (Sel.Promise.Rejected e) -> raise e
 | Parse (Sel.Promise.Fulfilled Interrupted) -> assert false
 | Parse (Sel.Promise.Fulfilled (Aborted e)) -> CErrors.user_err e
-| Parse (Sel.Promise.Fulfilled (Terminated (true,parse_state))) ->
-  (* let event = create_parse_event parse_state in *)
+| Parse (Sel.Promise.Fulfilled (Terminated (true, parse_state))) ->
   let event = create_parse_event ~doc_id:document.doc_id parse_state in
   let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
-  {document with cancel_handle}, [event], None
-| Parse (Sel.Promise.Fulfilled (Terminated (false,parse_state))) ->
-  {document with cancel_handle=None}, [], handle_invalidate parse_state document
+  { document with cancel_handle }, [event], None
+| Parse (Sel.Promise.Fulfilled (Terminated (false, parse_state))) ->
+  log_parsing_ended parse_state;
+  { document with cancel_handle = None }, [], handle_invalidate parse_state document
 
 let create_document ~doc_id init_synterp_state text =
   let raw_doc = RawDocument.create text in
     {
-      parsed_loc = -1;
+      (* Nothing is parsed yet, so the whole text is pending. *)
+      pending_edits_range = Some { start = 0; stop = String.length text; shift_after_stop = 0 };
       raw_doc;
       sentences_by_id = SM.empty;
       sentences_by_end = LM.empty;
@@ -818,20 +1070,44 @@ let create_document ~doc_id init_synterp_state text =
       doc_id;
     }
 
+(* Converts [x], an offset in the current text, to an offset in the last parsed
+   text, which the pending edits range uses. An offset before the range stays
+   as is, and one after it moves back by [shift]. An offset inside the range
+   has no counterpart in the last parsed text, so the function returns
+   [inside]. *)
+let to_parsed_offset (shift, pending_start, pending_stop) inside x =
+  if x < pending_start then x
+  else if x >= pending_stop + shift then x - shift
+  else inside
+
+(* Merges [edit], in the offsets of the current text, into the pending edits
+   range [pending]. *)
+let apply_1edit (shift, pending_start, pending_stop as pending) ({ RawDocument.start; stop } as edit) =
+  let shift_after_stop = RawDocument.shift_after_stop edit in
+  log_validate.debug (fun () -> Printf.sprintf "Text edits from %i to %i shift %d atop (%d,%d,%d)" start stop shift_after_stop shift pending_start pending_stop);
+  let pending_start = min pending_start (to_parsed_offset pending pending_start start) in
+  let pending_stop = max pending_stop (to_parsed_offset pending pending_stop stop) in
+  let shift = shift + shift_after_stop in
+  log_validate.debug (fun () -> Printf.sprintf "Text edits result in pending edits range %i - %i with shift %d" pending_start pending_stop shift);
+  (shift, pending_start,pending_stop)
+
 let apply_text_edit document edit =
-  let raw_doc, start = RawDocument.apply_text_edit document.raw_doc edit in
-  let parsed_loc = min document.parsed_loc start in
-  { document with raw_doc; parsed_loc }
+  let raw_doc, edit = RawDocument.apply_text_edit document.raw_doc edit in
+  let pending = match document.pending_edits_range with
+    (* An empty range, so the bounds of the first edit win the min and max. *)
+    | None -> (0, max_int, min_int)
+    | Some { shift_after_stop; start; stop } -> (shift_after_stop, start, stop) in
+  let shift_after_stop, start, stop = apply_1edit pending edit in
+  { document with raw_doc; pending_edits_range = Some { shift_after_stop; start; stop} }
 
 let apply_text_edits document edits =
-  let doc' = { document with raw_doc = document.raw_doc } in
-  List.fold_left apply_text_edit doc' edits
+  List.fold_left apply_text_edit document edits
 
 module Internal = struct
 
   let string_of_sentence sentence =
     Format.sprintf "[%s] %s (%i -> %i)" (Stateid.to_string sentence.id)
-    (string_of_parsed_ast sentence.ast)
+    (string_of_sentence sentence)
     sentence.start
     sentence.stop
 
