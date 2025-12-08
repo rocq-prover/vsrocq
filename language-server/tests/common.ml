@@ -185,7 +185,7 @@ let rec handle_d_events n (events : Document.event Sel.Todo.t) (st : Document.do
         | _, events, Some update-> assert(Sel.Todo.is_empty (Sel.Todo.add remaining events)); update
             
   end
-let handle_d_events e st = handle_d_events 100 e st
+let handle_d_events ?(steps=100) e st = handle_d_events steps e st
 
 
 type diag_spec =
@@ -230,16 +230,16 @@ let check_diag st specl =
 let test_uri = Lsp.Types.DocumentUri.of_path "foo.v"
 
 let init_test_doc ~text = openDoc test_uri ~text
-let whole_init_and_parse_test_doc ~text =
+let whole_init_and_parse_test_doc ?steps ~text () =
   let dm, _ = openDoc test_uri ~text in
   let doc = DocumentManager.Internal.document dm in
   let doc, events = Document.validate_document doc in
   let todo = Sel.Todo.(add empty events) in
-  let update = handle_d_events todo doc in
+  let update = handle_d_events ?steps todo doc in
   DocumentManager.Internal.validate_document dm update, update
 
-let init_and_parse_test_doc ~text = snd @@ whole_init_and_parse_test_doc ~text
-let dm_init_and_parse_test_doc ~text = fst @@ whole_init_and_parse_test_doc ~text
+let init_and_parse_test_doc ?steps ~text () = snd @@ whole_init_and_parse_test_doc ~text ?steps ()
+let dm_init_and_parse_test_doc ?steps ~text () = fst @@ whole_init_and_parse_test_doc ~text ?steps ()
 
 
 let em_init_test_doc ~text =

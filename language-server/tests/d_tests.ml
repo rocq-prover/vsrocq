@@ -20,7 +20,7 @@ let trdeps doc s1 =
 
 
 let%test_unit "parse.validate_errors_twice" = 
-  let Document.{parsed_document} = init_and_parse_test_doc ~text:"Lemma a : True. Proof. idtac (fun x -> x). Qed." in
+  let Document.{parsed_document} = init_and_parse_test_doc () ~text:"Lemma a : True. Proof. idtac (fun x -> x). Qed." in
   let Document.{unchanged_id; invalid_ids; parsed_document} = validate_document parsed_document in
   [%test_eq: sentence_id list] [] (Stateid.Set.elements invalid_ids);
   let s1,(s2,(s3,(s4,()))) = d_sentences parsed_document (P(P(E(P(O))))) in
@@ -31,7 +31,7 @@ let%test_unit "parse.validate_errors_twice" =
   [%test_eq: int] (List.length (Document.parse_errors parsed_document)) 1
 
 let %test_unit "document: invalidate top" =
-  let Document.{parsed_document} = init_and_parse_test_doc ~text:"Definition x := 3. Lemma foo : x = 3. Proof. reflexivity. Qed." in
+  let Document.{parsed_document} = init_and_parse_test_doc () ~text:"Definition x := 3. Lemma foo : x = 3. Proof. reflexivity. Qed." in
   let Document.{unchanged_id; invalid_ids; parsed_document} = validate_document parsed_document in
   [%test_eq: sentence_id list] [] (Stateid.Set.elements invalid_ids);
   let s1,(s2,(s3,(s4,(s5,())))) = d_sentences parsed_document (P(P(P(P(P(O)))))) in
@@ -53,7 +53,7 @@ let %test_unit "document: invalidate top" =
   ()
 
 let %test_unit "document: invalidate proof" =
-  let Document.{parsed_document} = init_and_parse_test_doc ~text:"Definition x := 3. Lemma foo : x = 3. Proof. reflexivity. Qed." in
+  let Document.{parsed_document} = init_and_parse_test_doc () ~text:"Definition x := 3. Lemma foo : x = 3. Proof. reflexivity. Qed." in
   let Document.{unchanged_id; invalid_ids; parsed_document} = validate_document parsed_document in
   [%test_eq: sentence_id list] [] (Stateid.Set.elements invalid_ids);
   let s1,(s2,(s3,(s4,(s5,())))) = d_sentences parsed_document (P(P(P(P(P(O)))))) in
@@ -76,7 +76,7 @@ let %test_unit "document: invalidate proof" =
 
 
 let %test_unit "document: invalidate proof 2" =
-  let Document.{parsed_document} = init_and_parse_test_doc ~text:"Definition x := 3. Lemma foo : x = 3. Proof. reflexivity. Qed." in
+  let Document.{parsed_document} = init_and_parse_test_doc () ~text:"Definition x := 3. Lemma foo : x = 3. Proof. reflexivity. Qed." in
   let Document.{unchanged_id; invalid_ids; parsed_document} = validate_document parsed_document in
   [%test_eq: sentence_id list] [] (Stateid.Set.elements invalid_ids);
   let s1,(s2,(s3,(s4,(s5,())))) = d_sentences parsed_document (P(P(P(P(P(O)))))) in
@@ -90,7 +90,7 @@ let %test_unit "document: invalidate proof 2" =
   [%test_eq: sentence_id] s2.id r2.id
 
 let %test_unit "document: delete line" = 
-  let Document.{unchanged_id; invalid_ids; parsed_document} = init_and_parse_test_doc ~text:"Definition x:= 3. Lemma foo : x = 3. Proof. reflexitivity. Qed." in 
+  let Document.{unchanged_id; invalid_ids; parsed_document} = init_and_parse_test_doc () ~text:"Definition x:= 3. Lemma foo : x = 3. Proof. reflexitivity. Qed." in 
   [%test_eq: sentence_id list] [] (Stateid.Set.elements invalid_ids);
   let s1,(s2,(s3,(s4,(s5,())))) = d_sentences parsed_document (P(P(P(P(P(O)))))) in
   let parsed_document = Document.apply_text_edits parsed_document [Document.range_of_id parsed_document s5.id,""] in
@@ -100,7 +100,7 @@ let %test_unit "document: delete line" =
   ()
 
 let %test_unit "document: expand sentence" =
-  let Document.{unchanged_id; invalid_ids; parsed_document} = init_and_parse_test_doc ~text:"Lemma foo : x = 3. M." in
+  let Document.{unchanged_id; invalid_ids; parsed_document} = init_and_parse_test_doc () ~text:"Lemma foo : x = 3. M." in
   [%test_eq: sentence_id list] [] (Stateid.Set.elements invalid_ids);
   let s1,(s2,()) = d_sentences parsed_document (P(P(O))) in
   let range = Document.range_of_id parsed_document s2.id in
