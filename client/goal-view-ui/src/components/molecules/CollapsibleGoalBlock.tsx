@@ -24,7 +24,7 @@ const collapsibleGoalBlock: FunctionComponent<CollapsibleGoalBlockProps> = (prop
     const secondaryActionHandler = toggleContextHandler !== undefined ? () => toggleContextHandler(goal.id) : undefined;
 
     return (
-        <Accordion title={"Goal " + goalIndex} collapsed={!goal.isOpen} 
+        <Accordion title={"Goal " + goalIndex + (goal.name ? `: ${goal.name}` : "")} collapsed={!goal.isOpen} 
             collapseHandler={() => collapseHandler(goal.id)}
             seconaryActionHandler={secondaryActionHandler}
             seconaryActionIcon={secondaryActionIcon}
