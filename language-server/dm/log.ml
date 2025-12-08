@@ -33,12 +33,23 @@ let write_to_init_log str =
       flush oc)
     init_log
 
+let selects name x =
+  let rec aux = function
+    | [y] -> x = y
+    | y :: z :: more -> x = y || aux ((y ^ "." ^ z) ::more)
+    | [] -> false
+  in
+  aux @@ String.split_on_char '.' name
+
 let rec is_enabled name = function
   | [] -> false
   | "-vsrocq-d" :: "all" :: _ -> true
   | "-vsrocq-d" :: v :: rest ->
-    List.mem name (String.split_on_char ',' v) || is_enabled name rest
+    List.exists (selects name) (String.split_on_char ',' v) || is_enabled name rest
   | _ :: rest -> is_enabled name rest
+
+let is_enabled_env name s =
+  is_enabled name @@ String.split_on_char ',' s
 
 let logs = ref []
 
@@ -46,7 +57,8 @@ let handle_event s = Printf.eprintf "%s\n" s
 
 let mk_log name =
   logs := name :: !logs;
-  let flag = is_enabled name (Array.to_list Sys.argv) in
+  let flag = is_enabled_env name (try Sys.getenv "VSROCQ_ARGS" with Not_found -> "") in
+  let flag = flag || is_enabled name (Array.to_list Sys.argv) in
   let flag_init = is_enabled "init" (Array.to_list Sys.argv) in
   write_to_init_log ("log fun () -> " ^ name ^ " is " ^ if flag then "on" else "off");
   Log (fun ?(force=false) msg ->
