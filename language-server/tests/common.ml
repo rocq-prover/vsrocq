@@ -262,5 +262,7 @@ let handle_dm_events_views e st =
   let st, _ = handle_dm_events ~on_view:(fun v -> views := v :: !views) 100 e st in
   st, List.rev !views
 
+let handle_dm_events_keep_todo e st = handle_dm_events 100 e st
+
 let handle_dm_events e st = fst @@ handle_dm_events 100 e st
   
