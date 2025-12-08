@@ -102,7 +102,6 @@ type document = {
   parsing_errors_by_end : parsing_error LM.t;
   comments_by_end : comment LM.t;
   schedule : Scheduler.schedule;
-  outline : outline;
   parsed_loc : int;
   raw_doc : RawDocument.t;
   init_synterp_state : Vernacstate.Synterp.t;
@@ -175,7 +174,7 @@ let range_of_id_with_blank_space document id =
   | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
   | Some sentence -> range_of_sentence_with_blank_space document.raw_doc sentence
 
-let push_proof_step_in_outline document id (outline : outline) =
+let push_proof_step_in_outline document id (outline : outline_element list) =
   let range = range_of_id document id in
   let tactic = string_of_id document id in
   let proof_step = {id; tactic; range} in
@@ -185,7 +184,7 @@ let push_proof_step_in_outline document id (outline : outline) =
     let proof = proof_step :: e.proof in
     {e with proof} :: l
 
-let record_outline document id (ast : Synterp.vernac_control_entry) classif (outline : outline) =
+let record_outline document id (ast : Synterp.vernac_control_entry) classif (outline : outline_element list) =
   let open Vernacextend in
   match classif with
   | VtProofStep _ | VtQed _ -> push_proof_step_in_outline document id outline
@@ -261,7 +260,7 @@ let schedule doc = doc.schedule
 
 let raw_document doc = doc.raw_doc
 
-let outline doc = doc.outline
+let outline doc = compute_outline doc
 let parse_errors parsed =
   List.map snd (LM.bindings parsed.parsing_errors_by_end)
 
@@ -290,9 +289,8 @@ let remove_sentence parsed id =
   | Some sentence ->
     let sentences_by_id = SM.remove id parsed.sentences_by_id in
     let sentences_by_end = LM.remove sentence.stop parsed.sentences_by_end in
-    let outline = List.filter (fun (e : outline_element) -> e.id != id) parsed.outline in
     (* TODO clean up the schedule and free cached states *)
-    { parsed with sentences_by_id; sentences_by_end; outline }
+    { parsed with sentences_by_id; sentences_by_end }
 
 let sentences parsed =
   List.map snd @@ SM.bindings parsed.sentences_by_id
@@ -761,8 +759,7 @@ let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; p
     List.fold_left (fun acc (comment : comment) -> LM.add comment.stop comment acc) comments new_comments
   in
   let parsed_loc = pos_at_end document in
-  let outline = compute_outline document in
-  let parsed_document = {document with parsed_loc; parsing_errors_by_end; comments_by_end; outline} in
+  let parsed_document = {document with parsed_loc; parsing_errors_by_end; comments_by_end} in
   Some {parsed_document; unchanged_id; invalid_ids; previous_document}
 
 let handle_event document = function
@@ -782,7 +779,6 @@ let create_document init_synterp_state text =
       parsing_errors_by_end = LM.empty;
       comments_by_end = LM.empty;
       schedule = initial_schedule;
-      outline = [];
       init_synterp_state;
       cancel_handle = None;
     }
