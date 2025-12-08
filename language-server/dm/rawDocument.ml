@@ -138,6 +138,8 @@ let string_in_range raw start end_ =
   with _ -> (* TODO: ERROR *)
     ""
 
+type edit_impact = { start: int; stop: int; shift_after_stop: int }
+
 let apply_text_edit raw (Range.{start; end_}, editText) =
   let start = loc_of_position raw start in
   let stop = loc_of_position raw end_ in
@@ -145,4 +147,5 @@ let apply_text_edit raw (Range.{start; end_}, editText) =
   let after = String.sub raw.text stop (String.length raw.text - stop) in
   let new_text = before ^ editText ^ after in (* FIXME avoid concatenation *)
   let new_lines = compute_lines new_text in (* FIXME compute this incrementally *)
-  { text = new_text; lines = new_lines }, start
+  let len = String.length editText in
+  { text = new_text; lines = new_lines }, { start; stop; shift_after_stop = len - (stop - start) }

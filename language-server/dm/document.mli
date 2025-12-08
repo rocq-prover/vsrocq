@@ -104,6 +104,7 @@ val apply_text_edit : document -> text_edit -> document
 val apply_text_edits : document -> text_edit list -> document
 (** [apply_text_edits doc edits] updates the text of [doc] with [edits]. The new
     text is not parsed or executed. *)
+val unparsed_range : document -> RawDocument.edit_impact option
 
 type sentence_state =
   | Error of parsing_error

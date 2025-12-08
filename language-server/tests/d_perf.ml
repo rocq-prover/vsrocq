@@ -40,3 +40,5 @@ let%test_unit "diff: huge doc" =
   Stdlib.Printf.eprintf "edit: %5.3f \n" (t2 -. t1);
   Stdlib.Printf.eprintf "outline: %5.3f\n" (t3 -. t2);
   ()
+
+let _ = Log.lsp_initialization_done ()
