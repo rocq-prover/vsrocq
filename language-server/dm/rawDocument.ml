@@ -163,6 +163,10 @@ let string_in_range raw start end_ =
     String.sub raw.text start (end_ - start)
   with _ -> (* TODO: ERROR *)
     ""
+(* Example:
+   "123456" -> "1236"    (delete "45")   →  start = 3, stop = 5, shift = -2
+   "1236"   -> "123456"  (insert "45")   →  start = 3, stop = 3, shift = +2 *)
+type edit_impact = { start: int; stop: int; shift_after_stop: int }
 
 let apply_text_edit raw (Range.{start; end_}, editText) =
   let start = loc_of_position raw start in
@@ -171,4 +175,5 @@ let apply_text_edit raw (Range.{start; end_}, editText) =
   let after = String.sub raw.text stop (String.length raw.text - stop) in
   let new_text = before ^ editText ^ after in (* FIXME avoid concatenation *)
   let new_lines, new_is_ascii = compute_lines new_text in (* FIXME compute this incrementally *)
-  { text = new_text; lines = new_lines; is_ascii = new_is_ascii }, start
+  let len = String.length editText in
+  { text = new_text; lines = new_lines; is_ascii = new_is_ascii }, { start; stop; shift_after_stop = len - (stop - start) }

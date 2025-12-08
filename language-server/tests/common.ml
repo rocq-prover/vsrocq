@@ -255,5 +255,7 @@ let em_init_test_doc ~text =
   let dm, init_events = openDoc test_uri ~text in
   handle_dm_events 100 Sel.Todo.(add empty init_events) dm
 
+let handle_dm_events_keep_todo e st = handle_dm_events 100 e st
+
 let handle_dm_events e st = fst @@ handle_dm_events 100 e st
   

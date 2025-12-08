@@ -44,6 +44,13 @@ let shift_checking_result ~start ~offset = function
       let qf' = shift_quickfix ~start ~offset qf in
       if loc' == loc && qf' == qf then x else Failure ((Some loc',e),qf',st)
 
+(* Moves every location of a result by [offset] *)
+let relocate_checking_result offset v =
+  if offset = 0 then v else shift_checking_result ~start:0 ~offset v
+
+let relocate_feedback offset fb =
+  if offset = 0 then fb else shift_feedback ~start:0 ~offset fb
+
 let doc_id = ref (-1)
 let fresh_doc_id () = incr doc_id; !doc_id
 

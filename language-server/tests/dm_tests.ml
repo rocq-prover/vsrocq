@@ -53,7 +53,7 @@ let%test_unit "raw_document.line_count" =
 let%test_unit "parse.insert" =
   let st, init_events = em_init_test_doc ~text:"Definition x := true. Definition y := false." in
   let st = insert_text st ~loc:0 ~text:"Definition z := 0. " in
-  let sentences = Document.sentences @@ DocumentManager.Internal.document st in
+  let sentences = Document.sentences_sorted_by_loc @@ DocumentManager.Internal.document st in
   let positions = Stdlib.List.map (fun (s : Document.sentence) -> s.Document.start) sentences in
   [%test_eq: int list] positions [ 0; 19; 41 ];
   check_no_diag st
@@ -64,12 +64,18 @@ let%test_unit "parse.squash" =
   let st, init_events = em_init_test_doc ~text:"Definition x := true. Definition y := false. Definition z := 0." in
   let st = edit_text st ~start:20 ~stop:21 ~text:"" in
   let doc = DocumentManager.Internal.document st in
-  let sentences = Document.sentences doc in
+  let sentences = Document.sentences_sorted_by_loc doc in
   let start_positions = Stdlib.List.map (fun (s : Document.sentence) -> s.Document.start) sentences in
   let stop_positions = Stdlib.List.map (fun (s : Document.sentence) -> s.Document.stop) sentences in
   [%test_eq: int list] start_positions [ 0; 44 ];
   [%test_eq: int list] stop_positions [ 43; 62 ];
   [%test_eq: int] (List.length (Document.parse_errors doc)) 1
+
+let%test_unit "parse.empty_edits" =
+  let st, init_events = em_init_test_doc ~text:"Definition x := true." in
+  let st', events = DocumentManager.apply_text_edits st [] in
+  [%test_eq: int] (List.length events) 0;
+  [%test_eq: bool] (phys_equal st st') true
 
 let%test_unit "parse.error_recovery" =
                                               (*          1         2         3         4         5         6         7*)
