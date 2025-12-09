@@ -17,7 +17,7 @@ chmod +x .wrappers/coqc
 case "$OSTYPE" in
 cygwin) 
     dune=$(command -v dune)
-    dunep=$(dirpath $dune)
+    dunep=${dune%%dune}
     export PATH="`cygpath -ma $PWD/.wrappers`;`cygpath -ma $dunep`;$PATH" 
     shift
     $dune "$@"
