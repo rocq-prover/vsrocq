@@ -2,7 +2,7 @@
  (name vsrocqtop_args)
  (public_name vsrocq-language-server.vsrocqtop_args)
  (wrapped false)
- (modules args)
+ (modules args vsrocqSettings)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
  (libraries @@ROCQ_RUNTIME@@.sysinit dm))
 

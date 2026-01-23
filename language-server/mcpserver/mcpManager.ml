@@ -269,8 +269,7 @@ let handle_request (req : Request.t) =
       (match params with Some p -> p.clientInfo.name | None -> "unknown"));
     let result = InitializeResult.{
       protocolVersion = "2025-11-25";
-      (* TODO: use version from vsrocq *)
-      serverInfo = { name = "vsrocqmcp"; version = "0.1.0" };
+      serverInfo = { name = "vsrocq-model-context-server"; version = VsrocqSettings.version };
       capabilities = { tools = Some { listChanged = None } };
     } in
     Response.ok req.id (InitializeResult.yojson_of_t result)
