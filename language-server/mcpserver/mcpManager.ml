@@ -40,13 +40,11 @@ let point_interp_mode = ref Protocol.Settings.PointInterpretationMode.Cursor
 
 let Log log = Dm.Log.mk_log "mcpManager"
 
-(** Output a JSON message to stdout with content-length header *)
+(** Output a JSON message to stdout in MCP format (direct JSON) *)
 let output_json obj =
-  let msg = Yojson.Safe.pretty_to_string ~std:true obj in
-  let size = String.length msg in
-  let s = Printf.sprintf "Content-Length: %d\r\n\r\n%s" size msg in
+  let msg = Yojson.Safe.to_string ~std:true obj in
   log (fun () -> "sent: " ^ msg);
-  ignore(Unix.write_substring Unix.stdout s 0 (String.length s))
+  Printf.printf "%s\n%!" msg
 
 (** Send a JSON-RPC response *)
 let send_response resp =
@@ -55,25 +53,32 @@ let send_response resp =
 (** Process document manager events synchronously until stable *)
 let rec process_events_until_stable (doc : doc_state) =
   match doc.pending_events with
-  | [] -> ()
+  | [] -> 
+    ()
   | _ ->
     let todo = Sel.Todo.add Sel.Todo.empty doc.pending_events in
     doc.pending_events <- [];
-    process_events_loop doc todo
+    process_events_loop doc todo;
 
 and process_events_loop doc todo =
-  if Sel.Todo.size todo = 0 then
-    ()
-  else begin
-    let ready, todo = Sel.pop todo in
-    let handled = Dm.DocumentManager.handle_event ready doc.st
-      ~block:!block_on_first_error !check_mode !diff_mode !pretty_print_mode in
-    begin match handled.state with
-    | Some new_st -> doc.st <- new_st
-    | None -> ()
-    end;
-    let todo = Sel.Todo.add todo handled.events in
-    process_events_loop doc todo
+  if Sel.Todo.size todo = 0 then begin ()
+  end else begin
+    let ready, todo = Sel.pop_timeout ~stop_after_being_idle_for:0.1 todo in
+    match ready with
+    | None ->
+      (* No more ready events - stop processing *)
+      ()
+    | Some ready ->
+      let handled = Dm.DocumentManager.handle_event ready doc.st
+        ~block:!block_on_first_error !check_mode !diff_mode !pretty_print_mode in
+      begin match handled.state with
+      | Some new_st ->
+        doc.st <- new_st
+      | None ->
+        ()
+      end;
+      let todo = Sel.Todo.add todo handled.events in
+      process_events_loop doc todo
   end
 
 (** Wait for parsing to complete *)
@@ -166,6 +171,19 @@ let init_document local_args vst =
 
 (** Tool handlers *)
 
+let get_file_text uri text =
+  match text with
+  | Some t -> t
+  | None ->
+    try
+      let ic = open_in uri in
+      let text = really_input_string ic (in_channel_length ic) in
+      close_in ic;
+      text
+    with e ->
+      let msg = Printf.sprintf "Failed to read file %s: %s" uri (Printexc.to_string e) in
+      failwith msg
+
 let handle_open_document args =
   let open ToolArgs in
   let { uri; text } = open_document_of_yojson args in
@@ -179,10 +197,10 @@ let handle_open_document args =
     let dir = Filename.dirname uri in
     let local_args = McpArgs.Args.get_local_args dir in
     let vst = init_document local_args vst in
-
     try
+      let document_text = get_file_text uri text in
       let st, events = Dm.DocumentManager.init vst
-        ~opts:(Coqargs.injection_commands local_args) doc_uri ~text in
+      ~opts:(Coqargs.injection_commands local_args) doc_uri ~text:document_text in
       let doc = { st; pending_events = events } in
       Hashtbl.add states uri doc;
       wait_for_parsing doc;
@@ -313,43 +331,6 @@ let handle_apply_edit args =
     wait_for_parsing doc;
     ToolsCallResult.success [Content.text "Edit applied successfully."]
 
-let handle_query args =
-  let open ToolArgs in
-  let { uri; line; character; command; pattern } = query_of_yojson args in
-  log (fun () -> Printf.sprintf "Query %s: %s" command pattern);
-
-  match Hashtbl.find_opt states uri with
-  | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
-  | Some doc ->
-    wait_for_parsing doc;
-    let pos = Position.create ~line ~character in
-    let result =
-      match command with
-      | "about" -> Dm.DocumentManager.about doc.st pos ~pattern
-      | "check" -> Dm.DocumentManager.check doc.st pos ~pattern
-      | "print" -> Dm.DocumentManager.print doc.st pos ~pattern
-      | "locate" -> Dm.DocumentManager.locate doc.st pos ~pattern
-      | _ -> Error { message = Printf.sprintf "Unknown query command: %s" command; code = None }
-    in
-    match result with
-    | Ok pp ->
-      (* Convert Protocol.Printing.pp to JSON and extract text *)
-      let json = Protocol.Printing.yojson_of_pp pp in
-      let rec extract_strings json =
-        match json with
-        | `String s -> s
-        | `List l -> String.concat "" (List.map extract_strings l)
-        | `Assoc fields ->
-          (match List.assoc_opt "Ppcmd_string" fields with
-           | Some (`List [`String s]) -> s
-           | _ ->
-             List.fold_left (fun acc (_, v) -> acc ^ extract_strings v) "" fields)
-        | _ -> ""
-      in
-      ToolsCallResult.success [Content.text (extract_strings json)]
-    | Error { message; _ } ->
-      ToolsCallResult.error message
-
 (** Dispatch tool calls *)
 let dispatch_tool name args =
   let args = match args with Some a -> a | None -> `Null in
@@ -362,8 +343,17 @@ let dispatch_tool name args =
   | "step_backward" -> handle_step_backward args
   | "get_proof_state" -> handle_get_proof_state args
   | "apply_edit" -> handle_apply_edit args
-  | "query" -> handle_query args
   | _ -> ToolsCallResult.error (Printf.sprintf "Unknown tool: %s" name)
+
+(** Handle MCP notifications *)
+let handle_notification (notif : Notification.t) =
+  log (fun () -> Printf.sprintf "Handling notification: %s" notif.method_);
+  match notif.method_ with
+  | "notifications/initialized" ->
+    ()
+  | _ ->
+    log (fun () -> Printf.sprintf "Unhandled notification: %s" notif.method_);
+    ()
 
 (** Handle MCP requests *)
 let handle_request (req : Request.t) =
@@ -374,14 +364,11 @@ let handle_request (req : Request.t) =
     log (fun () -> Printf.sprintf "Initialize from: %s"
       (match params with Some p -> p.clientInfo.name | None -> "unknown"));
     let result = InitializeResult.{
-      protocolVersion = "2024-11-05";
-      serverInfo = { name = "vsrocq-mcp-server"; version = "0.1.0" };
+      protocolVersion = "2025-11-25";
+      serverInfo = { name = "vsrocqmcp"; version = "0.1.0" };
       capabilities = { tools = Some { listChanged = None } };
     } in
     Response.ok req.id (InitializeResult.yojson_of_t result)
-
-  | "notifications/initialized" ->
-    Response.ok req.id `Null
 
   | "tools/list" ->
     let result = ToolsListResult.{ tools = tool_definitions } in
@@ -402,22 +389,11 @@ let handle_request (req : Request.t) =
   | _ ->
     Response.err req.id (-32601) (Printf.sprintf "Method not found: %s" req.method_)
 
-(** Read a JSON-RPC message from stdin *)
+(** Read a JSON-RPC message from stdin in MCP format (direct JSON) *)
 let read_message () =
-  let header = input_line stdin in
-  log (fun () -> "Header: " ^ header);
-  let content_length =
-    if String.length header >= 16 && String.sub header 0 16 = "Content-Length: " then
-      int_of_string (String.trim (String.sub header 16 (String.length header - 16)))
-    else
-      failwith "Expected Content-Length header"
-  in
-  let _ = input_line stdin in
-  let content = Bytes.create content_length in
-  really_input stdin content 0 content_length;
-  let json_str = Bytes.to_string content in
-  log (fun () -> "Received: " ^ json_str);
-  Yojson.Safe.from_string json_str
+  let json_line = input_line stdin in
+  log (fun () -> "Received: " ^ json_line);
+  Yojson.Safe.from_string json_line
 
 (** Main event loop *)
 let rec main_loop () =
@@ -434,8 +410,7 @@ let rec main_loop () =
       send_response resp
     end else begin
       let notif = Notification.t_of_yojson json in
-      log (fun () -> Printf.sprintf "Received notification: %s" notif.method_);
-      ()
+      handle_notification notif
     end;
     main_loop ()
   with
