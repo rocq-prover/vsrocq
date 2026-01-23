@@ -17,8 +17,15 @@
 
 let Dm.Types.Log log = Dm.Log.mk_log "mcptop"
 
+(* TODO: make this work for previous versions, jut like vsrocqtop *)
 (* For Rocq 9.0/9.1, use Flags.load_vos_libraries *)
+[%%if rocq = "9.0" || rocq = "9.1"]
 let load_vos = Flags.load_vos_libraries
+[%%else]
+let load_vos = Loadpath.load_vos_libraries
+[%%endif]
+
+(* let load_vos = ref true *)
 
 let () =
   Coqinit.init_ocaml ();

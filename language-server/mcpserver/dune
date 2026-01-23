@@ -27,4 +27,5 @@
  (modules vsrocqmcp)
  (flags -linkall)
  (package vsrocq-language-server)
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
  (libraries rocq-runtime.sysinit rocq-runtime.tactics sel yojson dm lsp mcpserver mcpArgs))
