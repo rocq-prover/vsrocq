@@ -11,6 +11,7 @@ language-server/dm/vsrocq_config.mlh
 language-server/tests/vsrocq_config.mlh
 language-server/*.install
 language-server/vsrocqmcp/dune
+language-server/mcpserver/dune
 client/yarn-error.log
 client/.vscode-test/
 client/out/

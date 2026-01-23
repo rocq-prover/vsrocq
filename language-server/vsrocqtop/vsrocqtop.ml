@@ -12,12 +12,14 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** This toplevel implements an LSP-based server language for VsCode,
-    used by the VsRocq extension. *)
+(** This toplevel implements an LSP-based server language for VsCode, used by
+      the VsRocq extension.
+
+    When started with -mcp flag, it runs an MCP server instead. *)
 
 let Dm.Types.Log log = Dm.Log.mk_log "top"
 
-let loop () =
+let lsp_loop () =
   let events = LspManager.init () in
   let rec loop (todo : LspManager.event Sel.Todo.t) =
     (*log fun () -> "looking for next step";*)
@@ -43,6 +45,14 @@ let loop () =
     log ~force:true (fun () -> Pp.string_of_ppcmds @@ CErrors.iprint_no_report info);
     log ~force:true (fun () -> "==========================================================")
 
+let mcp_loop () =
+  Mcpserver.McpManager.init ();
+  Mcpserver.McpManager.main_loop ()
+
+let main_loop () =
+  if !(Args.mcp_mode) then mcp_loop ()
+  else lsp_loop ()
+
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
 let _ =
   Coqinit.init_ocaml ();
@@ -53,7 +63,7 @@ let _ =
   Safe_typing.allow_delayed_constants := true; (* Needed to delegate or skip proofs *)
   Flags.load_vos_libraries := true;
   Sys.(set_signal sigint Signal_ignore);
-  loop ()
+  main_loop ()
 [%%else]
 
 [%%if rocq = "9.0" || rocq = "9.1"]
@@ -71,5 +81,5 @@ let () =
   Safe_typing.allow_delayed_constants := true; (* Needed to delegate or skip proofs *)
   load_vos := true;
   Sys.(set_signal sigint Signal_ignore);
-  loop ()
+  main_loop ()
 [%%endif]
