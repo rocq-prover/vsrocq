@@ -162,86 +162,67 @@ let handle_close_document args =
   end else
     ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
 
-(* TODO: share common code between all the interpret* and step* handle functions *)
+(** Look up an open document by URI and apply a function to it *)
+let with_document uri ~f =
+  match Hashtbl.find_opt states uri with
+  | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
+  | Some doc -> f doc
+
+(** Process interpretation-related events for a document, return proof state result *)
+let with_interpret uri ~get_events =
+  with_document uri ~f:(fun doc ->
+    wait_for_parsing doc;
+    begin match get_events () with
+    | Some events ->
+      doc.pending_events <- doc.pending_events @ events;
+      process_events_until_stable doc
+    | None -> ()
+    end;
+    ToolsCallResult.success [Content.text (format_interp_result doc)])
+
 let handle_interpret_to_point args =
   let open ToolArgs in
   let ({ uri; line; character } : interpret_to_point) = interpret_to_point_of_yojson args in
   log (fun () -> Printf.sprintf "Interpret to point: %s:%d:%d" uri line character);
-
-  match Hashtbl.find_opt states uri with
-  | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
-  | Some doc ->
-    wait_for_parsing doc;
-    let pos = Position.create ~line ~character in
-    let events = Dm.DocumentManager.interpret_to_position pos !check_mode ~point_interp_mode:!point_interp_mode in
-    doc.pending_events <- doc.pending_events @ events;
-    process_events_until_stable doc;
-    ToolsCallResult.success [Content.text (format_interp_result doc)]
+  let pos = Position.create ~line ~character in
+  with_interpret uri ~get_events:(fun () ->
+    Some (Dm.DocumentManager.interpret_to_position pos !check_mode ~point_interp_mode:!point_interp_mode))
 
 let handle_interpret_to_end args =
   let open ToolArgs in
   let ({ uri } : interpret_to_end) = interpret_to_end_of_yojson args in
   log (fun () -> Printf.sprintf "Interpret to end: %s" uri);
-
-  match Hashtbl.find_opt states uri with
-  | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
-  | Some doc ->
-    wait_for_parsing doc;
-    let events = Dm.DocumentManager.interpret_to_end !check_mode in
-    doc.pending_events <- doc.pending_events @ events;
-    process_events_until_stable doc;
-    ToolsCallResult.success [Content.text (format_interp_result doc)]
+  with_interpret uri ~get_events:(fun () ->
+    Some (Dm.DocumentManager.interpret_to_end !check_mode))
 
 let handle_step_forward args =
   let open ToolArgs in
   let ({ uri } : step_forward) = step_forward_of_yojson args in
   log (fun () -> Printf.sprintf "Step forward: %s" uri);
-
-  match Hashtbl.find_opt states uri with
-  | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
-  | Some doc ->
-    wait_for_parsing doc;
-    let events = Dm.DocumentManager.interpret_to_next !check_mode in
-    doc.pending_events <- doc.pending_events @ events;
-    process_events_until_stable doc;
-    ToolsCallResult.success [Content.text (format_interp_result doc)]
+  with_interpret uri ~get_events:(fun () ->
+    Some (Dm.DocumentManager.interpret_to_next !check_mode))
 
 let handle_step_backward args =
   let open ToolArgs in
   let ({ uri } : step_backward) = step_backward_of_yojson args in
   log (fun () -> Printf.sprintf "Step backward: %s" uri);
-
-  match Hashtbl.find_opt states uri with
-  | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
-  | Some doc ->
-    wait_for_parsing doc;
-    let events = Dm.DocumentManager.interpret_to_previous !check_mode in
-    doc.pending_events <- doc.pending_events @ events;
-    process_events_until_stable doc;
-    ToolsCallResult.success [Content.text (format_interp_result doc)]
+  with_interpret uri ~get_events:(fun () ->
+    Some (Dm.DocumentManager.interpret_to_previous !check_mode))
 
 let handle_get_proof_state args =
   let open ToolArgs in
   let ({ uri } : get_proof_state) = get_proof_state_of_yojson args in
   log (fun () -> Printf.sprintf "Get proof state: %s" uri);
-
-  match Hashtbl.find_opt states uri with
-  | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
-  | Some doc ->
-    wait_for_parsing doc;
-    ToolsCallResult.success [Content.text (format_interp_result doc)]
+  with_interpret uri ~get_events:(fun () -> None)
 
 let handle_apply_edit args =
   let open ToolArgs in
   let { uri; startLine; startCharacter; endLine; endCharacter; newText } = apply_edit_of_yojson args in
   log (fun () -> Printf.sprintf "Apply edit: %s" uri);
-
-  match Hashtbl.find_opt states uri with
-  | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
-  | Some doc ->
-    let range = Range.create
-      ~start:(Position.create ~line:startLine ~character:startCharacter)
-      ~end_:(Position.create ~line:endLine ~character:endCharacter) in
+  let range = Range.create
+    ~start:(Position.create ~line:startLine ~character:startCharacter)
+    ~end_:(Position.create ~line:endLine ~character:endCharacter) in
+  with_document uri ~f:(fun doc ->
     let st, events = Dm.DocumentManager.apply_text_edits doc.st [(range, newText)] in
     doc.st <- st;
     doc.pending_events <- doc.pending_events @ events;
@@ -253,7 +234,7 @@ let handle_apply_edit args =
     with e ->
       let msg = Printf.sprintf "Edit applied but failed to save file: %s" (Printexc.to_string e) in
       log (fun () -> msg);
-      ToolsCallResult.error msg
+      ToolsCallResult.error msg)
 
 (** Dispatch tool calls *)
 let dispatch_tool name args =
