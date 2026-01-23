@@ -65,7 +65,7 @@ end
 module Schema = struct
   (** Tool schemas - JSON Schema definitions for tool inputs *)
 
-  open McpBase_lib.McpBase
+  open McpBase
   open JsonSchema
 
   let uri_prop = property ~type_:"string" ~description:"The URI/path of the document"
@@ -109,7 +109,7 @@ end
 module Definitions = struct
   (** Tool definitions - metadata and schemas for MCP *)
 
-  open McpBase_lib.McpBase
+  open McpBase
 
   let open_document = Tool.make
     ~name:"open_document"
@@ -151,7 +151,7 @@ module Definitions = struct
     ~description:"Apply a text edit to the document and save it to the file. The edit replaces text in the specified range with new text. Both the in-memory document state and the file on disk are updated."
     ~inputSchema:Schema.apply_edit
 
-  let all : McpBase_lib.McpBase.Tool.t list = [
+  let all : McpBase.Tool.t list = [
     open_document;
     close_document;
     interpret_to_point;

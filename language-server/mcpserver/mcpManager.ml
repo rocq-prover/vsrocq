@@ -16,8 +16,8 @@
 
 open Lsp.Types
 open Dm.Types
-open McpBase_lib.McpBase
-module ToolArgs = VsrocqTools_lib.VsrocqTools.Args
+open McpBase
+module ToolArgs = VsrocqTools.Args
 
 
 let init_state : Vernacstate.t option ref = ref None
@@ -93,15 +93,20 @@ let wait_for_parsing (doc : doc_state) =
   in
   loop ()
 
-(** Format the interpretation result with position info *)
 let format_interp_result (doc : doc_state) : string =
   McpPrinting.format_interp_result doc.st
 
-(** Initialize Coq for a document - Rocq >= 9.0 version *)
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
+(* in these rocq versions init_runtime called globally for the process includes init_document
+   this means in these versions we do not support local _CoqProject except for the effect on injections
+   (eg -noinit) *)
+let init_document _ vst = vst
+[%%else]
 let init_document local_args vst =
   let () = Vernacstate.unfreeze_full_state vst in
   let () = Coqinit.init_document local_args in
   Vernacstate.freeze_full_state ()
+[%%endif]
 
 (** Tool handlers *)
 
@@ -259,6 +264,12 @@ let handle_notification (notif : Notification.t) =
     log (fun () -> Printf.sprintf "Unhandled notification: %s" notif.method_);
     ()
 
+let protocol_version = "2025-11-25"
+let server_info =
+  ServerInfo.make 
+    ~name:"vsrocq-model-context-server"
+    ~version:VsrocqSettings.version
+
 (** Handle MCP requests *)
 let handle_request (req : Request.t) =
   log (fun () -> Printf.sprintf "Handling request: %s" req.method_);
@@ -268,14 +279,14 @@ let handle_request (req : Request.t) =
     log (fun () -> Printf.sprintf "Initialize from: %s"
       (match params with Some p -> p.clientInfo.name | None -> "unknown"));
     let result = InitializeResult.{
-      protocolVersion = "2025-11-25";
-      serverInfo = { name = "vsrocq-model-context-server"; version = VsrocqSettings.version };
+      protocolVersion = protocol_version;
+      serverInfo = server_info;
       capabilities = { tools = Some { listChanged = None } };
     } in
     Response.ok req.id (InitializeResult.yojson_of_t result)
 
   | "tools/list" ->
-    let result = ToolsListResult.{ tools = VsrocqTools_lib.VsrocqTools.Definitions.all } in
+    let result = ToolsListResult.{ tools = VsrocqTools.Definitions.all } in
     Response.ok req.id (ToolsListResult.yojson_of_t result)
 
   | "tools/call" ->
