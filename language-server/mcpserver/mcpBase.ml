@@ -18,7 +18,7 @@
 
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
-(** {1 JSON Schema} *)
+(** JSON Schema *)
 
 module JsonSchema = struct
   type property = {
@@ -47,7 +47,7 @@ module JsonSchema = struct
     { type_ = "object"; properties; required }
 end
 
-(** {1 Tool Definition} *)
+(** Tool Definition *)
 
 module Tool = struct
   type t = {
@@ -68,7 +68,7 @@ module Tool = struct
   let make ~name ~description ~inputSchema = { name; description; inputSchema }
 end
 
-(** {1 Content Types} *)
+(** Content Types *)
 
 module Content = struct
   type text_content = {
@@ -86,7 +86,7 @@ module Content = struct
   let text s = TextContent { type_ = "text"; text = s }
 end
 
-(** {1 Server Types} *)
+(** Server Types *)
 
 module ServerCapabilities = struct
   type tools_capability = {
@@ -126,7 +126,7 @@ module ServerInfo = struct
   let make ~name ~version = { name; version }
 end
 
-(** {1 Initialize Protocol} *)
+(** Initialize Protocol *)
 
 module InitializeParams = struct
   type client_info = {
@@ -174,7 +174,7 @@ module InitializeResult = struct
     { protocolVersion; serverInfo; capabilities }
 end
 
-(** {1 Tools Protocol} *)
+(** Tools Protocol *)
 
 module ToolsListResult = struct
   type t = {
@@ -221,7 +221,7 @@ module ToolsCallResult = struct
   let error msg = { content = [Content.text msg]; isError = Some true }
 end
 
-(** {1 JSON-RPC} *)
+(** JSON-RPC *)
 
 module Request = struct
   type t = {
