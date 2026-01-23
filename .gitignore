@@ -8,5 +8,7 @@ language-server/tests/dune
 language-server/dm/vsrocq_config.mlh
 language-server/tests/vsrocq_config.mlh
 language-server/*.install
+language-server/vsrocqmcp/dune
+client/out/
 .DS_Store
 result
