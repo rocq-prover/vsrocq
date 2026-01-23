@@ -134,6 +134,16 @@ let format_pp_proof_state (ps : Protocol.PpProofState.t option) : string =
     in
     goals_str ^ shelved_str ^ given_up_str ^ unfocused_str
 
+(** Get the current observe position range *)
+let get_observe_range (doc : doc_state) : Range.t option =
+  Dm.DocumentManager.observe_id_range doc.st
+
+(** Format a range as a string *)
+let format_range (range : Range.t) : string =
+  Printf.sprintf "line %d, character %d to line %d, character %d"
+    (range.start.line + 1) range.start.character
+    (range.end_.line + 1) range.end_.character
+
 (** Get the current proof state for a document *)
 let get_current_proof_state (doc : doc_state) : string =
   let observe_id = Dm.DocumentManager.Internal.observe_id doc.st in
@@ -143,26 +153,52 @@ let get_current_proof_state (doc : doc_state) : string =
   | None -> "No proof state available (document may not be executed to this point)."
   | Some vst -> format_pp_proof_state (Protocol.PpProofState.get_proof vst)
 
-(** Get diagnostics/messages for the current state *)
-let get_diagnostics (doc : doc_state) : string =
-  let diags = Dm.DocumentManager.all_diagnostics doc.st in
-  if diags = [] then "No diagnostics."
+(** Get messages for the current sentence using get_string_messages *)
+let get_current_messages (doc : doc_state) : string =
+  match Dm.DocumentManager.Internal.observe_id doc.st with
+  | None -> "No messages (at document start)."
+  | Some id ->
+    let messages = Dm.DocumentManager.get_string_messages doc.st id in
+    if messages = [] then "No messages."
+    else
+      let format_msg (severity, msg) =
+        let sev_str = match severity with
+          | DiagnosticSeverity.Error -> "Error"
+          | DiagnosticSeverity.Warning -> "Warning"
+          | DiagnosticSeverity.Information -> "Info"
+          | DiagnosticSeverity.Hint -> "Hint"
+        in
+        Printf.sprintf "[%s] %s" sev_str msg
+      in
+      String.concat "\n" (List.map format_msg messages)
+
+(** Get all execution errors with position info *)
+let get_all_errors (doc : doc_state) : string =
+  let exec_state = Dm.DocumentManager.Internal.execution_state doc.st in
+  let document = Dm.DocumentManager.Internal.document doc.st in
+  let all_errors = Dm.ExecutionManager.all_errors exec_state in
+  (* Filter to only include errors for sentences that exist in the document *)
+  let valid_errors = List.filter (fun (id, _) ->
+    Option.has_some (Dm.Document.get_sentence document id)
+  ) all_errors in
+  if valid_errors = [] then "No errors."
   else
-    let format_diag (d : Diagnostic.t) =
-      let severity = match d.severity with
-        | Some DiagnosticSeverity.Error -> "Error"
-        | Some DiagnosticSeverity.Warning -> "Warning"
-        | Some DiagnosticSeverity.Information -> "Info"
-        | Some DiagnosticSeverity.Hint -> "Hint"
-        | None -> "Unknown"
-      in
-      let msg = match d.message with
-        | `String s -> s
-        | `MarkupContent m -> m.value
-      in
-      Printf.sprintf "[%s] Line %d: %s" severity (d.range.start.line + 1) msg
+    let format_error (id, (_oloc, msg, _qf)) =
+      let range = Dm.Document.range_of_id document id in
+      Printf.sprintf "[Error at %s] %s" (format_range range) (Pp.string_of_ppcmds msg)
     in
-    String.concat "\n" (List.map format_diag diags)
+    String.concat "\n" (List.map format_error valid_errors)
+
+(** Format the interpretation result with position info *)
+let format_interp_result (doc : doc_state) : string =
+  let position_info = match get_observe_range doc with
+    | None -> "Position: document start (no sentences executed)"
+    | Some range -> Printf.sprintf "Position: %s" (format_range range)
+  in
+  let proof_state = get_current_proof_state doc in
+  let messages = get_current_messages doc in
+  let errors = get_all_errors doc in
+  Printf.sprintf "%s\n\nProof state:\n%s\n\nMessages:\n%s\n\nErrors:\n%s" position_info proof_state messages errors
 
 (** Initialize Coq for a document - Rocq >= 9.0 version *)
 let init_document local_args vst =
@@ -236,12 +272,7 @@ let handle_interpret_to_point args =
     let events = Dm.DocumentManager.interpret_to_position pos !check_mode ~point_interp_mode:!point_interp_mode in
     doc.pending_events <- doc.pending_events @ events;
     process_events_until_stable doc;
-
-    let proof_state = get_current_proof_state doc in
-    let diagnostics = get_diagnostics doc in
-    ToolsCallResult.success [
-      Content.text (Printf.sprintf "Proof state:\n%s\n\nDiagnostics:\n%s" proof_state diagnostics)
-    ]
+    ToolsCallResult.success [Content.text (format_interp_result doc)]
 
 let handle_interpret_to_end args =
   let open ToolArgs in
@@ -255,12 +286,7 @@ let handle_interpret_to_end args =
     let events = Dm.DocumentManager.interpret_to_end !check_mode in
     doc.pending_events <- doc.pending_events @ events;
     process_events_until_stable doc;
-
-    let proof_state = get_current_proof_state doc in
-    let diagnostics = get_diagnostics doc in
-    ToolsCallResult.success [
-      Content.text (Printf.sprintf "Proof state:\n%s\n\nDiagnostics:\n%s" proof_state diagnostics)
-    ]
+    ToolsCallResult.success [Content.text (format_interp_result doc)]
 
 let handle_step_forward args =
   let open ToolArgs in
@@ -274,12 +300,7 @@ let handle_step_forward args =
     let events = Dm.DocumentManager.interpret_to_next !check_mode in
     doc.pending_events <- doc.pending_events @ events;
     process_events_until_stable doc;
-
-    let proof_state = get_current_proof_state doc in
-    let diagnostics = get_diagnostics doc in
-    ToolsCallResult.success [
-      Content.text (Printf.sprintf "Proof state:\n%s\n\nDiagnostics:\n%s" proof_state diagnostics)
-    ]
+    ToolsCallResult.success [Content.text (format_interp_result doc)]
 
 let handle_step_backward args =
   let open ToolArgs in
@@ -293,12 +314,7 @@ let handle_step_backward args =
     let events = Dm.DocumentManager.interpret_to_previous !check_mode in
     doc.pending_events <- doc.pending_events @ events;
     process_events_until_stable doc;
-
-    let proof_state = get_current_proof_state doc in
-    let diagnostics = get_diagnostics doc in
-    ToolsCallResult.success [
-      Content.text (Printf.sprintf "Proof state:\n%s\n\nDiagnostics:\n%s" proof_state diagnostics)
-    ]
+    ToolsCallResult.success [Content.text (format_interp_result doc)]
 
 let handle_get_proof_state args =
   let open ToolArgs in
@@ -309,11 +325,7 @@ let handle_get_proof_state args =
   | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
   | Some doc ->
     wait_for_parsing doc;
-    let proof_state = get_current_proof_state doc in
-    let diagnostics = get_diagnostics doc in
-    ToolsCallResult.success [
-      Content.text (Printf.sprintf "Proof state:\n%s\n\nDiagnostics:\n%s" proof_state diagnostics)
-    ]
+    ToolsCallResult.success [Content.text (format_interp_result doc)]
 
 let handle_apply_edit args =
   let open ToolArgs in
