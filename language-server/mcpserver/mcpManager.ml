@@ -51,16 +51,14 @@ let output_json obj =
 let send_response resp =
   output_json (Response.yojson_of_t resp)
 
-(** Process document manager events synchronously until stable *)
+(** Process document manager events synchronously until stable (no more pending events) *)
 let rec process_events_until_stable (doc : doc_state) =
   match doc.pending_events with
-  | [] -> 
-    ()
+  | [] -> ()
   | _ ->
     let todo = Sel.Todo.add Sel.Todo.empty doc.pending_events in
     doc.pending_events <- [];
     process_events_loop doc todo;
-
 and process_events_loop doc todo =
   if Sel.Todo.size todo = 0 then begin ()
   end else begin
@@ -95,110 +93,9 @@ let wait_for_parsing (doc : doc_state) =
   in
   loop ()
 
-(** Format proof state using PpProofState (string-based) for cleaner output *)
-let format_pp_proof_state (ps : Protocol.PpProofState.t option) : string =
-  match ps with
-  | None -> "No proof in progress."
-  | Some { goals; shelvedGoals; givenUpGoals; unfocusedGoals } ->
-    let format_goal (g : Protocol.PpProofState.goal) =
-      let hyps = List.map (fun (h : Protocol.PpProofState.hypothesis) ->
-        let ids = String.concat ", " h.ids in
-        let body = match h.body with
-          | Some b -> " := " ^ b
-          | None -> ""
-        in
-        Printf.sprintf "%s%s : %s" ids body h._type
-      ) g.hypotheses in
-      Printf.sprintf "Goal %d:\n  %s\n  ============================\n  %s"
-        g.id
-        (String.concat "\n  " hyps)
-        g.goal
-    in
-    let goals_str =
-      if goals = [] then "No more subgoals."
-      else Printf.sprintf "%d goal(s):\n%s"
-        (List.length goals)
-        (String.concat "\n\n" (List.map format_goal goals))
-    in
-    let shelved_str =
-      if shelvedGoals = [] then ""
-      else Printf.sprintf "\n\nShelved goals: %d" (List.length shelvedGoals)
-    in
-    let given_up_str =
-      if givenUpGoals = [] then ""
-      else Printf.sprintf "\n\nGiven up goals: %d" (List.length givenUpGoals)
-    in
-    let unfocused_str =
-      if unfocusedGoals = [] then ""
-      else Printf.sprintf "\n\nUnfocused goals: %d" (List.length unfocusedGoals)
-    in
-    goals_str ^ shelved_str ^ given_up_str ^ unfocused_str
-
-(** Get the current observe position range *)
-let get_observe_range (doc : doc_state) : Range.t option =
-  Dm.DocumentManager.observe_id_range doc.st
-
-(** Format a range as a string *)
-let format_range (range : Range.t) : string =
-  Printf.sprintf "line %d, character %d to line %d, character %d"
-    (range.start.line + 1) range.start.character
-    (range.end_.line + 1) range.end_.character
-
-(** Get the current proof state for a document *)
-let get_current_proof_state (doc : doc_state) : string =
-  let observe_id = Dm.DocumentManager.Internal.observe_id doc.st in
-  let ost = Option.bind observe_id
-    (Dm.ExecutionManager.get_vernac_state (Dm.DocumentManager.Internal.execution_state doc.st)) in
-  match ost with
-  | None -> "No proof state available (document may not be executed to this point)."
-  | Some vst -> format_pp_proof_state (Protocol.PpProofState.get_proof vst)
-
-(** Get messages for the current sentence using get_string_messages *)
-let get_current_messages (doc : doc_state) : string =
-  match Dm.DocumentManager.Internal.observe_id doc.st with
-  | None -> "No messages (at document start)."
-  | Some id ->
-    let messages = Dm.DocumentManager.get_string_messages doc.st id in
-    if messages = [] then "No messages."
-    else
-      let format_msg (severity, msg) =
-        let sev_str = match severity with
-          | DiagnosticSeverity.Error -> "Error"
-          | DiagnosticSeverity.Warning -> "Warning"
-          | DiagnosticSeverity.Information -> "Info"
-          | DiagnosticSeverity.Hint -> "Hint"
-        in
-        Printf.sprintf "[%s] %s" sev_str msg
-      in
-      String.concat "\n" (List.map format_msg messages)
-
-(** Get all execution errors with position info *)
-let get_all_errors (doc : doc_state) : string =
-  let exec_state = Dm.DocumentManager.Internal.execution_state doc.st in
-  let document = Dm.DocumentManager.Internal.document doc.st in
-  let all_errors = Dm.ExecutionManager.all_errors exec_state in
-  (* Filter to only include errors for sentences that exist in the document *)
-  let valid_errors = List.filter (fun (id, _) ->
-    Option.has_some (Dm.Document.get_sentence document id)
-  ) all_errors in
-  if valid_errors = [] then "No errors."
-  else
-    let format_error (id, (_oloc, msg, _qf)) =
-      let range = Dm.Document.range_of_id document id in
-      Printf.sprintf "[Error at %s] %s" (format_range range) (Pp.string_of_ppcmds msg)
-    in
-    String.concat "\n" (List.map format_error valid_errors)
-
 (** Format the interpretation result with position info *)
 let format_interp_result (doc : doc_state) : string =
-  let position_info = match get_observe_range doc with
-    | None -> "Position: document start (no sentences executed)"
-    | Some range -> Printf.sprintf "Position: %s" (format_range range)
-  in
-  let proof_state = get_current_proof_state doc in
-  let messages = get_current_messages doc in
-  let errors = get_all_errors doc in
-  Printf.sprintf "%s\n\nProof state:\n%s\n\nMessages:\n%s\n\nErrors:\n%s" position_info proof_state messages errors
+  McpPrinting.format_interp_result doc.st
 
 (** Initialize Coq for a document - Rocq >= 9.0 version *)
 let init_document local_args vst =
@@ -220,6 +117,12 @@ let get_file_text uri text =
     with e ->
       let msg = Printf.sprintf "Failed to read file %s: %s" uri (Printexc.to_string e) in
       failwith msg
+
+let write_file_text uri text =
+  let oc = open_out uri in
+  output_string oc text;
+  close_out oc;
+  log (fun () -> Printf.sprintf "Written file %s" uri)
 
 let handle_open_document args =
   let open ToolArgs in
@@ -259,6 +162,7 @@ let handle_close_document args =
   end else
     ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
 
+(* TODO: share common code between all the interpret* and step* handle functions *)
 let handle_interpret_to_point args =
   let open ToolArgs in
   let ({ uri; line; character } : interpret_to_point) = interpret_to_point_of_yojson args in
@@ -342,7 +246,14 @@ let handle_apply_edit args =
     doc.st <- st;
     doc.pending_events <- doc.pending_events @ events;
     wait_for_parsing doc;
-    ToolsCallResult.success [Content.text "Edit applied successfully."]
+    let updated_text = Dm.RawDocument.text (Dm.DocumentManager.Internal.raw_document doc.st) in
+    try
+      write_file_text uri updated_text;
+      ToolsCallResult.success [Content.text "Edit applied and file saved successfully."]
+    with e ->
+      let msg = Printf.sprintf "Edit applied but failed to save file: %s" (Printexc.to_string e) in
+      log (fun () -> msg);
+      ToolsCallResult.error msg
 
 (** Dispatch tool calls *)
 let dispatch_tool name args =
@@ -362,8 +273,7 @@ let dispatch_tool name args =
 let handle_notification (notif : Notification.t) =
   log (fun () -> Printf.sprintf "Handling notification: %s" notif.method_);
   match notif.method_ with
-  | "notifications/initialized" ->
-    ()
+  | "notifications/initialized" -> ()
   | _ ->
     log (fun () -> Printf.sprintf "Unhandled notification: %s" notif.method_);
     ()
@@ -378,6 +288,7 @@ let handle_request (req : Request.t) =
       (match params with Some p -> p.clientInfo.name | None -> "unknown"));
     let result = InitializeResult.{
       protocolVersion = "2025-11-25";
+      (* TODO: use version from vsrocq *)
       serverInfo = { name = "vsrocqmcp"; version = "0.1.0" };
       capabilities = { tools = Some { listChanged = None } };
     } in
