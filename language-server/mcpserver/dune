@@ -27,7 +27,7 @@
 (library
  (name mcpserver)
  (public_name vsrocq-language-server.mcpserver)
- (modules mcpManager)
+ (modules mcpPrinting mcpManager)
  (libraries yojson rocq-runtime.sysinit rocq-runtime.vernac lsp sel dm protocol mcpBase_lib vsrocqTools_lib mcpArgs))
 
 (executable

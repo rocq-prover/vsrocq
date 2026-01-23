@@ -14,6 +14,8 @@
 
 let Dm.Types.Log log = Dm.Log.mk_log "args"
 
+(* TODO: share this file with vsrocqtpo/args? *)
+
 let rec skip_xd acc = function
 | [] -> (), List.rev acc
 | "-vsrocq-d" :: _ :: rest -> skip_xd acc rest
