@@ -12,11 +12,14 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** MCP (Model Context Protocol) definitions for VSRocq *)
+(** Pure MCP (Model Context Protocol) types and JSON-RPC definitions.
+    This module contains protocol-level definitions independent of any
+    specific tool implementations. *)
 
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
-(** Tool input schema following JSON Schema *)
+(** {1 JSON Schema} *)
+
 module JsonSchema = struct
   type property = {
     type_ : string [@key "type"];
@@ -37,9 +40,15 @@ module JsonSchema = struct
     ]
 
   let t_of_yojson _ = failwith "JsonSchema.t_of_yojson not implemented"
+
+  let property ~type_ ~description = { type_; description }
+
+  let make ~properties ~required =
+    { type_ = "object"; properties; required }
 end
 
-(** Tool definition *)
+(** {1 Tool Definition} *)
+
 module Tool = struct
   type t = {
     name : string;
@@ -55,9 +64,12 @@ module Tool = struct
     ]
 
   let t_of_yojson _ = failwith "Tool.t_of_yojson not implemented"
+
+  let make ~name ~description ~inputSchema = { name; description; inputSchema }
 end
 
-(** Content types for tool results *)
+(** {1 Content Types} *)
+
 module Content = struct
   type text_content = {
     type_ : string [@key "type"];
@@ -74,7 +86,8 @@ module Content = struct
   let text s = TextContent { type_ = "text"; text = s }
 end
 
-(** Server capabilities *)
+(** {1 Server Types} *)
+
 module ServerCapabilities = struct
   type tools_capability = {
     listChanged : bool option;
@@ -97,17 +110,24 @@ module ServerCapabilities = struct
       | None -> []
     in
     `Assoc fields
+
+  let with_tools ?listChanged () =
+    { tools = Some { listChanged } }
+
+  let empty = { tools = None }
 end
 
-(** Server info *)
 module ServerInfo = struct
   type t = {
     name : string;
     version : string;
   } [@@deriving yojson]
+
+  let make ~name ~version = { name; version }
 end
 
-(** Initialize request params *)
+(** {1 Initialize Protocol} *)
+
 module InitializeParams = struct
   type client_info = {
     name : string;
@@ -136,7 +156,6 @@ module InitializeParams = struct
     }
 end
 
-(** Initialize result *)
 module InitializeResult = struct
   type t = {
     protocolVersion : string;
@@ -150,9 +169,13 @@ module InitializeResult = struct
       ("serverInfo", ServerInfo.yojson_of_t result.serverInfo);
       ("capabilities", ServerCapabilities.yojson_of_t result.capabilities);
     ]
+
+  let make ~protocolVersion ~serverInfo ~capabilities =
+    { protocolVersion; serverInfo; capabilities }
 end
 
-(** Tools/list result *)
+(** {1 Tools Protocol} *)
+
 module ToolsListResult = struct
   type t = {
     tools : Tool.t list;
@@ -160,9 +183,10 @@ module ToolsListResult = struct
 
   let yojson_of_t result =
     `Assoc [("tools", `List (List.map Tool.yojson_of_t result.tools))]
+
+  let make tools = { tools }
 end
 
-(** Tools/call params *)
 module ToolsCallParams = struct
   type t = {
     name : string;
@@ -177,7 +201,6 @@ module ToolsCallParams = struct
     }
 end
 
-(** Tools/call result *)
 module ToolsCallResult = struct
   type t = {
     content : Content.t list;
@@ -198,150 +221,8 @@ module ToolsCallResult = struct
   let error msg = { content = [Content.text msg]; isError = Some true }
 end
 
-(** Our specific tool argument types *)
-module ToolArgs = struct
-  type open_document = {
-    uri : string;
-    text : string option [@yojson.option];
-  } [@@deriving yojson]
+(** {1 JSON-RPC} *)
 
-  type close_document = {
-    uri : string;
-  } [@@deriving yojson]
-
-  type interpret_to_point = {
-    uri : string;
-    line : int;
-    character : int;
-  } [@@deriving yojson]
-
-  type interpret_to_end = {
-    uri : string;
-  } [@@deriving yojson]
-
-  type step_forward = {
-    uri : string;
-  } [@@deriving yojson]
-
-  type step_backward = {
-    uri : string;
-  } [@@deriving yojson]
-
-  type get_proof_state = {
-    uri : string;
-  } [@@deriving yojson]
-
-  type apply_edit = {
-    uri : string;
-    startLine : int;
-    startCharacter : int;
-    endLine : int;
-    endCharacter : int;
-    newText : string;
-  } [@@deriving yojson]
-end
-
-(** Tool definitions for our prover *)
-let tool_definitions : Tool.t list = [
-  {
-    name = "open_document";
-    description = "Open a Coq/Rocq document for proving. Must be called before any other operations on a document.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI/path of the document" });
-        ("text", { JsonSchema.type_ = "string"; description = "The full text content of the document (optional - will be read from file if not provided)" });
-      ];
-      required = ["uri"];
-    };
-  };
-  {
-    name = "close_document";
-    description = "Close a previously opened document, freeing associated resources.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI of the document to close" });
-      ];
-      required = ["uri"];
-    };
-  };
-  {
-    name = "interpret_to_point";
-    description = "Execute the Coq/Rocq document up to a specific position. Returns the proof state at that position.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI of the document" });
-        ("line", { JsonSchema.type_ = "integer"; description = "The 0-indexed line number" });
-        ("character", { JsonSchema.type_ = "integer"; description = "The 0-indexed character position" });
-      ];
-      required = ["uri"; "line"; "character"];
-    };
-  };
-  {
-    name = "interpret_to_end";
-    description = "Execute the entire Coq/Rocq document to the end. Returns the final proof state.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI of the document" });
-      ];
-      required = ["uri"];
-    };
-  };
-  {
-    name = "step_forward";
-    description = "Execute the next sentence/command in the Coq/Rocq document. Returns the resulting proof state.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI of the document" });
-      ];
-      required = ["uri"];
-    };
-  };
-  {
-    name = "step_backward";
-    description = "Undo the last executed sentence/command, moving back one step. Returns the resulting proof state.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI of the document" });
-      ];
-      required = ["uri"];
-    };
-  };
-  {
-    name = "get_proof_state";
-    description = "Get the current proof state without executing any commands. Returns goals, hypotheses, and messages.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI of the document" });
-      ];
-      required = ["uri"];
-    };
-  };
-  {
-    name = "apply_edit";
-    description = "Apply a text edit to the document. The edit replaces text in the specified range with new text.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI of the document" });
-        ("startLine", { JsonSchema.type_ = "integer"; description = "Start line of the range to replace (0-indexed)" });
-        ("startCharacter", { JsonSchema.type_ = "integer"; description = "Start character of the range (0-indexed)" });
-        ("endLine", { JsonSchema.type_ = "integer"; description = "End line of the range (0-indexed)" });
-        ("endCharacter", { JsonSchema.type_ = "integer"; description = "End character of the range (0-indexed)" });
-        ("newText", { JsonSchema.type_ = "string"; description = "The new text to insert" });
-      ];
-      required = ["uri"; "startLine"; "startCharacter"; "endLine"; "endCharacter"; "newText"];
-    };
-  };
-]
-
-(** JSON-RPC request structure *)
 module Request = struct
   type t = {
     jsonrpc : string;
@@ -360,7 +241,6 @@ module Request = struct
     }
 end
 
-(** JSON-RPC response structure *)
 module Response = struct
   type error = {
     code : int;
@@ -399,7 +279,6 @@ module Response = struct
   let err id code message = { jsonrpc = "2.0"; id; result = None; error = Some { code; message; data = None } }
 end
 
-(** JSON-RPC notification structure *)
 module Notification = struct
   type t = {
     jsonrpc : string;
