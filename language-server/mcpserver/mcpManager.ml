@@ -135,7 +135,7 @@ let handle_open_document args =
     let vst = get_init_state () in
     let doc_uri = DocumentUri.of_path uri in
     let dir = Filename.dirname uri in
-    let local_args = McpArgs.Args.get_local_args dir in
+    let local_args = Args.get_local_args dir in
     let vst = init_document local_args vst in
     try
       let document_text = get_file_text uri text in

@@ -9,6 +9,10 @@ language-server/dm/vsrocq_config.mlh
 language-server/tests/vsrocq_config.mlh
 language-server/*.install
 language-server/vsrocqmcp/dune
+<<<<<<< HEAD
+=======
+language-server/mcpserver/dune
+>>>>>>> a3226451 (Merge vsrocqtop and vsrocqmcp into a shared executable)
 client/out/
 .DS_Store
 result
