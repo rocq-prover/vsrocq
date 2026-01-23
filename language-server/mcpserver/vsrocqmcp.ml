@@ -17,8 +17,7 @@
 
 let Dm.Types.Log log = Dm.Log.mk_log "mcptop"
 
-(* TODO: make this work for previous versions, jut like vsrocqtop *)
-(* For Rocq 9.0/9.1, use Flags.load_vos_libraries *)
+(* TODO: share common parts with vsrocqtop *)
 [%%if rocq = "9.0" || rocq = "9.1"]
 let load_vos = Flags.load_vos_libraries
 [%%else]

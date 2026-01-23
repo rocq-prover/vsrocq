@@ -148,7 +148,7 @@ module Definitions = struct
 
   let apply_edit = Tool.make
     ~name:"apply_edit"
-    ~description:"Apply a text edit to the document. The edit replaces text in the specified range with new text."
+    ~description:"Apply a text edit to the document and save it to the file. The edit replaces text in the specified range with new text. Both the in-memory document state and the file on disk are updated."
     ~inputSchema:Schema.apply_edit
 
   let all : McpBase_lib.McpBase.Tool.t list = [
