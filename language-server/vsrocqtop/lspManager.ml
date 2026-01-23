@@ -409,16 +409,16 @@ let rocqtopStepForward params =
       let events = Dm.DocumentManager.interpret_to_next !check_mode in
       inject_dm_events (uri,events) 
 
-  let make_CompletionItem i item : CompletionItem.t = 
-    let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item item in
-    CompletionItem.create
-      ~label
-      ~insertText
-      ~detail:typ
-      ~documentation:(`String ("Path: " ^ path))
-      ~sortText:(Printf.sprintf "%5d" i)
-      ?filterText:(if label == insertText then None else Some (insertText))
-      ()
+let make_CompletionItem i item : CompletionItem.t = 
+  let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item item in
+  CompletionItem.create
+    ~label
+    ~insertText
+    ~detail:typ
+    ~documentation:(`String ("Path: " ^ path))
+    ~sortText:(Printf.sprintf "%5d" i)
+    ?filterText:(if label == insertText then None else Some (insertText))
+    ()
 
 let textDocumentCompletion id params =
   let return_completion ~isIncomplete ~items =
