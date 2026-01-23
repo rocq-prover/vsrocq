@@ -1,10 +1,18 @@
 (library
- (name mcpProtocol_lib)
- (public_name vsrocq-language-server.mcpProtocol)
- (modules mcpProtocol)
+ (name mcpBase_lib)
+ (public_name vsrocq-language-server.mcpBase)
+ (modules mcpBase)
  (preprocess
    (staged_pps ppx_yojson_conv))
  (libraries yojson))
+
+(library
+ (name vsrocqTools_lib)
+ (public_name vsrocq-language-server.vsrocqTools)
+ (modules vsrocqTools)
+ (preprocess
+   (staged_pps ppx_yojson_conv))
+ (libraries yojson mcpBase_lib))
 
 (library
  (name mcpArgs)
@@ -18,7 +26,7 @@
  (name mcpserver)
  (public_name vsrocq-language-server.mcpserver)
  (modules mcpManager)
- (libraries yojson @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac lsp sel dm protocol mcpProtocol_lib mcpArgs))
+ (libraries yojson @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac lsp sel dm protocol mcpBase_lib vsrocqTools_lib mcpArgs))
 
 (executable
  (name vsrocqmcp)

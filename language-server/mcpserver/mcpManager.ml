@@ -16,7 +16,8 @@
 
 open Lsp.Types
 open Dm.Types
-open McpProtocol_lib.McpProtocol
+open McpBase_lib.McpBase
+module ToolArgs = VsrocqTools_lib.VsrocqTools.Args
 
 
 let init_state : Vernacstate.t option ref = ref None
@@ -371,7 +372,7 @@ let handle_request (req : Request.t) =
     Response.ok req.id (InitializeResult.yojson_of_t result)
 
   | "tools/list" ->
-    let result = ToolsListResult.{ tools = tool_definitions } in
+    let result = ToolsListResult.{ tools = VsrocqTools_lib.VsrocqTools.Definitions.all } in
     Response.ok req.id (ToolsListResult.yojson_of_t result)
 
   | "tools/call" ->
