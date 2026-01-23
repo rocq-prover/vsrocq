@@ -202,7 +202,7 @@ end
 module ToolArgs = struct
   type open_document = {
     uri : string;
-    text : string;
+    text : string option [@yojson.option];
   } [@@deriving yojson]
 
   type close_document = {
@@ -239,14 +239,6 @@ module ToolArgs = struct
     endCharacter : int;
     newText : string;
   } [@@deriving yojson]
-
-  type query = {
-    uri : string;
-    line : int;
-    character : int;
-    command : string;
-    pattern : string;
-  } [@@deriving yojson]
 end
 
 (** Tool definitions for our prover *)
@@ -258,9 +250,9 @@ let tool_definitions : Tool.t list = [
       type_ = "object";
       properties = [
         ("uri", { JsonSchema.type_ = "string"; description = "The URI/path of the document" });
-        ("text", { JsonSchema.type_ = "string"; description = "The full text content of the document" });
+        ("text", { JsonSchema.type_ = "string"; description = "The full text content of the document (optional - will be read from file if not provided)" });
       ];
-      required = ["uri"; "text"];
+      required = ["uri"];
     };
   };
   {
@@ -345,21 +337,6 @@ let tool_definitions : Tool.t list = [
         ("newText", { JsonSchema.type_ = "string"; description = "The new text to insert" });
       ];
       required = ["uri"; "startLine"; "startCharacter"; "endLine"; "endCharacter"; "newText"];
-    };
-  };
-  {
-    name = "query";
-    description = "Run a query command (About, Check, Print, Locate) on a pattern at a given position.";
-    inputSchema = {
-      type_ = "object";
-      properties = [
-        ("uri", { JsonSchema.type_ = "string"; description = "The URI of the document" });
-        ("line", { JsonSchema.type_ = "integer"; description = "The 0-indexed line number for context" });
-        ("character", { JsonSchema.type_ = "integer"; description = "The 0-indexed character position" });
-        ("command", { JsonSchema.type_ = "string"; description = "The query command: 'about', 'check', 'print', or 'locate'" });
-        ("pattern", { JsonSchema.type_ = "string"; description = "The pattern/identifier to query" });
-      ];
-      required = ["uri"; "command"; "pattern"];
     };
   };
 ]
