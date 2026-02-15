@@ -25,6 +25,7 @@ type hypothesis = {
 
 type goal = {
   id: int;
+  name: string option;
   hypotheses: hypothesis list;
   goal: string;
 } [@@deriving yojson]
@@ -55,11 +56,18 @@ let mk_pp_hyp env sigma (decl:EConstr.compacted_declaration) =
     let _type = Pp.string_of_ppcmds typ in
     {ids; body; _type} 
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
+let goal_name = Names.Id.to_string
+[%%else]
+let goal_name = Libnames.string_of_path
+[%%endif]
+
 let mk_goal env sigma g =
   let EvarInfo evi = Evd.find sigma g in
   let env = Evd.evar_filtered_env env evi in
   let min_env = Environ.reset_context env in
   let id = Evar.repr g in
+  let name = Option.map goal_name (Evd.evar_ident g sigma) in
   let concl = match Evd.evar_body evi with
   | Evar_empty -> Evd.evar_concl evi
   | Evar_defined body -> Retyping.get_type_of env sigma body
@@ -79,6 +87,7 @@ let mk_goal env sigma g =
       (Termops.compact_named_context sigma (EConstr.named_context env)) ~init:(min_env,[]) in
   {
     id;
+    name;
     hypotheses = List.rev hyps;
     goal = Pp.string_of_ppcmds ccl;
   }
