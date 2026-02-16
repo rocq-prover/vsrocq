@@ -160,7 +160,9 @@
           },
           "vsrocq.goals.ppmode": {
             "type": "string",
-            "enum": ["Pp"],
+            "enum": [
+              "Pp"
+            ],
             "default": "Pp",
             "description": "This read-only setting is to indicate to the server to send goals in pretty printed format instead of plain text.",
             "readOnly": true
@@ -625,6 +627,36 @@
       }
     ],
     "colors": [
+      {
+        "id": "rocq.decorations.processedBackground",
+        "description": "Background of processed (checked) region",
+        "defaults": {
+          "light": "#00960033",
+          "dark": "#00960033",
+          "highContrast": "#00960059",
+          "highContrastLight": "#00960059"
+        }
+      },
+      {
+        "id": "rocq.decorations.processingBackground",
+        "description": "Background of processing region",
+        "defaults": {
+          "light": "#0000FF4D",
+          "dark": "#0000FF4D",
+          "highContrast": "#0000FF73",
+          "highContrastLight": "#0000FF73"
+        }
+      },
+      {
+        "id": "rocq.decorations.preparedBackground",
+        "description": "Background of prepared region",
+        "defaults": {
+          "light": "#00FFFF33",
+          "dark": "#00FFFF33",
+          "highContrast": "#00FFFF59",
+          "highContrastLight": "#00FFFF59"
+        }
+      },
       {
         "id": "rocq.proofviewText",
         "description": "Color for proofview text.",

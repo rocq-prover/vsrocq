@@ -13,7 +13,7 @@ export let decorationsManual : Decorations;
 export let decorationsErrorAnimation : vscode.TextEditorDecorationType[];
 
 export function initializeDecorations(context: vscode.ExtensionContext) {
-  
+
     function create(style : vscode.DecorationRenderOptions) {
         const result = vscode.window.createTextEditorDecorationType(style);
         context.subscriptions.push(result);
@@ -22,15 +22,15 @@ export function initializeDecorations(context: vscode.ExtensionContext) {
 
     decorationsContinuous = {
         prepared: create({
-            overviewRulerColor: 'cyan', 
+            overviewRulerColor: 'cyan',
             overviewRulerLane: vscode.OverviewRulerLane.Right,
         }),
         processing: create({
-            overviewRulerColor: 'blue', 
+            overviewRulerColor: 'blue',
             overviewRulerLane: vscode.OverviewRulerLane.Center,
         }),
         processed: create({
-            overviewRulerColor: '#20b2aa', 
+            overviewRulerColor: '#20b2aa',
             overviewRulerLane: vscode.OverviewRulerLane.Left,
         }),
     };
@@ -38,22 +38,33 @@ export function initializeDecorations(context: vscode.ExtensionContext) {
     decorationsManual = {
         prepared: create({
             outlineWidth: '1px',
-            outlineStyle: 'solid', 
-            overviewRulerColor: 'cyan', 
+            outlineStyle: 'solid',
+            overviewRulerColor: 'cyan',
             overviewRulerLane: vscode.OverviewRulerLane.Right,
-            light: {outlineColor: 'rgba(32, 165, 218,0.7)', backgroundColor: 'rgba(0, 255, 255, 0.2)'},
+            light: {
+              outlineColor: 'rgba(32, 165, 218,0.7)',
+              backgroundColor: new vscode.ThemeColor("rocq.decorations.preparedBackground"),
+            },
         }),
         processing: create({
-            overviewRulerColor: 'blue', 
+            overviewRulerColor: 'blue',
             overviewRulerLane: vscode.OverviewRulerLane.Center,
-            light: {backgroundColor: 'rgba(0,0,255,0.3)'},
-            dark: {backgroundColor: 'rgba(0,0,255,0.3)'},
+            light: {
+              backgroundColor: new vscode.ThemeColor("rocq.decorations.processingBackground"),
+            },
+            dark: {
+              backgroundColor: new vscode.ThemeColor("rocq.decorations.processingBackground"),
+            },
         }),
         processed: create({
-            overviewRulerColor: '#20b2aa', 
+            overviewRulerColor: '#20b2aa',
             overviewRulerLane: vscode.OverviewRulerLane.Left,
-            light: {backgroundColor: 'rgba(0,150,0,0.2)'},
-            dark: {backgroundColor: 'rgba(0,150,0,0.2)'},
+            light: {
+              backgroundColor: new vscode.ThemeColor("rocq.decorations.processedBackground"),
+            },
+            dark: {
+              backgroundColor: new vscode.ThemeColor("rocq.decorations.processedBackground"),
+            },
         }),
     };
 
@@ -73,4 +84,3 @@ export function initializeDecorations(context: vscode.ExtensionContext) {
     });
 
 }
-
