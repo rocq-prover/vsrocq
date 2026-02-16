@@ -60,7 +60,7 @@ jobs:
         diff search-ui/new_yarn.nix search-ui/yarn.nix
     - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
       if: ${{matrix.coq != 9}}
-    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && etc/rocq-wrap-coqc.sh && dune build --profile ${{ matrix.profile }}"
+    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
       if: ${{matrix.coq == 9}}
     - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && yarn run install:all && yarn run build:all && yarn run compile"
     - name: Test xvfb

@@ -1,5 +1,5 @@
 (library
  (name language)
  (public_name vsrocq-language-server.language)
- (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")"))
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
  (libraries @@ROCQ_RUNTIME@@.sysinit lsp))
