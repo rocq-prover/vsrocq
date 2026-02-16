@@ -18,6 +18,8 @@
 VsRocq is an extension for [Visual Studio Code](https://code.visualstudio.com/)
 (VS Code) and [VSCodium](https://vscodium.com/) which provides support for the [Rocq Interactive Theorem Prover](https://rocq-prover.org/). It is built around a language server which natively speaks the [LSP protocol](https://learn.microsoft.com/en-us/visualstudio/extensibility/language-server-protocol?view=vs-2022).
 
+Experimentally, VsRocq can also [run an MCP server](./docs/mcp.md).
+
 ## Supported Rocq versions
 
 **VsRocq** supports all recent Rocq/Coq versions >= 8.18.

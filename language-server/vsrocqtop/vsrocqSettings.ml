@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*                                 VSRoc                                  *)
+(*                                 VSRocq                                  *)
 (*                                                                        *)
 (*                   Copyright INRIA and contributors                     *)
 (*       (see version control and README file for authors & dates)        *)
@@ -12,8 +12,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-val usage : unit -> Boot.Usage.specific_usage
+(** Common settings for VSRocq server components *)
 
-val get_local_args : string -> Coqargs.t
-
-val mcp_mode : bool ref
+let version = "2.3.4"

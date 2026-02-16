@@ -1,0 +1,6 @@
+(library
+ (name mcpserver)
+ (public_name vsrocq-language-server.mcp)
+ (libraries yojson @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac lsp sel dm protocol vsrocqtop_args)
+ (preprocess
+   (staged_pps ppx_import ppx_sexp_conv ppx_yojson_conv ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"%{coq:version.major}.%{coq:version.minor}\")")))
