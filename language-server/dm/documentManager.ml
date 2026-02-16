@@ -107,13 +107,15 @@ let inject_em_event x = Sel.Event.map (fun e -> ExecutionManagerEvent e) x
 let inject_em_events events = List.map inject_em_event events
 let inject_doc_event x = Sel.Event.map (fun e -> DocumentEvent e) x
 let inject_doc_events events = List.map inject_doc_event events
+
+
 let mk_proof_view_event id =
   Sel.now ~priority:PriorityManager.proof_view (SendProofView (Some id))
 let mk_proof_view_event_empty =
   Sel.now ~priority:PriorityManager.proof_view (SendProofView None)
 
 let mk_interp_to_event mode tgt =
-  [Sel.now ~priority:PriorityManager.interp_to (InterpretTo(mode,tgt))]
+  Sel.now ~priority:PriorityManager.interp_to (InterpretTo(mode,tgt))
 
 let mk_observe_event id =
   Sel.now ~priority:PriorityManager.execution (Observe id)
@@ -121,13 +123,24 @@ let mk_move_cursor_event id =
   let priority = PriorityManager.move_cursor in
   Sel.now ~priority @@ SendMoveCursor id
 
+let mk_red_flash_event error_id =
+  let priority = PriorityManager.move_cursor in
+  Sel.now ~priority ~undup:(=) @@ SendBlockOnError error_id
+
+let mk_execution_event background event =
+  let priority = if background then None else Some PriorityManager.execution in
+  Sel.now ?priority event
+
+let mk_parse_begin_event =
+  let priority = PriorityManager.launch_parsing in
+  Sel.now ~priority ~undup:(=) ParseBegin
+
 let mk_block_on_error_event last_range error_id background =
   let update_goal_view = [mk_proof_view_event error_id] in
   if background then
     update_goal_view
   else
-    let red_flash =
-      [Sel.now ~priority:PriorityManager.move_cursor @@ SendBlockOnError error_id] in
+    let red_flash = [mk_red_flash_event error_id] in
     let move_cursor =
       match last_range with
       | Some last_range -> [mk_move_cursor_event last_range]
@@ -315,10 +328,6 @@ let get_info_messages st pos =
     let feedback = feedback |> List.filter info in
     List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, pp_of_rocqpp msg) feedback
 
-let create_execution_event background event =
-  let priority = if background then None else Some PriorityManager.execution in
-  Sel.now ?priority event
-
 let state_before_error state error_id loc =
   match Document.get_sentence state.document error_id with
   | None -> state, None
@@ -342,7 +351,7 @@ let observe ~background state id ~should_block_on_error : (state * event Sel.Eve
     let vst_for_next_todo, execution_state, task, error_id = ExecutionManager.build_tasks_for state.document (Document.schedule state.document) state.execution_state id should_block_on_error in
     match task with
     | Some task -> (* task will only be Some if there is no error *)
-        let event = create_execution_event background (Execute {id; vst_for_next_todo; task; started = Unix.gettimeofday ()}) in
+        let event = mk_execution_event background (Execute {id; vst_for_next_todo; task; started = Unix.gettimeofday ()}) in
         let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
         {state with execution_state; cancel_handle}, [event]
     | None ->
@@ -535,10 +544,10 @@ let real_interpret_to_end st check_mode =
     log (fun () -> "interpret_to_end id = " ^ Stateid.to_string id);
     interpret_to st id check_mode
 
-let interpret_to_end check_mode = mk_interp_to_event check_mode End
-let interpret_to_next check_mode = mk_interp_to_event check_mode Next
-let interpret_to_previous check_mode = mk_interp_to_event check_mode Previous
-let interpret_to_position p check_mode ~point_interp_mode = mk_interp_to_event check_mode (Point(p,point_interp_mode))
+let interpret_to_end check_mode = [mk_interp_to_event check_mode End]
+let interpret_to_next check_mode = [mk_interp_to_event check_mode Next]
+let interpret_to_previous check_mode = [mk_interp_to_event check_mode Previous]
+let interpret_to_position p check_mode ~point_interp_mode = [mk_interp_to_event check_mode (Point(p,point_interp_mode))]
 
 
 let interpret_in_background st ~should_block_on_error =
@@ -589,8 +598,7 @@ let init init_vs ~opts uri ~text =
   let document = Document.create_document init_vs.Vernacstate.synterp text in
   let execution_state, feedback = ExecutionManager.init init_vs in
   let state = { uri; opts; init_vs; document; execution_state; observe_id=Top; cancel_handle = None; document_state = Parsing } in
-  let priority = Some PriorityManager.launch_parsing in
-  let event = Sel.now ?priority ParseBegin in
+  let event = mk_parse_begin_event in
   state, [event] @ [inject_em_event feedback]
 
 let reset { uri; opts; init_vs; document; execution_state; } =
@@ -601,8 +609,7 @@ let reset { uri; opts; init_vs; document; execution_state; } =
   let execution_state, feedback = ExecutionManager.init init_vs in
   let observe_id = Top in
   let state = { uri; opts; init_vs; document; execution_state; observe_id; cancel_handle = None ; document_state = Parsing } in
-  let priority = Some PriorityManager.launch_parsing in
-  let event = Sel.now ?priority ParseBegin in
+  let event = mk_parse_begin_event in
   state, [event] @ [inject_em_event feedback]
 
 let apply_text_edits state edits =
@@ -617,8 +624,7 @@ let apply_text_edits state edits =
     {state with execution_state; document}
   in
   let state = List.fold_left apply_edit_and_shift_diagnostics_locs_and_overview state edits in
-  let priority = Some PriorityManager.launch_parsing in
-  let sel_event = Sel.now ?priority ParseBegin in
+  let sel_event = mk_parse_begin_event in
   state, [sel_event]
 
 let execution_finished st id started =
@@ -660,7 +666,7 @@ let execute st id vst_for_next_todo started task background block =
         let events = if block then mk_block_on_error_event error_range error_id background else [] in
         st, events
       in
-    let event = Option.map (fun task -> create_execution_event background (Execute {id; vst_for_next_todo; task; started })) next in
+    let event = Option.map (fun task -> mk_execution_event background (Execute {id; vst_for_next_todo; task; started })) next in
     match event, block_events with
       | None, [] -> execution_finished { st with execution_state } id started (* There is no new tasks, and no errors -> execution finished *)
       | _ ->
