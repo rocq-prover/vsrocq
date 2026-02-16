@@ -12,7 +12,7 @@ let edit_text doc ~start ~stop text =
   let range = Lsp.Types.Range.{ start; end_ } in
   Document.apply_text_edits doc [range, text]
 
-let size = 3_000  let adjust = 5 + size
+let size = 30_000  let adjust = 5 + size
 
 let validate_document parsed_document =
   let doc, events = Document.validate_document parsed_document in
@@ -27,16 +27,18 @@ let checkpoint () =
 let%test_unit "diff: huge doc" =
   let t0 = checkpoint () in
   let text = Stdlib.String.concat ".\n" (Stdlib.List.init size (fun _ -> "Definition x := 3")) in
-  let edit = Random.int (String.length text) in
+  let edit = String.length text / 2 in
   let Document.{parsed_document} = init_and_parse_test_doc ~steps:(size+adjust) ~text () in
   let t1 = checkpoint () in
   let parsed_document = edit_text parsed_document ~start:edit ~stop:edit "x" in
-  let _ = validate_document parsed_document in
+  let { Document.parsed_document } = validate_document parsed_document in
   let t2 = checkpoint () in
-  let parsed_document = edit_text parsed_document ~start:edit ~stop:edit "" in
-  let _ = validate_document parsed_document in
+  let o = Document.outline parsed_document in
   let t3 = checkpoint () in
+  [%test_pred: int] (fun x -> x + 3 >= size && x <=size) (List.length o); (* the error *)
   Stdlib.Printf.eprintf "full parse: %5.3f\n" (t1 -. t0);
-  Stdlib.Printf.eprintf "edit: %5.3f\n" (t2 -. t1);
-  Stdlib.Printf.eprintf "edit: %5.3f\n" (t3 -. t2);
+  Stdlib.Printf.eprintf "edit: %5.3f \n" (t2 -. t1);
+  Stdlib.Printf.eprintf "outline: %5.3f\n" (t3 -. t2);
   ()
+
+let _ = Log.lsp_initialization_done ()

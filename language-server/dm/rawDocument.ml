@@ -31,11 +31,11 @@ let text t = t.text
 
 let line_text raw i =
   if i + 1 < Array.length raw.lines then
-    String.sub raw.text (raw.lines.(i)) (raw.lines.(i+1) - raw.lines.(i))
+   (raw.lines.(i), raw.lines.(i+1) - raw.lines.(i))
   else
-    String.sub raw.text (raw.lines.(i)) (String.length raw.text - raw.lines.(i))
+   (raw.lines.(i), String.length raw.text - raw.lines.(i))
 
-let get_character_pos linestr loc =
+let get_character_pos raw (i,e) loc =
   let rec loop d =
     if Uutf.decoder_byte_count d >= loc then
       Uutf.decoder_count d
@@ -44,20 +44,48 @@ let get_character_pos linestr loc =
       | `Uchar _ -> loop d
       | `Malformed _ -> loop d
       | `End -> Uutf.decoder_count d
-      | `Await -> assert false
+      | `Await -> Uutf.Manual.src d (Bytes.unsafe_of_string "") 0 0; loop d
   in
   let nln = `Readline (Uchar.of_int 0x000A) in
   let encoding = `UTF_8 in
-  loop (Uutf.decoder ~nln ~encoding (`String linestr))
+  let d = Uutf.decoder ~nln ~encoding `Manual in
+  (* Printf.eprintf "lookup %d|%s\n" loc (String.sub raw.text i e); *)
+  Uutf.Manual.src d (Bytes.unsafe_of_string raw.text) i e;
+  loop d
 
-let position_of_loc raw loc =
+let rec position_of_loc_bisect raw loc i m n len =
+  (* Printf.eprintf "%i | %i(%d) <= %i(%d) < %i(%d)\n" loc m raw.lines.(m) i raw.lines.(i) n raw.lines.(n); *)
+  if i = len || i = n || raw.lines.(i) <= loc && loc < raw.lines.(i+1) then i
+  else if loc < raw.lines.(i) then position_of_loc_bisect raw loc (m + (max 1 ((i - m) / 2))) m i len
+  else position_of_loc_bisect raw loc (i + (max 1 ((n - i) / 2))) i n len
+
+
+let position_of_loc_bisect raw loc =
+  let nlines = Array.length raw.lines in
+  let line = if loc = 0 then 0 else position_of_loc_bisect raw loc (nlines/2) 0 (nlines-1) (nlines-1) in
+  (* Printf.eprintf "line bisect: %d\n" line; *)
+  let char = get_character_pos raw (line_text raw line) (loc - raw.lines.(line)) in
+  Position.{ line = line; character = char }
+
+let position_of_loc = position_of_loc_bisect
+
+(* let position_of_loc raw loc =
   let i = ref 0 in
   while (!i < Array.length raw.lines && raw.lines.(!i) <= loc) do incr(i) done;
   let line = !i - 1 in
-  let char = get_character_pos (line_text raw line) (loc - raw.lines.(line)) in
-  Position.{ line = line; character = char }
+  (* Printf.eprintf "line linear: %d\n" line; *)
+  let char = get_character_pos raw (line_text raw line) (loc - raw.lines.(line)) in
+   Position.{ line = line; character = char }
 
-let get_character_loc linestr pos =
+let position_of_loc r l =
+  assert(l>=0);
+  let p1 = position_of_loc_bisect r l in
+  let p2 = position_of_loc r l in
+  (* Printf.eprintf "%d=%d, %d=%d\n" p1.Position.character p2.Position.character p1.Position.line p2.Position.line; *)
+  assert(p1=p2);
+  p1
+ *)
+let get_character_loc raw (i,e) pos =
   let rec loop d =
     if Uutf.decoder_count d >= pos then
       Uutf.decoder_byte_count d
@@ -66,15 +94,17 @@ let get_character_loc linestr pos =
       | `Uchar _ -> loop d
       | `Malformed _ -> loop d
       | `End -> Uutf.decoder_byte_count d
-      | `Await -> assert false
+      | `Await -> Uutf.Manual.src d (Bytes.unsafe_of_string "") 0 0; loop d
   in
   let nln = `Readline (Uchar.of_int 0x000A) in
   let encoding = `UTF_8 in
-  loop (Uutf.decoder ~nln ~encoding (`String linestr))
+  let d = Uutf.decoder ~nln ~encoding `Manual in
+  Uutf.Manual.src d (Bytes.unsafe_of_string raw.text) i e;
+  loop d
 
 let loc_of_position raw Position.{ line; character } =
   let linestr = line_text raw line in
-  let charloc = get_character_loc linestr character in
+  let charloc = get_character_loc raw linestr character in
   raw.lines.(line) + charloc
 
 let end_loc raw =
@@ -82,8 +112,8 @@ let end_loc raw =
 
 let range_of_loc raw loc =
   let open Range in
-  { start = position_of_loc raw loc.Loc.bp;
-    end_ = position_of_loc raw loc.Loc.ep;
+  { start = position_of_loc_bisect raw loc.Loc.bp;
+    end_  = position_of_loc_bisect raw loc.Loc.ep;
   }
 
 let word_at_position raw pos : string option =
@@ -108,6 +138,8 @@ let string_in_range raw start end_ =
   with _ -> (* TODO: ERROR *)
     ""
 
+type edit_impact = { start: int; stop: int; shift_after_stop: int }
+
 let apply_text_edit raw (Range.{start; end_}, editText) =
   let start = loc_of_position raw start in
   let stop = loc_of_position raw end_ in
@@ -115,4 +147,5 @@ let apply_text_edit raw (Range.{start; end_}, editText) =
   let after = String.sub raw.text stop (String.length raw.text - stop) in
   let new_text = before ^ editText ^ after in (* FIXME avoid concatenation *)
   let new_lines = compute_lines new_text in (* FIXME compute this incrementally *)
-  { text = new_text; lines = new_lines }, start
+  let len = String.length editText in
+  { text = new_text; lines = new_lines }, { start; stop; shift_after_stop = len - (stop - start) }
