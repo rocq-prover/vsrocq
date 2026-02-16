@@ -6,7 +6,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    rocq-master = { url = "github:rocq-prover/rocq/3b3cb2ce5750611d0fea03c987da1715d3617615"; }; # Should be kept in sync with PIN_COQ in CI workflow
+    rocq-master = { url = "github:rocq-prover/rocq/d614adf8e3126026b0ee27d58be308a695775074"; }; # Should be kept in sync with PIN_COQ in CI workflow
     rocq-master.inputs.nixpkgs.follows = "nixpkgs";
     rocq-master.inputs.flake-utils.follows = "flake-utils";
   };
