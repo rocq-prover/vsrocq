@@ -4,7 +4,7 @@ type Nullable<T> = T | null;
 
 export interface Goal {
     id: string,
-    name: Nullable<string>,
+    name?: Nullable<string>,
     goal: PpString, 
     hypotheses: PpString[],
 };
