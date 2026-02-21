@@ -30,7 +30,7 @@ export type PpString =
 
 export interface Goal {
     id: integer;
-    name: Nullable<string>;
+    name?: Nullable<string>;
     goal: PpString;
     hypotheses: PpString[];
 }

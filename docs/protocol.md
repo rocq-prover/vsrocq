@@ -144,7 +144,7 @@ type PpString =
 //A coq goal and its corresponding hypotheses
 interface Goal {
     id: integer;
-    name: Nullable<string>;
+    name?: Nullable<string>;
     goal: PpString;
     hypotheses: PpString[];
 }
