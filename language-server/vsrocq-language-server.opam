@@ -9,10 +9,7 @@ dev-repo: "git+https://github.com/rocq-prover/vsrocq"
 
 build: [
   [make "dune-files"]
-  [
-    "etc/rocq-wrap-coqc.sh" {!coq-core:installed}
-    "dune" "build" "-p" name "-j" jobs 
-  ]
+  [ "dune" "build" "-p" name "-j" jobs ]
 ]
 depends: [
   "ocaml" { >= "4.14" }
