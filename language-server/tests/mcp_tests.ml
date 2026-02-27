@@ -233,3 +233,54 @@ let%test_unit "mcp.edit.invalidates_execution" =
   let st = edit_text st ~start:0 ~stop:18 ~text:"Definition x := 2." in
   (* observe_id should be reset since the dependency changed *)
   [%test_eq: int option] (Option.map ~f:Stateid.to_int (DocumentManager.Internal.observe_id st)) None
+
+let get_document_text st =
+  let doc = DocumentManager.Internal.document st in
+  let raw = Document.raw_document doc in
+  RawDocument.text raw
+
+let%test_unit "mcp.edit.updates_content" =
+  (* Test that apply_edit correctly updates the document content *)
+  let initial_text = "Definition x := 1." in
+  let st, init_events = em_init_test_doc ~text:initial_text in
+  (* Verify initial content *)
+  [%test_eq: string] (get_document_text st) initial_text;
+  (* Edit: change "1" to "42" *)
+  let st = edit_text st ~start:16 ~stop:17 ~text:"42" in
+  let expected_text = "Definition x := 42." in
+  [%test_eq: string] (get_document_text st) expected_text
+
+let%test_unit "mcp.edit.insert_text" =
+  (* Test inserting text (empty range) *)
+  let initial_text = "Definition x := 1." in
+  let st, _init_events = em_init_test_doc ~text:initial_text in
+  (* Insert " + 1" before the period (at position 17, right after "1") *)
+  let st = edit_text st ~start:17 ~stop:17 ~text:" + 1" in
+  let expected_text = "Definition x := 1 + 1." in
+  [%test_eq: string] (get_document_text st) expected_text
+
+let%test_unit "mcp.edit.delete_text" =
+  (* Test deleting text (empty replacement) *)
+  let initial_text = "Definition foo := 1." in
+  let st, _init_events = em_init_test_doc ~text:initial_text in
+  (* Delete "foo" (positions 11-14) and replace with "x" *)
+  let st = edit_text st ~start:11 ~stop:14 ~text:"x" in
+  let expected_text = "Definition x := 1." in
+  [%test_eq: string] (get_document_text st) expected_text
+
+let%test_unit "mcp.edit.multiline" =
+  (* Test editing multiline content *)
+  let initial_text = "Definition x := 1.\nDefinition y := 2." in
+  let st, _init_events = em_init_test_doc ~text:initial_text in
+  (* Replace "1" with "100" in first definition *)
+  let st = edit_text st ~start:35 ~stop:36 ~text:"300" in
+  let expected_text = "Definition x := 1.\nDefinition y := 300." in
+  [%test_eq: string] (get_document_text st) expected_text
+
+let%test_unit "mcp.edit.replace_entire_content" =
+  (* Test replacing entire document content *)
+  let initial_text = "Definition x := 1." in
+  let st, _init_events = em_init_test_doc ~text:initial_text in
+  let new_text = "Lemma foo : True." in
+  let st = edit_text st ~start:0 ~stop:(String.length initial_text) ~text:new_text in
+  [%test_eq: string] (get_document_text st) new_text
