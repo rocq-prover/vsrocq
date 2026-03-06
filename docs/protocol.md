@@ -1,8 +1,8 @@
 # LSP
 
-vscoq uses the [language server protocol](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/). 
+vsrocq uses the [language server protocol](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/). 
 
-We implement a few custom verbs that we detail here. 
+We implement a few custom verbs that we detail here.
 
 ## Configuration 
 
@@ -98,7 +98,7 @@ interface Configuration {
 
 ## Highlights
 
-For providing highlights which reflect the current internal state of coq, we provide "vscoq/updateHighlights" which returns an object containing 
+For providing highlights which reflect the current internal state of vsrocq, we provide "prover/updateHighlights" which returns an object containing 
 
 ``` typescript
 interface UpdateHighlightsNotification {
@@ -111,14 +111,14 @@ interface UpdateHighlightsNotification {
 }
 ```
 
-The processing and processed range correspond to the ranges of lines in the document that have the coresponding type. 
+The processing and processed range correspond to the ranges of lines in the document that have the corresponding type.
 By default, we display the processed lines in the VSCode gutter.
 
 ## Goal view 
 
 For the goal view we provide a request verb `vscoq/updateProofView` and its corresponding response. 
 
-We now make use of PpStrings to display the goals with syntaxic coloration.
+We now make use of PpStrings to display the goals with syntactic coloration.
 
 We also have a move cursor notification to inform the client to move the cursor (used in manual mode).
 
@@ -181,7 +181,7 @@ interface MoveCursorNotification {
 
 ## Query panel
 
-For the query panel we provide a request verb `vscoq/search` and its corresponding response `vscoq/searchResult`. 
+For the query panel we provide a request verb `prover/search` and its corresponding response `prover/searchResult`.
 
 ``` typescript
 
@@ -211,10 +211,10 @@ interface SearchCoqResult {
 }
 ```
 
-By default the coq Search command as asynchronous. Therefore, the language server first sends a handshake either with an OK code, or with an error. It then sends each result one by one through the SearchCoqResult notification. The id corresponds to a uuid given to each search request. 
+By default the Rocq Search command is asynchronous. Therefore, the language server first sends a handshake either with an OK code, or with an error. It then sends each result one by one through the SearchCoqResult notification. The id corresponds to a uuid given to each search request. 
 
-We also provide the requests for the `vscoq/check`, `vscoq/about`, `vscoq/locate` and `vscoq/print` queries, with plans to support more in the future. 
-These queries are synchronous and do not require a seperate verb for their responses. 
+We also provide the requests for the `prover/check`, `prover/about`, `prover/locate` and `prover/print` queries, with plans to support more in the future.
+These queries are synchronous and do not require a separate verb for their responses.
 
 ```typescript
 
