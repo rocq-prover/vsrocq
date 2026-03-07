@@ -43,6 +43,12 @@ end
 module TacticWorker = DelegationManager.MakeWorker(TacticJob)
 
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
+let merge_ustate sigma uc = Evd.merge_universe_context sigma uc
+[%%else]
+let merge_ustate sigma uc = Evd.merge_ustate sigma uc
+[%%endif]
+
 let assign_tac ~abstract res : unit Proofview.tactic =
   Proofview.(Goal.enter begin fun g ->
     let gid = Goal.goal g in
@@ -51,7 +57,7 @@ let assign_tac ~abstract res : unit Proofview.tactic =
       let open Notations in
       let push_state ctx =
           Proofview.tclEVARMAP >>= fun sigma ->
-          Proofview.Unsafe.tclEVARS (Evd.merge_universe_context sigma ctx)
+          Proofview.Unsafe.tclEVARS (merge_ustate sigma ctx)
       in
       (if abstract then Abstract.tclABSTRACT None else (fun x -> x))
           (push_state uc <*> Tactics.exact_no_check (EConstr.of_constr pt))
