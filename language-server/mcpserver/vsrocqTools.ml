@@ -52,6 +52,13 @@ module Args = struct
     uri : string;
   } [@@deriving yojson]
 
+  type edit_line = {
+    uri : string;
+    startLine : int;
+    endLine : int;
+    newText : string;
+  } [@@deriving yojson]
+
   type apply_edit = {
     uri : string;
     startLine : int;
@@ -93,6 +100,15 @@ module Schema = struct
   let uri_only = JsonSchema.make
     ~properties:[("uri", uri_prop)]
     ~required:["uri"]
+
+  let edit_line = JsonSchema.make
+    ~properties:[
+      ("uri", uri_prop);
+      ("startLine", property ~type_:"integer" ~description:"First line to replace (0-indexed, inclusive)");
+      ("endLine", property ~type_:"integer" ~description:"Last line to replace (0-indexed, inclusive)");
+      ("newText", property ~type_:"string" ~description:"The new text to insert (replaces the entire line range)");
+    ]
+    ~required:["uri"; "startLine"; "endLine"; "newText"]
 
   let apply_edit = JsonSchema.make
     ~properties:[
@@ -146,9 +162,14 @@ module Definitions = struct
     ~description:"Get the current proof state without executing any commands. Returns goals, hypotheses, and messages."
     ~inputSchema:Schema.uri_only
 
+  let edit_line = Tool.make
+    ~name:"edit_line"
+    ~description:"Replace entire lines in the document. Replaces lines from startLine to endLine (inclusive, 0-indexed) with newText. The newText should include trailing newlines. Both the in-memory document state and the file on disk are updated. Prefer this over apply_edit when possible."
+    ~inputSchema:Schema.edit_line
+
   let apply_edit = Tool.make
     ~name:"apply_edit"
-    ~description:"Apply a text edit to the document and save it to the file. The edit replaces text in the specified range with new text. Both the in-memory document state and the file on disk are updated."
+    ~description:"Apply a character-level text edit to the document. Replaces text in the specified range with newText. WARNING: LLMs are bad at counting character offsets accurately, which leads to buffer corruption. Prefer edit_line instead unless you need sub-line precision."
     ~inputSchema:Schema.apply_edit
 
   let all : McpBase.Tool.t list = [
@@ -159,6 +180,7 @@ module Definitions = struct
     step_forward;
     step_backward;
     get_proof_state;
+    edit_line;
     apply_edit;
   ]
 end
