@@ -22,3 +22,17 @@ Configuring the MCP server depends on your setup. e.g. if you want to use vsrocq
 	}
 }
 ```
+
+### Available tools
+
+| Tool | Description |
+|------|-------------|
+| `open_document` | Open a `.v` file for proving. Must be called before other operations. |
+| `close_document` | Close a document and free resources. |
+| `step_forward` | Execute the next sentence/command. |
+| `step_backward` | Undo the last executed sentence. |
+| `interpret_to_point` | Execute up to a specific line/character position. |
+| `interpret_to_end` | Execute the entire document. |
+| `get_proof_state` | Get current goals and hypotheses without executing. |
+| `edit_line` | Replace entire lines (startLine to endLine, inclusive, 0-indexed) with new text. |
+| `apply_edit` | Character-level range edit. **Warning:** LLMs are bad at counting character offsets, which leads to buffer corruption. Prefer `edit_line`. |

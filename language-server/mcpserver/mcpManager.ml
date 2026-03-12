@@ -220,10 +220,37 @@ let handle_get_proof_state args =
   log (fun () -> Printf.sprintf "Get proof state: %s" uri);
   with_interpret uri ~get_events:(fun () -> None)
 
+let handle_edit_line args =
+  let open ToolArgs in
+  let ({ uri; startLine; endLine; newText } : ToolArgs.edit_line) = edit_line_of_yojson args in
+  log (fun () -> Printf.sprintf "Edit line: %s lines %d-%d" uri startLine endLine);
+  with_document uri ~f:(fun doc ->
+    let raw = Dm.DocumentManager.Internal.raw_document doc.st in
+    let end_pos = Dm.RawDocument.position_of_loc raw (Dm.RawDocument.end_loc raw) in
+    let end_line, end_character =
+      if endLine < end_pos.line then endLine + 1, 0
+      else end_pos.line, end_pos.character
+    in
+    let range = Range.create
+      ~start:(Position.create ~line:startLine ~character:0)
+      ~end_:(Position.create ~line:end_line ~character:end_character) in
+    let st, events = Dm.DocumentManager.apply_text_edits doc.st [(range, newText)] in
+    doc.st <- st;
+    doc.pending_events <- doc.pending_events @ events;
+    wait_for_parsing doc;
+    let updated_text = Dm.RawDocument.text (Dm.DocumentManager.Internal.raw_document doc.st) in
+    try
+      write_file_text uri updated_text;
+      ToolsCallResult.success [Content.text "Edit applied and file saved successfully."]
+    with e ->
+      let msg = Printf.sprintf "Edit applied but failed to save file: %s" (Printexc.to_string e) in
+      log (fun () -> msg);
+      ToolsCallResult.error msg)
+
 let handle_apply_edit args =
   let open ToolArgs in
   let { uri; startLine; startCharacter; endLine; endCharacter; newText } = apply_edit_of_yojson args in
-  log (fun () -> Printf.sprintf "Apply edit: %s" uri);
+  log (fun () -> Printf.sprintf "Apply edit: %s (%d,%d)-(%d,%d)" uri startLine startCharacter endLine endCharacter);
   let range = Range.create
     ~start:(Position.create ~line:startLine ~character:startCharacter)
     ~end_:(Position.create ~line:endLine ~character:endCharacter) in
@@ -252,6 +279,7 @@ let dispatch_tool name args =
   | "step_forward" -> handle_step_forward args
   | "step_backward" -> handle_step_backward args
   | "get_proof_state" -> handle_get_proof_state args
+  | "edit_line" -> handle_edit_line args
   | "apply_edit" -> handle_apply_edit args
   | _ -> ToolsCallResult.error (Printf.sprintf "Unknown tool: %s" name)
 
