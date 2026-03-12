@@ -84,27 +84,28 @@ let get_proof_state (st : Dm.DocumentManager.state) : string =
   | None -> "No proof state available (document may not be executed to this point)."
   | Some vst -> format_proof_state (Protocol.PpProofState.get_proof vst)
 
-let get_messages (st : Dm.DocumentManager.state) : string =
+let get_messages (st : Dm.DocumentManager.state) : string option =
   match Dm.DocumentManager.Internal.observe_id st with
-  | None -> "No messages (at document start)."
+  | None -> None
   | Some id ->
     let messages = Dm.DocumentManager.get_string_messages st id in
-    format_messages messages
+    if messages = [] then None
+    else Some (format_messages messages)
 
-let get_errors (st : Dm.DocumentManager.state) : string =
+let get_errors (st : Dm.DocumentManager.state) : string option =
   let exec_state = Dm.DocumentManager.Internal.execution_state st in
   let document = Dm.DocumentManager.Internal.document st in
   let all_errors = Dm.ExecutionManager.all_errors exec_state in
   let valid_errors = List.filter (fun (id, _) ->
     Option.has_some (Dm.Document.get_sentence document id)
   ) all_errors in
-  if valid_errors = [] then "No errors."
+  if valid_errors = [] then None
   else
     let format_error (id, (_oloc, msg, _qf)) =
       let range = Dm.Document.range_of_id document id in
       Printf.sprintf "[Error at %s] %s" (format_range range) (Pp.string_of_ppcmds msg)
     in
-    String.concat "\n" (List.map format_error valid_errors)
+    Some (String.concat "\n" (List.map format_error valid_errors))
 
 let format_interp_result (st : Dm.DocumentManager.state) : string =
   let position_info = match get_observe_range st with
@@ -114,4 +115,23 @@ let format_interp_result (st : Dm.DocumentManager.state) : string =
   let proof_state = get_proof_state st in
   let messages = get_messages st in
   let errors = get_errors st in
-  Printf.sprintf "%s\n\nProof state:\n%s\n\nMessages:\n%s\n\nErrors:\n%s" position_info proof_state messages errors
+  let base = Printf.sprintf "%s\n\nProof state:\n%s" position_info proof_state in
+  let with_messages = match messages with
+    | None -> base
+    | Some msgs -> Printf.sprintf "%s\n\nMessages:\n%s" base msgs
+  in
+  match errors with
+  | None -> with_messages
+  | Some errs -> Printf.sprintf "%s\n\nErrors:\n%s" with_messages errs
+
+let format_proof_state_response (st : Dm.DocumentManager.state) : string =
+  let position_info = match get_observe_range st with
+    | None -> "Position: document start (no sentences executed)"
+    | Some range -> Printf.sprintf "Position: %s" (format_range range)
+  in
+  let proof_state = get_proof_state st in
+  let messages = get_messages st in
+  let base = Printf.sprintf "%s\n\nProof state:\n%s" position_info proof_state in
+  match messages with
+  | None -> base
+  | Some msgs -> Printf.sprintf "%s\n\nMessages:\n%s" base msgs
