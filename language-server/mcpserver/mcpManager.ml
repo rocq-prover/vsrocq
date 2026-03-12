@@ -218,7 +218,10 @@ let handle_get_proof_state args =
   let open ToolArgs in
   let ({ uri } : get_proof_state) = get_proof_state_of_yojson args in
   log (fun () -> Printf.sprintf "Get proof state: %s" uri);
-  with_interpret uri ~get_events:(fun () -> None)
+  with_document uri ~f:(fun doc ->
+    process_events_until_stable doc;
+    let proof_state = McpPrinting.format_proof_state_response doc.st in
+    ToolsCallResult.success [Content.text proof_state])
 
 let handle_edit_line args =
   let open ToolArgs in
@@ -259,12 +262,43 @@ let handle_apply_edit args =
     doc.st <- st;
     doc.pending_events <- doc.pending_events @ events;
     wait_for_parsing doc;
+    process_events_until_stable doc;
     let updated_text = Dm.RawDocument.text (Dm.DocumentManager.Internal.raw_document doc.st) in
     try
       write_file_text uri updated_text;
       ToolsCallResult.success [Content.text "Edit applied and file saved successfully."]
     with e ->
       let msg = Printf.sprintf "Edit applied but failed to save file: %s" (Printexc.to_string e) in
+      log (fun () -> msg);
+      ToolsCallResult.error msg)
+
+let handle_update_proof args =
+  let open ToolArgs in
+  let ({ uri } : update_proof) = update_proof_of_yojson args in
+  log (fun () -> Printf.sprintf "Update proof: %s" uri);
+  with_document uri ~f:(fun doc ->
+    try
+      let disk_text = get_file_text uri None in
+      let raw = Dm.DocumentManager.Internal.raw_document doc.st in
+      if disk_text = Dm.RawDocument.text raw then
+        log (fun () -> "Update proof: file unchanged")
+      else begin
+        log (fun () -> "Update proof: file changed, applying diff");
+        let raw = Dm.DocumentManager.Internal.raw_document doc.st in
+        let end_pos = Dm.RawDocument.position_of_loc raw (Dm.RawDocument.end_loc raw) in
+        let range = Range.create
+          ~start:(Position.create ~line:0 ~character:0)
+          ~end_:end_pos in
+        let st, events = Dm.DocumentManager.apply_text_edits doc.st [(range, disk_text)] in
+        doc.st <- st;
+        doc.pending_events <- doc.pending_events @ events;
+      end;
+      wait_for_parsing doc;
+      process_events_until_stable doc;
+      let proof_state = McpPrinting.format_proof_state_response doc.st in
+      ToolsCallResult.success [Content.text proof_state]
+    with e ->
+      let msg = Printf.sprintf "Failed to update proof: %s" (Printexc.to_string e) in
       log (fun () -> msg);
       ToolsCallResult.error msg)
 
@@ -280,6 +314,7 @@ let dispatch_tool name args =
   | "step_backward" -> handle_step_backward args
   | "get_proof_state" -> handle_get_proof_state args
   | "edit_line" -> handle_edit_line args
+  | "update_proof" -> handle_update_proof args
   | "apply_edit" -> handle_apply_edit args
   | _ -> ToolsCallResult.error (Printf.sprintf "Unknown tool: %s" name)
 
