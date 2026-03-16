@@ -35,6 +35,7 @@ type proof_block = {
 
 type goal = {
   id: int;
+  name: string option;
   hypotheses: pp list;
   goal: pp;
 } [@@deriving yojson]
@@ -49,11 +50,18 @@ type t = {
 open Printer
 module CompactedDecl = Context.Compacted.Declaration
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
+let goal_name = Names.Id.to_string
+[%%else]
+let goal_name = Libnames.string_of_path
+[%%endif]
+
 let mk_goal env sigma g =
   let EvarInfo evi = Evd.find sigma g in
   let env = Evd.evar_filtered_env env evi in
   let min_env = Environ.reset_context env in
   let id = Evar.repr g in
+  let name = Option.map goal_name (Evd.evar_ident g sigma) in
   let concl = match Evd.evar_body evi with
   | Evar_empty -> Evd.evar_concl evi
   | Evar_defined body -> Retyping.get_type_of env sigma body
@@ -72,6 +80,7 @@ let mk_goal env sigma g =
       (Termops.compact_named_context sigma (EConstr.named_context env)) ~init:(min_env,[]) in
   {
     id;
+    name;
     hypotheses = List.rev_map pp_of_rocqpp hyps;
     goal = pp_of_rocqpp ccl;
   }
@@ -84,10 +93,12 @@ let diff_goal ?og_s g = Proof_diffs.diff_goal ~flags:(PrintingFlags.current()) ?
 
 let mk_goal_diff diff_goal_map env sigma g =
   let id = Evar.repr g in
+  let name = Option.map goal_name (Evd.evar_ident g sigma) in
   let og_s = Proof_diffs.map_goal g diff_goal_map in
   let (hyps, ccl) = diff_goal ?og_s (Proof_diffs.make_goal env sigma g) in
   {
     id;
+    name;
     hypotheses = List.rev_map pp_of_rocqpp hyps;
     goal = pp_of_rocqpp ccl;
   }

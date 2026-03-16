@@ -38,7 +38,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
     };
 
     const goalPanelTabs = goals.map((goal, index) => {
-        const tabName = "Goal " + (index + 1);
+        const tabName = "Goal " + (index + 1) + (goal.name ? `: ${goal.name}` : "");
         const tabId = "tab-" + index;
         return (
             <VSCodePanelTab id={tabId} key={tabId} onClick={() => scrollToBottomOfGoal(index)}>
