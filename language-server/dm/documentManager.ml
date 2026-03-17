@@ -366,12 +366,17 @@ let get_document_proofs st =
     in
   let mk_proof_block Document.{statement; proof; range } =
     let statement = ProofState.mk_proof_statement statement range in
-    let last_step = List.hd proof in
-    let proof = List.rev proof in
-    let fst_step = List.hd proof in
-    let range = Range.create ~start:fst_step.range.start ~end_:last_step.range.end_ in
-    let steps = List.map (fun Document.{tactic; range} -> ProofState.mk_proof_step tactic range) proof in
-    ProofState.mk_proof_block statement steps range
+    match proof with
+    | [] ->
+      let steps = [] in
+      ProofState.mk_proof_block statement steps range
+    | _ ->
+      let last_step = List.hd proof in
+      let proof = List.rev proof in
+      let fst_step = List.hd proof in
+      let range = Range.create ~start:fst_step.range.start ~end_:last_step.range.end_ in
+      let steps = List.map (fun Document.{tactic; range} -> ProofState.mk_proof_step tactic range) proof in
+      ProofState.mk_proof_block statement steps range
   in
   let proofs, _  = List.partition is_theorem outline in
   List.map mk_proof_block proofs
