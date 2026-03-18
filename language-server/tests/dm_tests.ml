@@ -325,3 +325,21 @@ let%test_unit "edit.edit_non_root_observe_id" =
   [%test_eq: bool] (ExecutionManager.is_locally_executed (DocumentManager.Internal.execution_state st) s3.id) false;
   [%test_eq: int option] (Option.map ~f:Stateid.to_int (DocumentManager.Internal.observe_id st))
     (Some (Stateid.to_int s1.id))
+
+let%test_unit "documentProofs.theorem_without_proof" =
+  let st, init_events = em_init_test_doc ~text:"Theorem foo : True. Ltac a := idtac. Abort." in
+  let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
+  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let todo = Sel.Todo.(add init_events events) in
+  let st = handle_dm_events todo st in
+  let proofs = DocumentManager.get_document_proofs st in
+  [%test_eq: int] (List.length proofs) 1
+
+let%test_unit "documentProofs.theorem_without_proof_no_ltac" =
+  let st, init_events = em_init_test_doc ~text:"Theorem foo : True. Abort." in
+  let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
+  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let todo = Sel.Todo.(add init_events events) in
+  let st = handle_dm_events todo st in
+  let proofs = DocumentManager.get_document_proofs st in
+  [%test_eq: int] (List.length proofs) 1
