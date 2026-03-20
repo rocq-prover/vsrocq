@@ -30,11 +30,15 @@ and (2) install and configure the VsRocq extension in either VS Code or VSCodium
 
 ### Installing the language server
 
+**Version check (recommended).** Before installing the language server, check the installed VsRocq extension version in VS Code (Extensions view → “VsRocq” → version). 
+The VS Code extension and the opam package `vsrocq-language-server` are released independently; if their versions are mismatched, the language server may fail during LSP initialization and commands like "Interpret to point" may appear to do nothing.
+
 After creating an opam switch, pin Rocq,
 and install the `vsrocq-language-server` package:
 ```shell
-$ opam pin add rocq-core 9.1.0 # replace with correct version
-$ opam install vsrocq-language-server
+$ opam pin add rocq-core 9.1.0 # replace with correct version 
+# For Coq 8.x: use coq / coq-core packages instead of rocq-core
+$ opam install vsrocq-language-server.2.3.4 # replace "2.3.4" with correct version
 ```
 
 or on nixos
@@ -42,6 +46,8 @@ or on nixos
 ```shell
 nix profile install nixpkgs#coq_8_18 nixpkgs#coqPackages_8_18.vscoq-language-server
 ```
+
+If you need a pre-release version, pin a specific release tarball (see "Pre-release versions" below).
 
 After installation, check that you have `vsrocqtop` in your shell
 and note the path to this executable:
@@ -57,6 +63,7 @@ for pre-release ```v2.3.1```:
 ```shell
 $ opam pin add vsrocq-language-server.2.3.1  https://github.com/rocq-prover/vsrocq/releases/download/v2.3.1/vsrocq-language-server-2.3.1.tar.gz
 ```
+When pinning a pre-release language server, ensure you also select the matching VsRocq extension version in VS Code.
 
 ### Installing and configuring the extension
 
