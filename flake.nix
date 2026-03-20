@@ -3,7 +3,7 @@
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     rocq-master = { url = "github:rocq-prover/rocq/a580b68e664f08b8ca616008c6b072ebcac07719"; }; # Should be kept in sync with PIN_COQ in CI workflow
@@ -63,6 +63,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -105,6 +106,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -147,6 +149,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -189,6 +192,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -231,6 +235,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -273,6 +278,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
