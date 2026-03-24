@@ -76,6 +76,23 @@ type prepared_task =
   | PQuery of executable_sentence
   | PDelegate of delegated_task
 
+module ProofJob = struct
+  type update_request =
+    | UpdateExecStatus of sentence_id * execution_status
+    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
+  let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
+
+  type t = {
+    tasks : executable_sentence list;
+    initial_vernac_state : Vernacstate.t;
+    doc_id : int;
+    terminator_id : sentence_id;
+  }
+  let name = "proof"
+  let binary_name = "vsrocqtop_proof_worker.opt"
+  let initial_pool_size = 1
+
+end
 
 type state = {
   initial : Vernacstate.t;
@@ -83,6 +100,8 @@ type state = {
   todo: prepared_task list; (* execution queue *)
   feedback_pipe : feedback_pipe; (* for relying stuff from the workers *)
   overview: exec_overview;
+  (* Why is this imperative? *)
+  jobs : (DelegationManager.job_handle * Sel.Event.cancellation_handle * ProofJob.t) Queue.t;
 }
 
 let get_id_of_executed_task task =
@@ -116,23 +135,6 @@ let is_diagnostics_enabled () = !options.enableDiagnostics
 
 let get_options () = !options
 
-module ProofJob = struct
-  type update_request =
-    | UpdateExecStatus of sentence_id * execution_status
-    | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
-  let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
-
-  type t = {
-    tasks : executable_sentence list;
-    initial_vernac_state : Vernacstate.t;
-    doc_id : int;
-    terminator_id : sentence_id;
-  }
-  let name = "proof"
-  let binary_name = "vsrocqtop_proof_worker.opt"
-  let initial_pool_size = 1
-
-end
 
 module ProofWorker = DelegationManager.MakeWorker(ProofJob)
 
@@ -419,6 +421,7 @@ let init vernac_state ~feedback_pipe =
     todo = [];
     overview = empty_overview;
     feedback_pipe;
+    jobs = Queue.create ();
   }
 
 (* called by the forked child. Since the Feedback API is imperative, the
@@ -480,12 +483,9 @@ let is_remotely_executed st id =
   | _ -> false
   
   
-let jobs : (DelegationManager.job_handle * Sel.Event.cancellation_handle * ProofJob.t) Queue.t = Queue.create ()
-
 (* TODO: kill all Delegated... *)
-let destroy _ =
+let destroy  { jobs } =
   Queue.iter (fun (h,c,_) -> DelegationManager.cancel_job h; Sel.Event.cancel c) jobs
-
 
 let last_opt l = try Some (CList.last l).id with Failure _ -> None
 
@@ -634,11 +634,11 @@ let execute_task st (vs, events, interrupted) task =
                  update_all id (Delegated (job_id,None)) st)
                st (List.map (fun { id } -> id) tasks) in
             let e =
-                ProofWorker.worker_available ~jobs
+                ProofWorker.worker_available ~jobs:st.jobs
                   ~fork_action:worker_main
                   ~feedback_cleanup:(fun () -> Utilities.feedback_pipe_cleanup st.feedback_pipe)
                 in
-              Queue.push (job_id, Sel.Event.get_cancellation_handle e, job) jobs;
+              Queue.push (job_id, Sel.Event.get_cancellation_handle e, job) st.jobs;
               (st, last_vs,events @ [inject_proof_event e] ,false, None)
           | _ ->
             (* If executing the proof opener failed, we skip the proof *)
@@ -780,12 +780,12 @@ let rec invalidate document schedule id st =
   log (fun () -> "Invalidating: " ^ Stateid.to_string id);
   let of_sentence = invalidate1 st.of_sentence id in
   let todo = cancel1 st.todo id in
-  let old_jobs = Queue.copy jobs in
+  let old_jobs = Queue.copy st.jobs in
   let removed = ref [] in
-  Queue.clear jobs;
+  Queue.clear st.jobs;
   Queue.iter (fun ((_, cancellation, { ProofJob.terminator_id; tasks }) as job) ->
     if terminator_id != id then
-      Queue.push job jobs
+      Queue.push job st.jobs
     else begin
       Sel.Event.cancel cancellation;
       removed := List.map (fun e -> PExec e) tasks :: !removed
