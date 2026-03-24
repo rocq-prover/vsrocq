@@ -35,4 +35,5 @@ Configuring the MCP server depends on your setup. e.g. if you want to use vsrocq
 | `interpret_to_end` | Execute the entire document. |
 | `get_proof_state` | Get current goals and hypotheses without executing. |
 | `edit_line` | Replace entire lines (startLine to endLine, inclusive, 0-indexed) with new text. |
+| `update_proof` | Re-parse the document and re-execute to the current position. Use this after applying edits externally. |
 | `apply_edit` | Character-level range edit. **Warning:** LLMs are bad at counting character offsets, which leads to buffer corruption. Prefer `edit_line`. |
