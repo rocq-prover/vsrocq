@@ -19,22 +19,16 @@ open Types
 
 let Log log = Log.mk_log "executionManager"
 
-type execution_status =
-  | Success of Vernacstate.t option
-  | Error of Pp.t Loc.located * Quickfix.t list option * Vernacstate.t option (* State to use for resiliency *)
-
 let success vernac_st = Success (Some vernac_st)
-let error loc qf msg vernac_st = Error ((loc,msg), qf, (Some vernac_st))
-
-type sentence_id = Stateid.t
+let error loc qf msg vernac_st = Failure ((loc,msg), qf, (Some vernac_st))
 
 type errored_sentence = (sentence_id * Loc.t option) option
 
 module SM = Map.Make (Stateid)
 
 type sentence_state =
-  | Done of execution_status
-  | Delegated of DelegationManager.job_handle * (execution_status -> unit) option
+  | Done of sentence_checking_result
+  | Delegated of DelegationManager.job_handle * (sentence_checking_result -> unit) option
 
 type delegation_mode =
   | CheckProofsInMaster
@@ -78,7 +72,7 @@ type prepared_task =
 
 module ProofJob = struct
   type update_request =
-    | UpdateExecStatus of sentence_id * execution_status
+    | UpdateExecStatus of sentence_id * sentence_checking_result
     | AppendFeedback of Feedback.route_id * Types.sentence_id * (Feedback.level * Loc.t option * Quickfix.t list * Pp.t)
   let appendFeedback (rid,sid) fb = AppendFeedback(rid,sid,fb)
 
@@ -282,7 +276,7 @@ let update_processed_as_Done s range overview =
     let processing = RangeList.remove_or_truncate_range range processing in
     let prepared = RangeList.remove_or_truncate_range range prepared in
     {prepared; processing; processed}
-  | Error _ ->
+  | Failure _ ->
     let processing = RangeList.remove_or_truncate_range range processing in
     let prepared = RangeList.remove_or_truncate_range range prepared in
     {prepared; processing; processed}
@@ -441,11 +435,11 @@ let handle_event event state =
             | (Delegated (_,completion)), _ ->
                 Option.default ignore completion v;
                 Some (update_all id (Done v) state), Some id
-            | (Done (Success s)), Error (err,qf, _) ->
+            | (Done (Success s)), Failure (err,qf, _) ->
                 (* This only happens when a Qed closing a delegated proof
                    receives an updated by a worker saying that the proof is
                    not completed *)
-                Some (update_all id (Done (Error (err,qf,s))) state), Some id
+                Some (update_all id (Done (Failure (err,qf,s))) state), Some id
             | (Done _), _ -> None, Some id
             | exception Not_found -> None, None (* TODO: is this possible? *)
       in
@@ -463,23 +457,23 @@ let find_fulfilled_opt x m =
 
 let exec_error_of_execution_status id v = match v with
   | Success _ -> None
-  | Error ((loc, _), _, _) -> Some (id, loc)
+  | Failure ((loc, _), _, _) -> Some (id, loc)
 
 let get_vs_and_exec_error st id =
   match SM.find id st.of_sentence with
   | Done (Success (Some vs) as es) -> vs, exec_error_of_execution_status id es
-  | Done (Error (_,_,Some vs) as es) -> vs, exec_error_of_execution_status id es
+  | Done (Failure (_,_,Some vs) as es) -> vs, exec_error_of_execution_status id es
   | _ -> CErrors.anomaly Pp.(str "get_vs_and_exec_error call should be protected with is_locally_executed")
   | exception Not_found -> assert false
 
 let is_locally_executed st id =
   match find_fulfilled_opt id st.of_sentence with
-  | Some (Success (Some _) | Error (_,_,Some _)) -> true
+  | Some (Success (Some _) | Failure (_,_,Some _)) -> true
   | _ -> false
 
 let is_remotely_executed st id =
   match find_fulfilled_opt id st.of_sentence with
-  | Some (Success None | Error (_,_,None)) -> true
+  | Some (Success None | Failure (_,_,None)) -> true
   | _ -> false
   
   
@@ -517,7 +511,7 @@ let id_of_prepared_task = function
 
 let purge_state = function
   | Success _ -> Success None
-  | Error(e,_,_) -> Error (e,None,None)
+  | Failure(e,_,_) -> Failure (e,None,None)
 
 (* TODO move to proper place *)
 let worker_execute ~doc_id ~send_back (vs,events) { id; ast; synterp; error_recovery } =
@@ -563,7 +557,7 @@ let worker_main { ProofJob.tasks; initial_vernac_state = vs; doc_id; terminator_
 
 let execute_task st (vs, events, interrupted) task =
   if interrupted then begin
-    let st = update st (id_of_prepared_task task) (Error ((None,Pp.str "interrupted"),None,None)) in
+    let st = update st (id_of_prepared_task task) (Failure ((None,Pp.str "interrupted"),None,None)) in
     let todo = [] in
     ({st with todo}, vs, events, true, None)
   end else
@@ -620,7 +614,7 @@ let execute_task st (vs, events, interrupted) task =
                   assign (`Val (Declare.Proof.return_proof proof))
                 in
                 Vernacstate.LemmaStack.with_top (Option.get @@ vernac_st.Vernacstate.interp.lemmas) ~f
-              | Error ((loc,err),_,_) ->
+              | Failure ((loc,err),_,_) ->
                   log (fun () -> "Aborted future");
                   assign (`Exn (CErrors.UserError err, Option.fold_left Loc.add_loc Exninfo.null loc))
               with exn when CErrors.noncritical exn ->
@@ -646,7 +640,7 @@ let execute_task st (vs, events, interrupted) task =
             (st, vs,events,false, None)
           end
     with Sys.Break ->
-      let st = update st (id_of_prepared_task task) (Error ((None,Pp.str "interrupted"),None,None)) in
+      let st = update st (id_of_prepared_task task) (Failure ((None,Pp.str "interrupted"),None,None)) in
       (st, vs, events, true, None)
 
 let execute st document (vs, events, interrupted) task block_on_first_error =
@@ -672,9 +666,9 @@ let build_tasks_for document sch st id block =
       (* We reached an already computed state *)
       log (fun () -> "Reached computed state " ^ Stateid.to_string id);
       vs, tasks, st, None
-    | Some (Error((loc, _),_,Some vs)) ->
+    | Some (Failure((loc, _),_,Some vs)) ->
       (* We try to be resilient to an error *)
-      log (fun () -> "Error resiliency on state " ^ Stateid.to_string id);
+      log (fun () -> "Failure resiliency on state " ^ Stateid.to_string id);
       vs, tasks, st, Some (id, loc)
     | _ ->
       log (fun () -> "Non (locally) computed state " ^ Stateid.to_string id);
@@ -712,13 +706,13 @@ let build_tasks_for document sch st id block =
 let all_errors st =
   List.fold_left (fun acc (id, p) ->
     match p with
-    | Done (Error ((loc,e),qf,_)) -> (id,(loc,e,qf)) :: acc
+    | Done (Failure ((loc,e),qf,_)) -> (id,(loc,e,qf)) :: acc
     | _ -> acc)
     [] @@ SM.bindings st.of_sentence
 
 let error st id =
   match SM.find_opt id st.of_sentence with
-  | Some (Done (Error (err,_,_))) -> Some err
+  | Some (Done (Failure (err,_,_))) -> Some err
   | _ -> None
 
 let shift_overview st ~before ~after ~start ~offset =
@@ -742,10 +736,10 @@ let shift_overview st ~before ~after ~start ~offset =
 let shift_diagnostics_locs st ~start ~offset =
   let shift_error (sentence_state as orig) =
     let sentence_state' = match sentence_state with
-      | Done (Error ((Some loc,e),qf,st)) ->
+      | Done (Failure ((Some loc,e),qf,st)) ->
         let loc' = Utilities.shift_loc ~start ~offset loc in
         if loc' == loc then sentence_state else
-        Done (Error ((Some loc',e),qf,st))
+        Done (Failure ((Some loc',e),qf,st))
       | _ -> sentence_state
     in
     if sentence_state' == sentence_state then orig else
@@ -812,7 +806,7 @@ let context_of_state st =
 let get_context st id =
   match find_fulfilled_opt id st.of_sentence with
   | None -> log (fun () -> "Cannot find state for get_context"); None
-  | Some (Error _) -> log (fun () -> "Context requested in error state"); None
+  | Some (Failure _) -> log (fun () -> "Context requested in error state"); None
   | Some (Success None) -> log (fun () -> "Context requested in a remotely checked state"); None
   | Some (Success (Some { interp = st })) ->
     Some (context_of_state st)
@@ -823,10 +817,10 @@ let get_initial_context st =
 let get_vernac_state st id =
   match find_fulfilled_opt id st.of_sentence with
   | None -> log (fun () -> "Cannot find state for get_context"); None
-  | Some (Error (_,_,None)) -> log (fun () -> "State requested after error with no state"); None
+  | Some (Failure (_,_,None)) -> log (fun () -> "State requested after error with no state"); None
   | Some (Success None) -> log (fun () -> "State requested in a remotely checked state"); None
   | Some (Success (Some st))
-  | Some (Error (_,_, Some st)) ->
+  | Some (Failure (_,_, Some st)) ->
     Some st
 
 module ProofWorkerProcess = struct

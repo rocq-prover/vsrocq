@@ -868,7 +868,7 @@ let parse_entry st pos entry pattern =
 let about st pos ~pattern =
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
   match get_context st pos with
-  | None -> Error ({message="No context found"; code=None}) (*TODO execute *)
+  | None -> Stdlib.Error ({message="No context found"; code=None}) (*TODO execute *)
   | Some (sigma, env) ->
     try
       let ref_or_by_not = parse_entry st loc (smart_global) pattern in
@@ -984,7 +984,7 @@ let jump_to_definition st pos =
 let check st pos ~pattern =
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
   match get_context st pos with
-  | None -> Error ({message="No context found"; code=None}) (*TODO execute *)
+  | None -> Stdlib.Error ({message="No context found"; code=None}) (*TODO execute *)
   | Some (sigma,env) ->
     let rc = parse_entry st loc lconstr pattern in
     try
@@ -1014,7 +1014,7 @@ let pr_glob_without_symbols env sigma c =
 let locate st pos ~pattern = 
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
   match get_context st pos with
-  | None -> Error ({message="No context found"; code=None}) (*TODO execute *)
+  | None -> Stdlib.Error ({message="No context found"; code=None}) (*TODO execute *)
   | Some (sigma, env) ->
     match parse_entry st loc (smart_global) pattern with
     | { v = AN qid } -> Ok (pp_of_rocqpp @@ print_located_qualid env qid)
@@ -1033,7 +1033,7 @@ let locate st pos ~pattern =
 let print st pos ~pattern = 
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
   match get_context st pos with
-  | None -> Error({message="No context found"; code=None})
+  | None -> Stdlib.Error({message="No context found"; code=None})
   | Some (sigma, env) ->
     let qid = parse_entry st loc (smart_global) pattern in
     let udecl = None in (*TODO*)

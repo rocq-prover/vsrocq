@@ -112,3 +112,8 @@ type feedback_pipe = {
   sel_feedback_queue : feedback_data Queue.t;
   sel_cancellation_handle : Sel.Event.cancellation_handle;
 }
+
+type sentence_checking_result =
+  | Success of Vernacstate.t option
+  | Failure of Pp.t Loc.located * Quickfix.t list option * Vernacstate.t option (* State to use for resiliency *)
+
