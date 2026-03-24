@@ -269,10 +269,18 @@ let pr_globref_kind = let open GlobRef in function
   | ConstructRef _ -> "Constructor"
   | VarRef _ -> "Variable"
 
-let ref_info env _sigma ref udecl =
-  let typ, _univs = Typeops.type_of_global_in_context env ref in
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
+let printer_evd env udecl _ ref =
   let bl = Printer.universe_binders_with_opt_names (Environ.universes_of_global env ref) udecl in
-  let sigma = Evd.from_ctx (UState.of_names bl) in
+  Evd.from_ctx (UState.of_names bl)
+[%%else]
+let printer_evd env udecl univs _ =
+  Evd.from_auctx env (Printer.fill_names ?user_names:udecl univs)
+[%%endif]
+
+let ref_info env _sigma ref udecl =
+  let typ, univs = Typeops.type_of_global_in_context env ref in
+  let sigma = printer_evd env udecl univs ref in
   let typ = rename_type env typ ref in
   let impargs = Impargs.select_stronger_impargs (Impargs.implicits_of_global ref) in
   let impargs = List.map Impargs.binding_kind_of_status impargs in
