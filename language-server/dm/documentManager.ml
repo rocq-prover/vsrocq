@@ -49,6 +49,7 @@ type state = {
   observe_id : observe_id;
   cancel_handle : Sel.Event.cancellation_handle option;
   document_state: document_state;
+  feedback_pipe : feedback_pipe;
 }
 type interp_target = Next | Previous | Point of Position.t * Settings.PointInterpretationMode.t | End
 let show_interp_target = function
@@ -74,6 +75,7 @@ type event =
   | SendBlockOnError of Types.sentence_id
   | SendMoveCursor of Range.t
   | InterpretTo of Settings.Mode.t * interp_target
+  | LocalFeedback of feedback_data list
 
 type handled_event = {
     state : state option;
@@ -102,6 +104,7 @@ let pp_event fmt = function
     Stdlib.Format.fprintf fmt "SendBlockOnError %s" @@ (Range.to_string range)
   | InterpretTo(_mode,tgt) ->
     Stdlib.Format.fprintf fmt "InterpretTo %s" (show_interp_target tgt)
+  | LocalFeedback _ -> Stdlib.Format.fprintf fmt "LocalFeedback"
 
 let inject_em_event x = Sel.Event.map (fun e -> ExecutionManagerEvent e) x
 let inject_em_events events = List.map inject_em_event events
@@ -245,10 +248,11 @@ let mk_parsing_error_diag st Document.{ msg = (oloc,msg); start; stop; qf } =
   in
   make_diagnostic st.document range oloc (Pp.string_of_ppcmds msg) severity code
 
+
 let all_diagnostics st =
   let parse_errors = Document.parse_errors st.document in
   let all_exec_errors = ExecutionManager.all_errors st.execution_state in
-  let all_feedback = ExecutionManager.all_feedback st.execution_state in
+  let all_feedback = Document.all_feedback st.document in
   (* we are resilient to a state where invalidate was not called yet *)
   let exists (id,_) = Option.has_some (Document.get_sentence st.document id) in
   let not_info (_, (lvl, _, _, _)) = 
@@ -257,7 +261,7 @@ let all_diagnostics st =
     | _ -> true
   in
   let exec_errors = all_exec_errors |> List.filter exists in
-  let feedback = all_feedback |> List.filter exists |> List.filter not_info in
+  let feedback = all_feedback |> List.filter not_info in
   List.map (mk_parsing_error_diag st) parse_errors @
     List.map (mk_error_diag st) exec_errors @
     List.map (mk_diag st) feedback
@@ -288,7 +292,7 @@ let id_of_pos_opt st = function
 
 let get_messages st id =
   let error = ExecutionManager.error st.execution_state id in
-  let feedback = ExecutionManager.feedback st.execution_state id in
+  let feedback = Document.feedback st.document id in
   let feedback = List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, pp_of_rocqpp msg) feedback  in
   match error with
   | Some (_oloc,msg) -> (DiagnosticSeverity.Error, pp_of_rocqpp msg) :: feedback
@@ -296,7 +300,7 @@ let get_messages st id =
 
 let get_string_messages st id =
   let error = ExecutionManager.error st.execution_state id in
-  let feedback = ExecutionManager.feedback st.execution_state id in
+  let feedback = Document.feedback st.document id in
   let feedback = List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, Pp.string_of_ppcmds msg) feedback  in
   match error with
   | Some (_oloc,msg) -> (DiagnosticSeverity.Error, Pp.string_of_ppcmds msg) :: feedback
@@ -311,7 +315,7 @@ let get_info_messages st pos =
       | Feedback.Info -> true
       | _ -> false
     in
-    let feedback = ExecutionManager.feedback st.execution_state id in
+    let feedback = Document.feedback st.document id in
     let feedback = feedback |> List.filter info in
     List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, pp_of_rocqpp msg) feedback
 
@@ -584,6 +588,23 @@ let dirpath_of_top = Coqargs.dirpath_of_top
 let dirpath_of_top = Coqinit.dirpath_of_top
 [%%endif]
 
+let local_feedback feedback_queue : event Sel.Event.t =
+  Sel.On.queue_all ~name:"feedback" ~priority:PriorityManager.feedback feedback_queue
+    (fun x xs -> LocalFeedback(x :: xs))
+
+let install_feedback_listener doc_id send =
+  Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
+    if lvl != Feedback.Debug && doc = doc_id then send (route,span,(lvl,loc, qf, msg)))
+
+let init_feedback_pipe () =
+  let doc_id = Utilities.fresh_doc_id () in
+  let sel_feedback_queue = Queue.create () in
+  let rocq_feeder = install_feedback_listener doc_id (fun x -> Queue.push x sel_feedback_queue) in
+  let feedback = local_feedback sel_feedback_queue in
+  let sel_cancellation_handle = Sel.Event.get_cancellation_handle feedback in
+  let feedback_pipe = {doc_id;sel_feedback_queue;rocq_feeder;sel_cancellation_handle;} in
+  feedback_pipe, feedback
+
 let init init_vs ~opts uri ~text =
   Vernacstate.unfreeze_full_state init_vs;
   let top = try (dirpath_of_top (TopPhysical (DocumentUri.to_path uri))) with
@@ -592,23 +613,24 @@ let init init_vs ~opts uri ~text =
   start_library top opts;
   let init_vs = Vernacstate.freeze_full_state () in
   let document = Document.create_document init_vs.Vernacstate.synterp text in
-  let execution_state, feedback = ExecutionManager.init init_vs in
-  let state = { uri; opts; init_vs; document; execution_state; observe_id=Top; cancel_handle = None; document_state = Parsing } in
-  let priority = Some PriorityManager.launch_parsing in
-  let event = Sel.now ?priority ParseBegin in
-  state, [event] @ [inject_em_event feedback]
+  let feedback_pipe, feedback_event = init_feedback_pipe () in
+  let execution_state = ExecutionManager.init init_vs ~feedback_pipe in
+  let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
+  let state = { uri; opts; init_vs; document; execution_state; observe_id=Top; cancel_handle = None; document_state = Parsing; feedback_pipe } in
+  state, [parsebegin_event;feedback_event]
 
-let reset { uri; opts; init_vs; document; execution_state; } =
+let reset { uri; opts; init_vs; document; execution_state; feedback_pipe } =
   let text = RawDocument.text @@ Document.raw_document document in
   Vernacstate.unfreeze_full_state init_vs;
   let document = Document.create_document init_vs.synterp text in
   ExecutionManager.destroy execution_state;
-  let execution_state, feedback = ExecutionManager.init init_vs in
+  Utilities.feedback_pipe_cleanup feedback_pipe;
+  let feedback_pipe, feedback_event = init_feedback_pipe () in
+  let execution_state = ExecutionManager.init init_vs ~feedback_pipe in
   let observe_id = Top in
-  let state = { uri; opts; init_vs; document; execution_state; observe_id; cancel_handle = None ; document_state = Parsing } in
-  let priority = Some PriorityManager.launch_parsing in
-  let event = Sel.now ?priority ParseBegin in
-  state, [event] @ [inject_em_event feedback]
+  let state = { uri; opts; init_vs; document; execution_state; observe_id; cancel_handle = None ; document_state = Parsing; feedback_pipe } in
+  let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
+  state, [parsebegin_event;feedback_event]
 
 let apply_text_edits state edits =
   let apply_edit_and_shift_diagnostics_locs_and_overview state (range, new_text as edit) =
@@ -617,7 +639,10 @@ let apply_text_edits state edits =
     let edit_start = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.start in
     let edit_stop = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.end_ in
     let edit_length = edit_stop - edit_start in
-    let exec_st = ExecutionManager.shift_diagnostics_locs exec_st ~start:edit_stop ~offset:(String.length new_text - edit_length) in
+    let start = edit_stop in
+    let offset = String.length new_text - edit_length in
+    let document = Document.shift_feedbacks ~start ~offset document in
+    let exec_st = ExecutionManager.shift_diagnostics_locs exec_st ~start ~offset in
     let execution_state = ExecutionManager.shift_overview exec_st ~before:(Document.raw_document state.document) ~after:(Document.raw_document document) ~start:edit_stop ~offset:(String.length new_text - edit_length) in
     {state with execution_state; document}
   in
@@ -708,9 +733,15 @@ let handle_execution_manager_event st ev =
   let update_view = true in
   {state=st; events=(inject_em_events events); update_view; notification=None}
 
+let handle_feedback_event state (_, id, msg) =
+  { state with document = Document.append_feedback state.document id msg }
+
 let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.PrettyPrint.t) =
   let background = check_mode = Settings.Mode.Continuous in
   match ev with
+  | LocalFeedback l ->
+     let state = List.fold_left handle_feedback_event st l in
+     make_handled_event ~state ~update_view:true ~events:[local_feedback state.feedback_pipe.sel_feedback_queue] ()
   | Execute { id; vst_for_next_todo; started; task } ->
     execute st id vst_for_next_todo started task background block
   | ExecutionManagerEvent ev ->

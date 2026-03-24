@@ -96,3 +96,19 @@ type error = {
 }
 
 type 'a log = Log : 'a -> 'a log
+
+type feedback_message = Feedback.level * Loc.t option * Quickfix.t list * Pp.t
+
+type document_id = int
+
+type feedback_data = Feedback.route_id * sentence_id * feedback_message
+
+type rocq_feedback_listener = int
+
+(* ugly stuff to correctly dispatch Rocq feedback *)
+type feedback_pipe = {
+  doc_id : document_id; (* unique number used to interface with Rocq's Feedback *)
+  rocq_feeder : rocq_feedback_listener;
+  sel_feedback_queue : feedback_data Queue.t;
+  sel_cancellation_handle : Sel.Event.cancellation_handle;
+}

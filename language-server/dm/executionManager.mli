@@ -38,10 +38,8 @@ type event
 type events = event Sel.Event.t list
 type errored_sentence = (sentence_id * Loc.t option) option
 
-type feedback_message = Feedback.level * Loc.t option * Quickfix.t list * Pp.t
-
 val pr_event : event -> Pp.t
-val init : Vernacstate.t -> state * event Sel.Event.t
+val init : Vernacstate.t -> feedback_pipe:feedback_pipe -> state
 val destroy : state -> unit
 
 val get_options : unit -> options
@@ -50,9 +48,7 @@ val set_default_options : unit -> unit
 val invalidate : Document.document -> Scheduler.schedule -> sentence_id -> state -> state
 
 val error : state -> sentence_id -> (Loc.t option * Pp.t) option
-val feedback :  state -> sentence_id -> feedback_message list
 val all_errors : state -> (sentence_id * (Loc.t option * Pp.t * Quickfix.t list option)) list
-val all_feedback : state -> (sentence_id * feedback_message) list
 
 val reset_overview : state -> Document.document -> state
 val shift_overview : state -> before:RawDocument.t -> after:RawDocument.t -> start:int -> offset:int -> state

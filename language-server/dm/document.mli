@@ -123,6 +123,7 @@ type sentence = {
   scheduler_state_after : Scheduler.state;
   ast : sentence_state;
   id : sentence_id;
+  messages : feedback_message list;
 }
 
 type comment = {
@@ -172,6 +173,18 @@ val range_of_id : document -> Stateid.t -> Range.t
 
 val range_of_id_with_blank_space : document -> Stateid.t -> Range.t
 (** [range_of_id_with_blank_space doc id] returns a Range object coressponding to the sentence id given in argument but with the white spaces before (until the previous sentence) *)
+
+val all_feedback : document -> (sentence_id * feedback_message) list
+(** [all_feedback doc] returns all sentences with a feedback *)
+
+val feedback : document -> sentence_id -> feedback_message list
+(** [feedback doc id] returns all feedback messages for id *)
+
+val append_feedback : document -> sentence_id -> feedback_message -> document
+(** [append_feedback doc id msg] appends msg to existing messages on id *)
+
+val shift_feedbacks : start:int -> offset:int -> document -> document
+(** [shift_feedbacks ~start ~stop doc] shifts all messages pasrt start by offset *)
 
 module Internal : sig
 

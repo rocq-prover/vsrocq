@@ -94,6 +94,7 @@ type sentence = {
   scheduler_state_after : Scheduler.state;
   ast : sentence_state;
   id : sentence_id;
+  messages : feedback_message list;
 }
 
 type document = {
@@ -280,7 +281,8 @@ let add_sentence parsed parsing_start start stop (ast: sentence_state) synterp_s
       Scheduler.schedule_sentence (id, ast') scheduler_state_before parsed.schedule
   in
   (* FIXME may invalidate scheduler_state_XXX for following sentences -> propagate? *)
-  let sentence = { parsing_start; start; stop; ast; id; synterp_state; scheduler_state_before; scheduler_state_after } in
+  (* What about messages generated during parsing? *)
+  let sentence = { parsing_start; start; stop; ast; id; synterp_state; scheduler_state_before; scheduler_state_after; messages = [] } in
   let document = { 
     parsed with sentences_by_end = LM.add stop id parsed.sentences_by_end;
     sentences_by_id = SM.add id sentence parsed.sentences_by_id;
@@ -415,6 +417,30 @@ let pos_at_end parsed =
   | Some (stop, _) -> stop
   | None -> -1
 
+let all_feedback parsed =
+  SM.bindings parsed.sentences_by_id |>
+  List.fold_left (fun acc (id, { messages }) -> List.map (fun x -> (id, x)) messages @ acc) []
+
+let feedback parsed id =
+  match SM.find_opt id parsed.sentences_by_id with
+  | None -> []
+  | Some { messages } -> messages
+
+let append_feedback parsed id (_, _, _, msg as fb) =
+  match SM.find_opt id parsed.sentences_by_id with
+  | None -> 
+    log (fun () -> "Received feedback on non-existing state id " ^ Stateid.to_string id ^ ": " ^ Pp.string_of_ppcmds msg);
+    parsed
+  | Some s ->
+      { parsed with sentences_by_id = SM.add id { s with messages = s.messages @ [fb] } parsed.sentences_by_id }
+
+let shift_sentence ~start ~offset s =
+  let messages = CList.Smart.map (Utilities.shift_feedback ~start ~offset) s.messages in
+  if messages == s.messages then s else { s with messages }
+
+let shift_feedbacks ~start ~offset parsed =
+  { parsed with sentences_by_id = SM.map (shift_sentence ~start ~offset) parsed.sentences_by_id }
+  
 let string_of_parsed_ast { tokens } = 
   (* TODO implement printer for vernac_entry *)
   "[" ^ String.concat "--" (List.map (Tok.extract_string false) tokens) ^ "]"
