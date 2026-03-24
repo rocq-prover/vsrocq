@@ -165,13 +165,13 @@ val get_last_sentence : document  -> sentence option
 
 val schedule : document -> Scheduler.schedule
 
-val has_sentence : document -> Stateid.t -> bool
+val has_sentence : document -> sentence_id -> bool
 (** [has_sentence doc id] tells if id is in the document *)
 
-val range_of_id : document -> Stateid.t -> Range.t
+val range_of_id : document -> sentence_id -> Range.t
 (** [range_of_id doc id] returns a Range object coressponding to the sentence id given in argument *)
 
-val range_of_id_with_blank_space : document -> Stateid.t -> Range.t
+val range_of_id_with_blank_space : document -> sentence_id -> Range.t
 (** [range_of_id_with_blank_space doc id] returns a Range object coressponding to the sentence id given in argument but with the white spaces before (until the previous sentence) *)
 
 val all_feedback : document -> (sentence_id * feedback_message) list
