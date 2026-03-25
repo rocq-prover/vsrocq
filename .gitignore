@@ -7,6 +7,8 @@ language-server/language/dune
 language-server/protocol/dune
 language-server/vsrocqtop/dune
 language-server/tests/dune
+language-server/vsrocqmcp/dune
+language-server/mcpserver/dune
 client/yarn-error.log
 client/.vscode-test/
 client/out/

@@ -101,6 +101,9 @@ val observe_id_range : state -> Range.t option
 val get_messages : state -> sentence_id -> (DiagnosticSeverity.t * pp) list
 (** returns the messages associated to a given position *)
 
+val get_string_messages : state -> sentence_id -> (DiagnosticSeverity.t * string) list
+(** returns the messages associated to a given position as strings *)
+
 val get_info_messages : state -> Position.t option -> (DiagnosticSeverity.t * pp) list
 (** returns the Feedback.Info level messages associated to a given position *)
 
