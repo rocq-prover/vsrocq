@@ -77,6 +77,7 @@ let empty_overview = {processing = []; processed = []; prepared = []}
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
   module Quickfix = struct
     type t = unit
+    let make ~loc:_ _pp = ()
     let from_exception _ = Ok([])
     let pp = Pp.mt
     let loc _ = Loc.make_loc (0,0)
@@ -117,3 +118,17 @@ type sentence_checking_result =
   | Success of Vernacstate.t option
   | Failure of Pp.t Loc.located * Quickfix.t list option * Vernacstate.t option (* State to use for resiliency *)
 
+type document_updates =
+  (sentence_id * sentence_checking_result) list
+
+type ('state,'event) handled_event = {
+    state : 'state option;
+    events: 'event Sel.Event.t list;
+    update_view: bool;
+    notification: Protocol.ExtProtocol.Notification.Server.t option;
+}
+let make_handled_event ?state ?(events=[]) ?(update_view=false) ?notification () =
+  { state ; events; update_view; notification; }
+
+let lift_handled_event update_state inject_events { state; events; update_view; notification } =
+  { state = update_state state; events = inject_events events; update_view; notification }

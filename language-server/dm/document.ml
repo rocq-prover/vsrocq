@@ -365,6 +365,11 @@ let find_sentence_before parsed loc =
   | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
   | _ -> None
 
+(* moved here from DM, maybe can be simplified / use find_sentence_after *)
+let find_sentence_pos document pos =
+  let loc = RawDocument.loc_of_position (raw_document document) pos in
+  find_sentence_before document loc
+
 let find_sentence_strictly_before parsed loc =
   match LM.find_last_opt (fun k -> k < loc) parsed.sentences_by_end with
   | Some (_, sentence) -> Some sentence
@@ -374,6 +379,21 @@ let find_sentence_after parsed loc =
   match LM.find_first_opt (fun k -> loc <= k) parsed.sentences_by_end with
   | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
   | _ -> None
+
+(* moved here from DM, maybe can be simplified / use find_sentence_after *)
+let find_sentence_after_pos document pos =
+  let loc = RawDocument.loc_of_position (raw_document document) pos in
+  (* if the current loc falls squarely within a sentence *)
+  match find_sentence document loc with
+  | Some x -> Some x
+  | None -> 
+    (** otherwise the sentence start is after the loc,
+        so we must be in the whitespace before the sentence
+        and need to interpret to the sentence before instead
+    *)
+    match find_sentence_before document loc with
+    | None -> None
+    | Some x -> Some x
 
 let find_next_qed parsed loc =
   let exception Found of sentence in
@@ -418,6 +438,15 @@ let pos_at_end parsed =
   | Some (stop, _) -> stop
   | None -> -1
 
+let is_sentence_above st id1 id2 =
+  let range1 = range_of_id st id1 in
+  let range2 = range_of_id st id2 in
+  let pos1 = range1.start in
+  let pos2 = range2.start in
+  match Int.compare pos1.line pos2.line with
+  | 0 -> Int.compare pos1.character pos2.character < 0
+  | x -> x < 0
+
 let all_feedback parsed =
   SM.bindings parsed.sentences_by_id |>
   List.fold_left (fun acc (id, { messages }) -> List.map (fun x -> (id, x)) messages @ acc) []
@@ -446,7 +475,7 @@ let is_qed = function
      not completed. Here we double check this invariant. *)
   | _ -> false
 
-let update_checked parsed id v =
+let update_checked parsed (id, v) =
   match SM.find_opt id parsed.sentences_by_id with
   | None -> parsed
   | Some ({ checked; ast } as s) ->

@@ -147,13 +147,19 @@ val get_sentence : document -> sentence_id -> sentence option
 val sentences_before : document -> int -> sentence list
 
 val find_sentence : document -> int -> sentence option
-(** [find_sentence pos loc] finds the sentence containing the loc *)
+(** [find_sentence doc loc] finds the sentence containing the loc *)
+
+val find_sentence_pos : document -> Position.t -> sentence option
+(** [find_sentence_pos doc pos] finds the sentence at the pos *)
 
 val find_sentence_before : document -> int -> sentence option
-(** [find_sentence_before pos loc] finds the last sentence before the loc *)
+(** [find_sentence_before doc loc] finds the last sentence before the loc *)
 
 val find_sentence_after : document -> int -> sentence option
-(** [find_sentence_after pos loc] finds the first sentence after the loc *)
+(** [find_sentence_after doc loc] finds the first sentence after the loc *)
+
+val find_sentence_after_pos : document -> Position.t -> sentence option
+(** [find_sentence_after_pos doc pos] finds the first sentence after the pos *)
 
 val find_next_qed : document -> int -> sentence option
 (** [find_next_qed parsed loc] finds the next proof end *)
@@ -163,6 +169,9 @@ val get_first_sentence : document  -> sentence option
 
 val get_last_sentence : document  -> sentence option
 (** [get_last_sentence doc] returns the last parsed sentence *)
+
+val is_sentence_above : document -> sentence_id -> sentence_id -> bool
+(** [is_sentence_above doc id1 id2] check is id1 is above id2 *)
 
 val schedule : document -> Scheduler.schedule
 
@@ -193,7 +202,7 @@ val append_feedback : document -> sentence_id -> feedback_message -> document
 val shift_feedbacks_and_checking_errors : start:int -> offset:int -> document -> document
 (** [shift_feedbacks_and_checking_errors ~start ~stop doc] shifts all messages past start by offset *)
 
-val update_checked : document -> sentence_id -> sentence_checking_result -> document
+val update_checked : document -> sentence_id * sentence_checking_result -> document
 (** [update_checked doc id v] updates the checked field of sentence id *)
 
 val set_unchecked : document -> sentence_id -> document
