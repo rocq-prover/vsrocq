@@ -742,7 +742,6 @@ let validate_document ({ parsed_loc; raw_doc; cancel_handle } as document) =
 let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; previous_document} document =
   let end_ = Unix.gettimeofday ()in
   let time = end_ -. started in
-  (* log (fun () -> Format.sprintf "Parsing phase ended in %5.3f" time); *)
   log (fun () -> Format.sprintf "Parsing phase ended in %5.3f\n%!" time);
   let new_sentences = List.rev parsed in
   let new_comments = List.rev parsed_comments in
