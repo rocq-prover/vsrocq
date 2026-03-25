@@ -124,6 +124,7 @@ type sentence = {
   ast : sentence_state;
   id : sentence_id;
   messages : feedback_message list;
+  checked : sentence_checking_result option;
 }
 
 type comment = {
@@ -180,11 +181,27 @@ val all_feedback : document -> (sentence_id * feedback_message) list
 val feedback : document -> sentence_id -> feedback_message list
 (** [feedback doc id] returns all feedback messages for id *)
 
+val all_checking_errors : document -> (sentence_id * (Loc.t option * Pp.t * Quickfix.t list option)) list
+(** [all_checking_errors doc] returns all sentences that were checked and resulted in an error *)
+
+val error : document -> sentence_id -> (Loc.t option * Pp.t * Quickfix.t list option) option
+(** [error doc id] returns the checking error for id, if any *)
+
 val append_feedback : document -> sentence_id -> feedback_message -> document
 (** [append_feedback doc id msg] appends msg to existing messages on id *)
 
-val shift_feedbacks : start:int -> offset:int -> document -> document
-(** [shift_feedbacks ~start ~stop doc] shifts all messages pasrt start by offset *)
+val shift_feedbacks_and_checking_errors : start:int -> offset:int -> document -> document
+(** [shift_feedbacks_and_checking_errors ~start ~stop doc] shifts all messages past start by offset *)
+
+val update_checked : document -> sentence_id -> sentence_checking_result -> document
+(** [update_checked doc id v] updates the checked field of sentence id *)
+
+val set_unchecked : document -> sentence_id -> document
+(** [remove_checked doc id] marks id as unchecked *)
+
+val is_checked : document -> sentence_id -> bool
+(** [is_checked doc id] tells if id is checked *)
+
 
 module Internal : sig
 

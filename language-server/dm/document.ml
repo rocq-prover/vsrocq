@@ -95,6 +95,7 @@ type sentence = {
   ast : sentence_state;
   id : sentence_id;
   messages : feedback_message list;
+  checked : sentence_checking_result option;
 }
 
 type document = {
@@ -282,7 +283,7 @@ let add_sentence parsed parsing_start start stop (ast: sentence_state) synterp_s
   in
   (* FIXME may invalidate scheduler_state_XXX for following sentences -> propagate? *)
   (* What about messages generated during parsing? *)
-  let sentence = { parsing_start; start; stop; ast; id; synterp_state; scheduler_state_before; scheduler_state_after; messages = [] } in
+  let sentence = { parsing_start; start; stop; ast; id; synterp_state; scheduler_state_before; scheduler_state_after; messages = []; checked = None } in
   let document = { 
     parsed with sentences_by_end = LM.add stop id parsed.sentences_by_end;
     sentences_by_id = SM.add id sentence parsed.sentences_by_id;
@@ -420,11 +421,52 @@ let pos_at_end parsed =
 let all_feedback parsed =
   SM.bindings parsed.sentences_by_id |>
   List.fold_left (fun acc (id, { messages }) -> List.map (fun x -> (id, x)) messages @ acc) []
-
+ 
 let feedback parsed id =
   match SM.find_opt id parsed.sentences_by_id with
   | None -> []
   | Some { messages } -> messages
+
+let all_checking_errors parsed =
+  SM.bindings parsed.sentences_by_id |>
+  List.fold_left (fun acc (id, { checked }) ->
+    match checked with
+    | None | Some (Success _) -> acc
+    | Some (Failure ((loc,e),qf,_)) -> (id,(loc,e,qf)) :: acc) []
+
+let error parsed id =
+  match SM.find_opt id parsed.sentences_by_id with
+  | Some { checked = Some (Failure ((loc,e),qf,_)) } -> Some (loc,e,qf)
+  | _ -> None
+
+let is_qed = function
+  | Parsed { classification = Vernacextend.(VtQed (VtKeep VtKeepOpaque)) } -> true
+  (* Updating a sentences marked with Success only happens when a Qed closing
+     a delegated proof receives an updated by a worker saying that the proof is
+     not completed. Here we double check this invariant. *)
+  | _ -> false
+
+let update_checked parsed id v =
+  match SM.find_opt id parsed.sentences_by_id with
+  | None -> parsed
+  | Some ({ checked; ast } as s) ->
+      match checked with
+      | None ->
+          { parsed with sentences_by_id = SM.add id { s with checked = Some v} parsed.sentences_by_id }
+      | Some (Success _) when is_qed ast ->
+          { parsed with sentences_by_id = SM.add id { s with checked = Some v} parsed.sentences_by_id }
+      | _ -> assert false
+
+let set_unchecked parsed id =
+  match SM.find_opt id parsed.sentences_by_id with
+  | None -> parsed
+  | Some s ->
+    { parsed with sentences_by_id = SM.add id { s with checked = None } parsed.sentences_by_id }
+
+let is_checked parsed id =
+  match SM.find_opt id parsed.sentences_by_id with
+  | None -> false
+  | Some { checked } -> not(checked = None)
 
 let append_feedback parsed id (_, _, _, msg as fb) =
   match SM.find_opt id parsed.sentences_by_id with
@@ -436,11 +478,13 @@ let append_feedback parsed id (_, _, _, msg as fb) =
 
 let shift_sentence ~start ~offset s =
   let messages = CList.Smart.map (Utilities.shift_feedback ~start ~offset) s.messages in
-  if messages == s.messages then s else { s with messages }
+  let checked = Option.Smart.map (Utilities.shift_checking_result ~start ~offset) s.checked in
+  if messages == s.messages && checked == s.checked then s
+  else { s with messages; checked }
 
-let shift_feedbacks ~start ~offset parsed =
+let shift_feedbacks_and_checking_errors ~start ~offset parsed =
   { parsed with sentences_by_id = SM.map (shift_sentence ~start ~offset) parsed.sentences_by_id }
-  
+
 let string_of_parsed_ast { tokens } = 
   (* TODO implement printer for vernac_entry *)
   "[" ^ String.concat "--" (List.map (Tok.extract_string false) tokens) ^ "]"

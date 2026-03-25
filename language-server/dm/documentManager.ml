@@ -248,10 +248,9 @@ let mk_parsing_error_diag st Document.{ msg = (oloc,msg); start; stop; qf } =
   in
   make_diagnostic st.document range oloc (Pp.string_of_ppcmds msg) severity code
 
-
 let all_diagnostics st =
   let parse_errors = Document.parse_errors st.document in
-  let all_exec_errors = ExecutionManager.all_errors st.execution_state in
+  let all_exec_errors = Document.all_checking_errors st.document in
   let all_feedback = Document.all_feedback st.document in
   (* we are resilient to a state where invalidate was not called yet *)
   let exists (id,_) = Option.has_some (Document.get_sentence st.document id) in
@@ -291,19 +290,19 @@ let id_of_pos_opt st = function
   | Some pos -> id_of_pos st pos
 
 let get_messages st id =
-  let error = ExecutionManager.error st.execution_state id in
+  let error = Document.error st.document id in
   let feedback = Document.feedback st.document id in
   let feedback = List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, pp_of_rocqpp msg) feedback  in
   match error with
-  | Some (_oloc,msg) -> (DiagnosticSeverity.Error, pp_of_rocqpp msg) :: feedback
+  | Some (_oloc,msg,_) -> (DiagnosticSeverity.Error, pp_of_rocqpp msg) :: feedback
   | None -> feedback
 
 let get_string_messages st id =
-  let error = ExecutionManager.error st.execution_state id in
+  let error = Document.error st.document id in
   let feedback = Document.feedback st.document id in
   let feedback = List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, Pp.string_of_ppcmds msg) feedback  in
   match error with
-  | Some (_oloc,msg) -> (DiagnosticSeverity.Error, Pp.string_of_ppcmds msg) :: feedback
+  | Some (_oloc,msg,_) -> (DiagnosticSeverity.Error, Pp.string_of_ppcmds msg) :: feedback
   | None -> feedback
 
 let get_info_messages st pos =
@@ -453,9 +452,11 @@ let interpret_to st id check_mode =
     let pv_event = mk_proof_view_event id in
     st, [event] @ [pv_event]
   | Settings.Mode.Continuous ->
-    match ExecutionManager.is_locally_executed st.execution_state id with
-    | true -> st, [mk_proof_view_event id]
-    | false -> st, []
+    match Document.get_sentence st.document id with
+    | Some { checked = Some (Success (Some _) | Failure (_,_,Some _)) } ->
+        (* we have the vernac state *)
+        st, [mk_proof_view_event id]
+    | _ -> st, []
 
 let interpret_to_next_position st pos check_mode =
   match id_of_sentence_after_pos st pos with
@@ -567,11 +568,16 @@ let validate_document state (Document.{unchanged_id; invalid_ids; previous_docum
     | _, Top -> Top
     | Some id, Id id' -> if is_above previous_document id id' then (Id id) else state.observe_id
   in
-  let execution_state =
-    List.fold_left (fun st id ->
-      ExecutionManager.invalidate previous_document (Document.schedule previous_document) id st
-      ) state.execution_state (Stateid.Set.elements invalid_ids) in
-  let execution_state = ExecutionManager.reset_overview execution_state previous_document in
+  (* this should be made in Document *)
+  let old_schedule = Document.schedule previous_document in
+  let rec invalidate_checked id state =
+    let execution_state = ExecutionManager.invalidate state.execution_state id in
+    let document = Document.set_unchecked state.document id in
+    let state = { state with document; execution_state } in
+    let deps = Scheduler.dependents old_schedule id in
+    Stateid.Set.fold invalidate_checked deps state in
+  let state = Stateid.Set.fold invalidate_checked invalid_ids state in
+  let execution_state = ExecutionManager.reset_overview state.execution_state previous_document in
   { state with  execution_state; observe_id; document_state = Parsed }
 
 [%%if rocq ="8.18" || rocq ="8.19"]
@@ -641,8 +647,7 @@ let apply_text_edits state edits =
     let edit_length = edit_stop - edit_start in
     let start = edit_stop in
     let offset = String.length new_text - edit_length in
-    let document = Document.shift_feedbacks ~start ~offset document in
-    let exec_st = ExecutionManager.shift_diagnostics_locs exec_st ~start ~offset in
+    let document = Document.shift_feedbacks_and_checking_errors ~start ~offset document in
     let execution_state = ExecutionManager.shift_overview exec_st ~before:(Document.raw_document state.document) ~after:(Document.raw_document document) ~start:edit_stop ~offset:(String.length new_text - edit_length) in
     {state with execution_state; document}
   in
@@ -680,8 +685,11 @@ let execute st id vst_for_next_todo started task background block =
     {state=Some st; events=[]; update_view=true; notification=None} (* Sentences have been invalidate, probably because the user edited while executing *)
   | Some _ ->
     log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
-    let (next, execution_state,vst_for_next_todo,events, exec_error) =
+    let (updates, next, execution_state,vst_for_next_todo,events, exec_error) =
       ExecutionManager.execute st.execution_state st.document (vst_for_next_todo, [], false) task block in
+    let document =
+      List.fold_left (fun doc (id,v) -> Document.update_checked doc id v) st.document updates in
+    let st = { st with document } in
     let st, block_events =
       match exec_error with
       | None -> st, []
@@ -701,25 +709,34 @@ let execute st id vst_for_next_todo started task background block =
         let events = proof_view_event @ inject_em_events events @ block_events @ event in
         {state; events; update_view; notification=None}
 
+let vernac_state_of_sentence document id =
+  Document.get_sentence document id |>
+  fun x -> Option.bind x (fun x -> Utilities.get_vernac_state x.Document.checked)
+
 let get_proof st diff_mode id =
   let previous_st id =
     let oid = fst @@ Scheduler.task_for_sentence (Document.schedule st.document) id in
-    Option.bind oid (ExecutionManager.get_vernac_state st.execution_state)
+    Option.bind oid (vernac_state_of_sentence st.document)
   in
   let observe_id = to_sentence_id st.observe_id in
   let oid = Option.append id observe_id in
-  let ost = Option.bind oid (ExecutionManager.get_vernac_state st.execution_state) in
+  let ost = Option.bind oid (vernac_state_of_sentence st.document) in
   let previous = Option.bind oid previous_st in
   Option.bind ost (ProofState.get_proof ~previous diff_mode)
 
 let get_string_proof st id =
   let observe_id = to_sentence_id st.observe_id in
   let oid = Option.append id observe_id in
-  let ost = Option.bind oid (ExecutionManager.get_vernac_state st.execution_state) in
+  let ost = Option.bind oid (vernac_state_of_sentence st.document) in
   Option.bind ost PpProofState.get_proof
 
 let handle_execution_manager_event st ev =
-  let id, execution_state_update, events = ExecutionManager.handle_event ev st.execution_state in
+  let id, document_update, execution_state_update, events =
+    ExecutionManager.handle_event st.document ev st.execution_state in
+  let st =
+    match document_update with
+    | None -> st
+    | Some (id,v) -> { st with document = Document.update_checked st.document id v } in
   let st = 
     match (id, execution_state_update) with
     | Some id, Some exec_st ->
@@ -809,8 +826,15 @@ let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.Pret
     make_handled_event ~state ~events ()
 
 let context_of_id st = function
-  | None -> Some (ExecutionManager.get_initial_context st.execution_state)
-  | Some id -> ExecutionManager.get_context st.execution_state id
+  | None ->
+      Utilities.context_of_vernac_state @@ ExecutionManager.get_initial_vernac_state st.execution_state
+  | Some id ->
+      Document.get_sentence st.document id |>
+      fun x -> Option.bind x (fun x -> Utilities.get_proof_context x.Document.checked) |>
+      function
+      | Some x -> x
+      | None -> 
+         Utilities.context_of_vernac_state @@ ExecutionManager.get_initial_vernac_state st.execution_state
 
 (** Get context at the start of the sentence containing [pos] *)
 let get_context st pos = context_of_id st (id_of_pos st pos)
@@ -821,7 +845,7 @@ let get_completions st pos =
       log (fun () -> "Can't get completions, no sentence found before the cursor");
       []
   | Some id ->
-    let ost = ExecutionManager.get_vernac_state st.execution_state id in
+    let ost = Utilities.get_vernac_state (Document.get_sentence st.document id |> fun x -> Option.bind x (fun x -> x.Document.checked)) in
     let settings = ExecutionManager.get_options () in
     match Option.bind ost @@ CompletionSuggester.get_completions settings.completion_options with
     | None -> 
@@ -867,9 +891,7 @@ let parse_entry st pos entry pattern =
 
 let about st pos ~pattern =
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  match get_context st pos with
-  | None -> Stdlib.Error ({message="No context found"; code=None}) (*TODO execute *)
-  | Some (sigma, env) ->
+  let sigma, env = get_context st pos in
     try
       let ref_or_by_not = parse_entry st loc (smart_global) pattern in
       let udecl = None (* TODO? *) in
@@ -881,17 +903,13 @@ let about st pos ~pattern =
 
 let search st ~id pos pattern =
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  match get_context st pos with
-  | None -> [] (* TODO execute? *)
-  | Some (sigma, env) ->
+  let sigma, env = get_context st pos in
     let query, r = parse_entry st loc (G_vernac.search_queries) pattern in
     SearchQuery.interp_search ~id env sigma query r
 
 (** Try to generate hover text from [pattern] the context of the given [sentence] *)
 let hover_of_sentence st loc pattern sentence = 
-  match context_of_id st (Option.map (fun ({ id; _ }: Document.sentence) -> id) sentence) with
-  | None -> log (fun () -> "hover: no context found"); None
-  | Some (sigma, env) ->
+  let sigma, env = context_of_id st (Option.map (fun ({ id; _ }: Document.sentence) -> id) sentence) in
     try
       let ref_or_by_not = parse_entry st loc (smart_global) pattern in
       Language.Hover.get_hover_contents env sigma ref_or_by_not
@@ -983,9 +1001,7 @@ let jump_to_definition st pos =
 
 let check st pos ~pattern =
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  match get_context st pos with
-  | None -> Stdlib.Error ({message="No context found"; code=None}) (*TODO execute *)
-  | Some (sigma,env) ->
+  let sigma, env = get_context st pos in
     let rc = parse_entry st loc lconstr pattern in
     try
       let redexpr = None in
@@ -1013,9 +1029,7 @@ let pr_glob_without_symbols env sigma c =
 
 let locate st pos ~pattern = 
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  match get_context st pos with
-  | None -> Stdlib.Error ({message="No context found"; code=None}) (*TODO execute *)
-  | Some (sigma, env) ->
+  let sigma, env = get_context st pos in
     match parse_entry st loc (smart_global) pattern with
     | { v = AN qid } -> Ok (pp_of_rocqpp @@ print_located_qualid env qid)
     | { v = ByNotation (ntn, sc)} ->
@@ -1032,9 +1046,7 @@ let locate st pos ~pattern =
 
 let print st pos ~pattern = 
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  match get_context st pos with
-  | None -> Stdlib.Error({message="No context found"; code=None})
-  | Some (sigma, env) ->
+  let sigma, env = get_context st pos in
     let qid = parse_entry st loc (smart_global) pattern in
     let udecl = None in (*TODO*)
     Ok ( pp_of_rocqpp @@ print_name env sigma qid udecl )
@@ -1063,9 +1075,6 @@ module Internal = struct
   let raw_document st = 
     Document.raw_document st.document
 
-  let execution_state st =
-    st.execution_state
-
   let observe_id st =
     match st.observe_id with
     | Top -> None
@@ -1073,11 +1082,16 @@ module Internal = struct
 
   let validate_document st parsing_end_info = validate_document st parsing_end_info
 
+  let is_locally_executed st id =
+    match Document.get_sentence st.document id with
+    | Some { checked = Some (Success (Some _) | Failure (_,_,Some _)) } -> true
+    | _ -> false
+
   let string_of_state st =
     let code_lines_by_id = Document.code_lines_sorted_by_loc st.document in
     let code_lines_by_end = Document.code_lines_by_end_sorted_by_loc st.document in
     let string_of_state id =
-      if ExecutionManager.is_locally_executed st.execution_state id then "(executed)"
+      if is_locally_executed st id then "(executed)"
       else if ExecutionManager.is_remotely_executed st.execution_state id then "(executed in worker)"
       else "(not executed)"
     in

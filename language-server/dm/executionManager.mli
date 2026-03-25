@@ -45,37 +45,33 @@ val destroy : state -> unit
 val get_options : unit -> options
 val set_options : options -> unit
 val set_default_options : unit -> unit
-val invalidate : Document.document -> Scheduler.schedule -> sentence_id -> state -> state
+val invalidate : state -> sentence_id -> state
 
-val error : state -> sentence_id -> (Loc.t option * Pp.t) option
-val all_errors : state -> (sentence_id * (Loc.t option * Pp.t * Quickfix.t list option)) list
+(* val error : state -> sentence_id -> (Loc.t option * Pp.t) option
+val all_errors : state -> (sentence_id * (Loc.t option * Pp.t * Quickfix.t list option)) list *)
 
 val reset_overview : state -> Document.document -> state
 val shift_overview : state -> before:RawDocument.t -> after:RawDocument.t -> start:int -> offset:int -> state
-val shift_diagnostics_locs : state -> start:int -> offset:int -> state
-val executed_ids : state -> sentence_id list
-
-(** we know if it worked and we have the state in this process *)
-val is_locally_executed : state -> sentence_id -> bool
+(* val shift_diagnostics_locs : state -> start:int -> offset:int -> state *)
+(* val executed_ids : state -> sentence_id list *)
 
 (** we know if it worked but we do not have the state in this process *)
 val is_remotely_executed : state -> sentence_id -> bool
 
-val get_context : state -> sentence_id -> (Evd.evar_map * Environ.env) option
-val get_initial_context : state -> Evd.evar_map * Environ.env
+val get_initial_vernac_state : state -> Vernacstate.t
 
-(** Returns the vernac state after the sentence *)
-val get_vernac_state : state -> sentence_id -> Vernacstate.t option
+(* * Returns the vernac state after the sentence
+val get_vernac_state : state -> sentence_id -> Vernacstate.t option *)
 
 (** Events for the main loop *)
-val handle_event : event -> state -> (sentence_id option * state option * events)
+val handle_event : Document.document -> event -> state -> sentence_id option * (sentence_id * sentence_checking_result) option * state option * events
 
 (** Execution happens in two steps. In particular the event one takes only
     one task at a time to ease checking for interruption *)
 type prepared_task
 val get_id_of_executed_task : prepared_task -> sentence_id
 val build_tasks_for : Document.document -> Scheduler.schedule -> state -> sentence_id -> bool -> Vernacstate.t * state * prepared_task option * errored_sentence
-val execute : state -> Document.document -> Vernacstate.t * events * bool -> prepared_task -> bool -> (prepared_task option * state * Vernacstate.t * events * errored_sentence)
+val execute : state -> Document.document -> Vernacstate.t * events * bool -> prepared_task -> bool -> ((sentence_id * sentence_checking_result) list * prepared_task option * state * Vernacstate.t * events * errored_sentence)
 
 (* val update_overview : prepared_task -> prepared_task list -> state -> Document.document -> state
 val cut_overview : prepared_task -> state -> Document.document -> state *)

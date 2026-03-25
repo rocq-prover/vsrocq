@@ -49,7 +49,7 @@ let%test_unit "exec: unfinished proof" =
   let exec_events = DocumentManager.interpret_to_end Settings.Mode.Manual in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
-  let errors = ExecutionManager.all_errors (DocumentManager.Internal.execution_state st) in
+  let errors = Document.all_checking_errors (DocumentManager.Internal.document st) in
   [%test_eq: bool] true (1 = List.length errors);
   check_diag st [
     D (s2.id,Error,".*incomplete proof.*");
