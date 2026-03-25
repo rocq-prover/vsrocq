@@ -3,10 +3,10 @@
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    rocq-master = { url = "github:rocq-prover/rocq/a580b68e664f08b8ca616008c6b072ebcac07719"; }; # Should be kept in sync with PIN_COQ in CI workflow
+    rocq-master = { url = "github:rocq-prover/rocq/f5272dea10768c74e5a83a17ea594a48057359c4"; }; # Should be kept in sync with PIN_COQ in CI workflow
     rocq-master.inputs.nixpkgs.follows = "nixpkgs";
     rocq-master.inputs.flake-utils.follows = "flake-utils";
   };
@@ -24,7 +24,7 @@
       vscodeExtName = "vsrocq";
       vscodeExtUniqueId = "rocq-prover.vsrocq";
       vsrocq_version = "2.3.4";
-      rocq = rocq-master.packages.${system};
+      rocq = (import nixpkgs {inherit system;}).rocq-core.override { version = rocq-master.outPath; };
     in rec {
       formatter = nixpkgs.legacyPackages.${system}.alejandra;
 
