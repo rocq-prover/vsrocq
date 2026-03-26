@@ -181,7 +181,8 @@ let rec handle_d_events n (events : Document.event Sel.Todo.t) (st : Document.do
   else begin
     (*Stdlib.Format.eprintf "waiting %a\n%!" Sel.(pp_todo DocumentManager.pp_event) events;*)
     Stdlib.flush_all ();
-    let (ready, remaining) = Sel.pop_timeout ~stop_after_being_idle_for:0.1 events in
+    let (ready, remaining) =
+      Sel.pop_timeout ~stop_after_being_idle_for:0.1 events in
     match ready with
     | None -> assert false
     | Some ev ->

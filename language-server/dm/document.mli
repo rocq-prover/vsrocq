@@ -65,7 +65,7 @@ val raw_document : document -> RawDocument.t
 
 val outline : document -> outline
 
-val create_document : Vernacstate.Synterp.t -> string -> document
+val create_document : doc_id:document_id -> Vernacstate.Synterp.t -> string -> document
 (** [create_document init_synterp_state text] creates a fresh document with content defined by
     [text] under [init_synterp_state]. *)
 
@@ -211,6 +211,7 @@ val set_unchecked : document -> sentence_id -> document
 val is_checked : document -> sentence_id -> bool
 (** [is_checked doc id] tells if id is checked *)
 
+val id : document -> document_id
 
 module Internal : sig
 
