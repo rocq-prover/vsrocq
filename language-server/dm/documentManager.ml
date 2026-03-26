@@ -322,7 +322,7 @@ let install_feedback_listener doc_id send =
   Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
     if lvl != Feedback.Debug && doc = doc_id then send (route,span,(lvl,loc, qf, msg)))
 
-let cancel_ongoing_execution _ = ()
+let interrupt_execution st = CheckingManager.interrupt_execution st.checking_state
 
 let init_feedback_pipe () =
   let doc_id = Utilities.fresh_doc_id () in
@@ -359,6 +359,9 @@ let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
   state, [parsebegin_event;feedback_event]
 
 let apply_text_edits state edits =
+  (* FIXME: only this doc *)
+  (* TODO: We need the parser to run in execmanager too *)
+  CheckingManager.interrupt_execution state.checking_state;
   let apply_edit_and_shift_diagnostics_locs_and_overview state (range, new_text as edit) =
     let document = Document.apply_text_edit state.document edit in
     let edit_start = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.start in
@@ -472,6 +475,7 @@ let parse_entry st pos entry pattern =
 [%%endif]
 
 let about st pos ~pattern =
+  (* TODO: run in execmanager *)
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
   let sigma, env = get_context st pos in
     try

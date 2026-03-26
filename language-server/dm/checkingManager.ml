@@ -61,6 +61,15 @@ type event =
       tasks : ExecutionManager.prepared_task list;
       started : float; (* time *)
     }
+  | ExecutePromise of {
+      id : Types.sentence_id;
+      started : float;
+      result : ((sentence_id * sentence_checking_result) list * ExecutionManager.state * Vernacstate.t * ExecutionManager.events * ExecutionManager.errored_sentence) Sel.Promise.state;
+      task : ExecutionManager.prepared_task;
+      tasks : ExecutionManager.prepared_task list;
+      block : bool;
+      proof_view_event : event Sel.Event.t list;
+    }
   | ExecutionManagerEvent of ExecutionManager.event
   | InterpretTo of Settings.Mode.t * interp_target
   | Observe of Types.sentence_id
@@ -78,6 +87,8 @@ let pp_event fmt = function
   | SendBlockOnError id -> Stdlib.Format.fprintf fmt "SendBlockOnError %d" @@ Stateid.to_int id
   | SendMoveCursor range -> Stdlib.Format.fprintf fmt "SendBlockOnError %s" @@ Range.to_string range
   | SendProofView id_opt -> Stdlib.Format.fprintf fmt "SendProofView %s" @@ Option.cata Stateid.to_string "None" id_opt
+  | ExecutePromise { id } ->
+      Stdlib.Format.fprintf fmt "ExecutePromise %d" (Stateid.to_int id)
 
 let inject_em_event x = Sel.Event.map (fun e -> ExecutionManagerEvent e) x
 let inject_em_events events = List.map inject_em_event events
@@ -94,6 +105,10 @@ let mk_proof_view_event_empty = Sel.now ~priority:PriorityManager.proof_view (Se
 let mk_execution_event background event =
   let priority = if background then None else Some PriorityManager.execution in
   Sel.now ?priority event
+
+let mk_execution_promise_event background id started proof_view_event p task tasks block =
+  let priority = if background then None else Some (-100) in
+  Sel.On.promise ?priority p (fun result -> ExecutePromise { result; id; started; task; tasks; block; proof_view_event; })
 
 let mk_block_on_error_event last_range error_id background =
   let update_goal_view = [ mk_proof_view_event error_id ] in
@@ -494,11 +509,15 @@ let execute document st id vst_for_next_task started task tasks background block
       log (fun () -> Printf.sprintf "ExecuteToLoc %d stops after %2.3f, sentences invalidated" (Stateid.to_int id) time);
       ([], { state = Some st; events = []; update_view = true; notification = None })
       (* Sentences have been invalidate, probably because the user edited while executing *)
-  | Some _ -> (
+  | Some _ ->
       log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
-      let updates, execution_state, vst_for_next_task, events, exec_error =
-        ExecutionManager.execute st.execution_state document (vst_for_next_task, [], false) task
-      in
+      let promise = ExecutionManager.execute st.execution_state document (vst_for_next_task, [], false) task in
+      ([],{state=Some st; events=[mk_execution_promise_event background id started proof_view_event promise task tasks block]; update_view=true; notification=None})
+
+let post_execute document st id started background proof_view_event promise task tasks block =
+    match promise with
+  | Sel.Promise.Rejected _ -> assert false (* We always fulfill it, even if the command fails or is interrupted *)
+  | Sel.Promise.Fulfilled (updates, execution_state, vst_for_next_task, events, exec_error) ->
       let st = { st with execution_state } in
       let st, tasks, block_events =
         match (block, exec_error) with
@@ -518,7 +537,7 @@ let execute document st id vst_for_next_task started task tasks background block
           let state = Some { st with exec_event_cancel_handle } in
           let update_view = true in
           let events = proof_view_event @ inject_em_events events @ block_events @ [ event ] in
-          (updates, { state; events; update_view; notification = None }))
+          (updates, { state; events; update_view; notification = None })
 
 let handle_execution_manager_event document st ev =
   let id, document_update, execution_state_update, events =
@@ -582,6 +601,8 @@ let handle_event ~uri document st ev =
   match ev with
   | Execute { id; vst_for_next_task; started; task; tasks } ->
       execute document st id vst_for_next_task started task tasks background block_on_first_error
+  | ExecutePromise { id; started; result; proof_view_event; task; tasks; block } ->
+      post_execute document st id started background proof_view_event result task tasks block
   | ExecutionManagerEvent ev -> handle_execution_manager_event document st ev
   | Observe id ->
       let state, events = observe document st id ~block_on_first_error ~background in
@@ -625,6 +646,10 @@ let handle_event ~uri document st ev =
   | InterpretTo (mode, Previous) ->
       let state, events = real_interpret_to_previous document st mode in
       ([], make_handled_event ~state ~events ())
+
+let interrupt_execution st =
+  Option.iter Sel.Event.cancel st.exec_event_cancel_handle;
+  ExecutionManager.interrupt_rocq_interpreter ()
 
 module Internal = struct
   let is_remotely_executed st id = ExecutionManager.is_remotely_executed st.execution_state id

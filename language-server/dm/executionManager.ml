@@ -21,6 +21,7 @@ let Log log = Log.mk_log "executionManager"
 
 let success vernac_st = Success (Some vernac_st)
 let error loc qf msg vernac_st = Failure ((loc,msg), qf, (Some vernac_st))
+let error_no_resiliency loc qf msg = Failure ((loc,msg), qf, None)
 
 type errored_sentence = (sentence_id * Loc.t option) option
 
@@ -159,39 +160,28 @@ let interp_error_recovery strategy st : Vernacstate.t =
           st
 
 (* just a wrapper around vernac interp *)
-let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
+let interp_ast ~token ~doc_id ~state_id ~st ~error_recovery ast =
     Feedback.set_id_for_feedback doc_id state_id;
     ParTactic.set_id_for_feedback doc_id state_id;
-    Sys.(set_signal sigint (Signal_handle(fun _ -> raise Break)));
     let result =
-      try Ok(Vernacinterp.interp_entry ~st ast,[])
-      with e -> (* we also catch anomalies *)
-        let e, info = Exninfo.capture e in
-        Error (e, info) in
-    Sys.(set_signal sigint Signal_ignore);
+      Memprof_limits.limit_with_token ~token (fun () ->
+        try Ok(Vernacinterp.interp_entry ~st ast,[])
+        with e -> (* we also catch anomalies *)
+          let e, info = Exninfo.capture e in
+          Error (e, info)) in
     match result with
-    | Ok (interp, events) ->
-      (*
-        log fun () -> "Executed: " ^ Stateid.to_string state_id ^ "  " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast) ^
-          " (" ^ (if Option.is_empty vernac_st.Vernacstate.lemmas then "no proof" else "proof")  ^ ")";
-          *)
+    | Error _ -> 
+      st, error_no_resiliency None None Pp.(str "Interrupted by the user"), [], true
+    | Ok (Ok (interp, events)) ->
         let st = { st with interp } in
-        st, success st, (*List.map inject_pm_event*) events
-    | Error (Sys.Break, _ as exn) ->
-      (*
-        log (fun () -> "Interrupted executing: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
-        *)
-        Exninfo.iraise exn
-    | Error (e, info) ->
-      (*
-        log (fun () -> "Failed to execute: " ^ Stateid.to_string state_id ^ "  " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
-        *)
+        st, success st, events, false
+    | Ok (Error (e, info)) ->
         let loc = Loc.get_loc info in
         let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
         let msg = CErrors.iprint (e, info) in
         let status = error loc (Some qf) msg st in
         let st = interp_error_recovery error_recovery st in
-        st, status, []
+        st, status, [], false
 
 (* This adapts the Future API with our event model *)
 [%%if rocq = "8.18"]
@@ -359,7 +349,7 @@ let purge_state = function
 let worker_execute ~doc_id ~send_back (vs,events) { id; ast; synterp; error_recovery } =
   let vs = { vs with Vernacstate.synterp } in
   log (fun () -> "worker interp " ^ Stateid.to_string id);
-  let vs, v, ev = interp_ast ~doc_id ~state_id:id ~st:vs ~error_recovery ast in
+  let vs, v, ev,_ = interp_ast ~token:(Memprof_limits.Token.create ()) ~doc_id ~state_id:id ~st:vs ~error_recovery ast in
   send_back (ProofJob.UpdateExecStatus (id,purge_state v));
   (vs, events @ ev)
 
@@ -397,12 +387,11 @@ let worker_main { ProofJob.tasks; initial_vernac_state = vs; doc_id; terminator_
     Feedback.msg_debug @@ Pp.str "==========================================================";
     exit 1
 
-let execute_task st document (vs, events, interrupted) task =
+let execute_task ~token st document (vs, events, interrupted) task =
   if interrupted then begin
     let updates = [id_of_prepared_task task,Failure ((None,Pp.str "interrupted"),None,None)] in
     (updates, st, vs, events, true, None)
   end else
-    try
       match task with
       | PBlock { id; synterp; error = err} ->
         let vs = { vs with Vernacstate.synterp } in
@@ -420,23 +409,23 @@ let execute_task st document (vs, events, interrupted) task =
           (updates, st, vs, events, false, None)
       | PExec { id; ast; synterp; error_recovery } ->
           let vs = { vs with Vernacstate.synterp } in
-          let updates, vs, st, ev, exec_error =
+          let updates, vs, st, ev, interrupted, exec_error =
             if is_locally_executed id document then
               let vs, exec_error = get_vs_and_exec_error id document in
               log (fun () -> Format.asprintf "skipping execution of already executed %s" (Stateid.to_string id));
-              [], vs, st, [], exec_error
+              [], vs, st, [], false, exec_error
             else
-              let vs, v, ev = interp_ast ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast in
+              let vs, v, ev, interrupted = interp_ast ~token ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast in
               let updates = [id, v] in
               let exec_error = exec_error_of_execution_status id v in
-              updates, vs, st, ev, exec_error
+              updates, vs, st, ev, interrupted, exec_error
           in
-          (updates, st, vs, events @ ev, false, exec_error)
+          (updates, st, vs, events @ ev, interrupted, exec_error)
       | PQuery { id; ast; synterp; error_recovery } ->
           let vs = { vs with Vernacstate.synterp } in
-          let _, v, ev = interp_ast ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast in
+          let _, v, ev, interrupted = interp_ast ~token ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast in
           let updates = [id, v] in
-          (updates, st, vs, events @ ev, false, None)
+          (updates, st, vs, events @ ev, interrupted, None)
       | PDelegate { terminator_id; opener_id; last_step_id; tasks; proof_using } ->
           begin match find_fulfilled_opt document opener_id with
           | Some (Success _) ->
@@ -480,14 +469,64 @@ let execute_task st document (vs, events, interrupted) task =
             let updates = [terminator_id, success vs] in
             (updates, st, vs,events,false, None)
           end
-    with Sys.Break ->
-      let updates = [id_of_prepared_task task,Failure ((None,Pp.str "interrupted"),None,None)] in
-      (updates, st, vs, events, true, None)
 
-let execute st document (vs, events, interrupted) task =
+let execute_rocq ~token st document (vs, events, interrupted) task =
   let updates, st, vst_for_next_todo, events, _, exec_error =
-    execute_task st document (vs, events, interrupted) task in
+    execute_task ~token st document (vs, events, interrupted) task in
   updates, st, vst_for_next_todo, events, exec_error
+
+(* We run Rocq in a thread so that we can interrupt it *)
+let job = ref None
+let job_mutex = Mutex.create ()
+let job_condition = Condition.create ()
+let _runner = Thread.create (fun () ->
+  while true do
+    (* get a job *)
+    let (st, document, acc, task, resolver, token) =
+      Mutex.lock job_mutex;
+      while !job = None do Condition.wait job_condition job_mutex done;
+      let rc = match !job with Some x -> x | None -> assert false in
+      Condition.signal job_condition;
+      Mutex.unlock job_mutex;
+      rc
+    in
+
+    (* run the job *)
+    Sel.Promise.fulfill resolver (execute_rocq ~token st document acc task);
+
+    (* erase the job *)
+    Mutex.lock job_mutex;
+    job := None;
+    Condition.signal job_condition;
+    Mutex.unlock job_mutex;
+  done
+) ()
+
+let interrupt_rocq_interpreter () =
+  Mutex.lock job_mutex;
+  while !job <> None do 
+    match !job with
+    | None -> assert false
+    | Some (_,_,_,_,_,token) ->
+        log (fun () -> "interrupting...");
+        Memprof_limits.Token.set token;
+        Condition.wait job_condition job_mutex;
+        log (fun () -> "interrupted!")
+  done;
+  Mutex.unlock job_mutex
+
+let execute_thread st document acc task resolver =
+  Mutex.lock job_mutex;
+  let token = Memprof_limits.Token.create () in
+  job := Some (st, document, acc, task, resolver, token);
+  Condition.signal job_condition;
+  Mutex.unlock job_mutex
+
+let execute st document acc task =
+  let promise, r = Sel.Promise.make () in
+  (* log (fun () -> Format.asprintf "promise: %a" Sel.Promise.(pp (fun _ _ -> ())) promise); *)
+  execute_thread st document acc task r;
+  promise
 
 
 let build_tasks_for document sch st id =

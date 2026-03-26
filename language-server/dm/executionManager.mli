@@ -71,21 +71,14 @@ val handle_event : Document.document -> event -> state -> sentence_id option * (
 type prepared_task
 val get_id_of_executed_task : prepared_task -> sentence_id
 val build_tasks_for : Document.document -> Scheduler.schedule -> state -> sentence_id -> Vernacstate.t * prepared_task list * state * errored_sentence
-val execute : state -> Document.document -> Vernacstate.t * events * bool -> prepared_task -> ((sentence_id * sentence_checking_result) list * state * Vernacstate.t * events * errored_sentence)
+val execute : state -> Document.document -> Vernacstate.t * events * bool -> prepared_task -> 
+  ((sentence_id * sentence_checking_result) list * state * Vernacstate.t * events * errored_sentence) Sel.Promise.t
+val interrupt_rocq_interpreter : unit -> unit
 
 val view_task : prepared_task -> [
   `Local of sentence_id |
   `Remote of sentence_id * sentence_id * sentence_id * sentence_id
 ]
-
-(* val update_overview : prepared_task -> prepared_task list -> state -> Document.document -> state
-val cut_overview : prepared_task -> state -> Document.document -> state *)
-(* val update_processed : sentence_id -> state -> Document.document -> state *)
-(* val prepare_overview : state -> LspWrapper.Range.t list -> state
-val overview : state -> exec_overview
-val overview_until_range : state -> LspWrapper.Range.t -> exec_overview
-val print_exec_overview_of_state : state -> unit
-val build_prepared_overview : Document.document -> prepared_task list -> state -> state *)
 
 (** Rocq toplevels for delegation without fork *)
 module ProofWorkerProcess : sig
