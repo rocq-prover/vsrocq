@@ -14,7 +14,6 @@
 open Base
 open Dm
 open Common
-open Protocol
 
 [@@@warning "-27"]
 
@@ -24,7 +23,7 @@ let set_delegation_mode mode =
 let%test_unit "exec: finished proof" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. trivial. Qed. Check x." in
   let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
-  let exec_events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
   check_diag st [
@@ -35,7 +34,7 @@ let%test_unit "exec: finished proof skip" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. trivial. Qed. Check x." in
   let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
   set_delegation_mode SkipProofs;
-  let exec_events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
   check_diag st [
@@ -46,10 +45,10 @@ let%test_unit "exec: finished proof skip" =
 let%test_unit "exec: unfinished proof" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. Qed. Check x." in
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
-  let exec_events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
-  let errors = ExecutionManager.all_errors (DocumentManager.Internal.execution_state st) in
+  let errors = Document.all_checking_errors (DocumentManager.Internal.document st) in
   [%test_eq: bool] true (1 = List.length errors);
   check_diag st [
     D (s2.id,Error,".*incomplete proof.*");
@@ -62,7 +61,7 @@ let%test_unit "exec: unfinished proof skip" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. Qed. Check x." in
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
   set_delegation_mode SkipProofs;
-  let exec_events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
   check_diag st [
@@ -77,7 +76,7 @@ let%test_unit "exec: unfinished proof delegate" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. Qed. Check x." in
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
   set_delegation_mode (DelegateProofsToWorkers { number_of_workers = 1 });
-  let exec_events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
   check_diag st [
@@ -92,7 +91,7 @@ let%test_unit "exec: unfinished proof delegate" =
 let%test_unit "exec: unstarted proof" =
   let st, events = em_init_test_doc ~text:"Qed. Check nat." in
   let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
-  let exec_events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
   check_diag st [

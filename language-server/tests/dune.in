@@ -11,6 +11,7 @@
 
  (rule
   (target vsrocq_config.mlh)
+  (mode (promote (only vsrocq_config.mlh)))
   (action (with-stdout-to %{target}
     (progn
       (echo "(* Automatically generated, don't edit *)\n")
