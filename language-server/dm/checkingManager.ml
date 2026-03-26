@@ -61,6 +61,15 @@ type event =
       tasks : ExecutionManager.prepared_task list;
       started : float; (* time *)
     }
+  | ExecutePromise of {
+      id : Types.sentence_id;
+      started : float;
+      result : ExecutionManager.execution_result_;
+      task : ExecutionManager.prepared_task;
+      tasks : ExecutionManager.prepared_task list;
+      block : bool;
+      proof_view_event : event Sel.Event.t list;
+    }
   | ExecutionManagerEvent of ExecutionManager.event
   | InterpretTo of Settings.Mode.t * interp_target
   | Observe of Types.sentence_id
@@ -78,6 +87,8 @@ let pp_event fmt = function
   | SendBlockOnError id -> Stdlib.Format.fprintf fmt "SendBlockOnError %d" @@ Stateid.to_int id
   | SendMoveCursor range -> Stdlib.Format.fprintf fmt "SendBlockOnError %s" @@ Range.to_string range
   | SendProofView id_opt -> Stdlib.Format.fprintf fmt "SendProofView %s" @@ Option.cata Stateid.to_string "None" id_opt
+  | ExecutePromise { id } ->
+      Stdlib.Format.fprintf fmt "ExecutePromise %d" (Stateid.to_int id)
 
 let inject_em_event x = Sel.Event.map (fun e -> ExecutionManagerEvent e) x
 let inject_em_events events = List.map inject_em_event events
@@ -94,6 +105,10 @@ let mk_proof_view_event_empty = Sel.now ~priority:PriorityManager.proof_view (Se
 let mk_execution_event background event =
   let priority = if background then None else Some PriorityManager.execution in
   Sel.now ?priority event
+
+let mk_execution_promise_event background id started proof_view_event p k task tasks block =
+  let priority = if background then None else Some (-100) in
+  Sel.On.promise ?priority p (fun result -> ExecutePromise { result = k result; id; started; task; tasks; block; proof_view_event; })
 
 let mk_block_on_error_event last_range error_id background =
   let update_goal_view = [ mk_proof_view_event error_id ] in
@@ -476,6 +491,27 @@ let execution_finished st id started =
   let state = Some st in
   { state; events = []; update_view; notification = None }
 
+let post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error = 
+  let st, tasks, block_events =
+    match (block, exec_error) with
+    | false, _ | _, None ->
+        let st = update_overview task tasks st document in
+        (st, tasks, [])
+    | true, Some (error_id, loc) ->
+        let st = cut_overview task st document in
+        let st, error_range = state_before_error document st error_id loc in
+        (st, [], mk_block_on_error_event error_range error_id background)
+  in
+  match tasks with
+  | [] -> execution_finished st id started
+  | task :: tasks ->
+      let event = mk_execution_event background (Execute { id; vst_for_next_task; task; tasks; started }) in
+      let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
+      let state = Some { st with exec_event_cancel_handle } in
+      let update_view = true in
+      let events = proof_view_event @ inject_em_events events @ block_events @ [ event ] in
+      { state; events; update_view; notification = None }
+
 let execute document st id vst_for_next_task started task tasks background block =
   let time = Unix.gettimeofday () -. started in
   let proof_view_event =
@@ -494,31 +530,18 @@ let execute document st id vst_for_next_task started task tasks background block
       log (fun () -> Printf.sprintf "ExecuteToLoc %d stops after %2.3f, sentences invalidated" (Stateid.to_int id) time);
       ([], { state = Some st; events = []; update_view = true; notification = None })
       (* Sentences have been invalidate, probably because the user edited while executing *)
-  | Some _ -> (
+  | Some _ ->
       log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
-      let updates, execution_state, vst_for_next_task, events, exec_error =
-        ExecutionManager.execute st.execution_state document (vst_for_next_task, [], false) task
-      in
+      let execution_state, result =ExecutionManager.execute st.execution_state document vst_for_next_task task in
       let st = { st with execution_state } in
-      let st, tasks, block_events =
-        match (block, exec_error) with
-        | false, _ | _, None ->
-            let st = update_overview task tasks st document in
-            (st, tasks, [])
-        | true, Some (error_id, loc) ->
-            let st = cut_overview task st document in
-            let st, error_range = state_before_error document st error_id loc in
-            (st, [], mk_block_on_error_event error_range error_id background)
-      in
-      match tasks with
-      | [] -> (updates, execution_finished st id started)
-      | task :: tasks ->
-          let event = mk_execution_event background (Execute { id; vst_for_next_task; task; tasks; started }) in
-          let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
-          let state = Some { st with exec_event_cancel_handle } in
-          let update_view = true in
-          let events = proof_view_event @ inject_em_events events @ block_events @ [ event ] in
-          (updates, { state; events; update_view; notification = None }))
+      match result with
+      | Done { updates; vs = vst_for_next_task; events; exec_error } ->
+        updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error
+      | WillDo(promise,k) ->
+        [],{state=Some st; events=[mk_execution_promise_event background id started proof_view_event promise k task tasks block]; update_view=true; notification=None}
+
+let execute_promise document st id started background proof_view_event task tasks block { ExecutionManager.updates; vs = vst_for_next_task; events; exec_error } =
+  updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error
 
 let handle_execution_manager_event document st ev =
   let id, document_update, execution_state_update, events =
@@ -582,6 +605,8 @@ let handle_event ~uri document st ev =
   match ev with
   | Execute { id; vst_for_next_task; started; task; tasks } ->
       execute document st id vst_for_next_task started task tasks background block_on_first_error
+  | ExecutePromise { id; started; result; proof_view_event; task; tasks; block } ->
+      execute_promise document st id started background proof_view_event task tasks block result
   | ExecutionManagerEvent ev -> handle_execution_manager_event document st ev
   | Observe id ->
       let state, events = observe document st id ~block_on_first_error ~background in
@@ -625,6 +650,10 @@ let handle_event ~uri document st ev =
   | InterpretTo (mode, Previous) ->
       let state, events = real_interpret_to_previous document st mode in
       ([], make_handled_event ~state ~events ())
+
+let interrupt_execution st =
+  Option.iter Sel.Event.cancel st.exec_event_cancel_handle;
+  ExecutionManager.interrupt_execution st.execution_state
 
 module Internal = struct
   let is_remotely_executed st id = ExecutionManager.is_remotely_executed st.execution_state id

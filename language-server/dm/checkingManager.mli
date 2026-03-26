@@ -38,6 +38,8 @@ val reset : state -> Vernacstate.t -> feedback_pipe:feedback_pipe -> state
 val reset_to_top : state -> state
 (** [reset_to_top state] updates the state to make the observe_id Top *)
 
+val interrupt_execution : state -> unit
+
 val get_observe_id : state -> sentence_id option
 val reset_overview : state -> document -> sentence_id option -> state
 val overview : state -> exec_overview
