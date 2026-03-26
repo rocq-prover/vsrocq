@@ -322,10 +322,9 @@ let install_feedback_listener doc_id send =
   Log.feedback_add_feeder_on_Message (fun route span doc lvl loc qf msg ->
     if lvl != Feedback.Debug && doc = doc_id then send (route,span,(lvl,loc, qf, msg)))
 
-let cancel_ongoing_execution _ = ()
+let interrupt_execution st = CheckingManager.interrupt_execution st.checking_state
 
-let init_feedback_pipe () =
-  let doc_id = Utilities.fresh_doc_id () in
+let init_feedback_pipe ~doc_id =
   let sel_feedback_queue = Queue.create () in
   let rocq_feeder = install_feedback_listener doc_id (fun x -> Queue.push x sel_feedback_queue) in
   let feedback = local_feedback sel_feedback_queue in
@@ -340,8 +339,9 @@ let init init_vs ~opts uri ~text =
   in
   start_library top opts;
   let init_vs = Vernacstate.freeze_full_state () in
-  let document = Document.create_document init_vs.Vernacstate.synterp text in
-  let feedback_pipe, feedback_event = init_feedback_pipe () in
+  let doc_id = Utilities.fresh_doc_id () in
+  let document = Document.create_document ~doc_id init_vs.Vernacstate.synterp text in
+  let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in
   let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
   let state = { uri; opts; init_vs; document; document_state = Parsing; feedback_pipe; checking_state } in
@@ -351,14 +351,16 @@ let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
   Utilities.feedback_pipe_cleanup feedback_pipe;
   let text = RawDocument.text @@ Document.raw_document document in
   Vernacstate.unfreeze_full_state init_vs; (* Why? *)
-  let document = Document.create_document init_vs.synterp text in
-  let feedback_pipe, feedback_event = init_feedback_pipe () in
+  let doc_id = Utilities.fresh_doc_id () in
+  let document = Document.create_document ~doc_id init_vs.synterp text in
+  let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.reset checking_state init_vs ~feedback_pipe in
   let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; feedback_pipe } in
   let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
   state, [parsebegin_event;feedback_event]
 
 let apply_text_edits state edits =
+  CheckingManager.interrupt_execution state.checking_state;
   let apply_edit_and_shift_diagnostics_locs_and_overview state (range, new_text as edit) =
     let document = Document.apply_text_edit state.document edit in
     let edit_start = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.start in
@@ -472,6 +474,7 @@ let parse_entry st pos entry pattern =
 [%%endif]
 
 let about st pos ~pattern =
+  (* TODO: run in execmanager *)
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
   let sigma, env = get_context st pos in
     try
@@ -532,6 +535,10 @@ let hover st pos =
       | VtProofStep _ | VtStartProof _ -> 
         hover_of_sentence st loc pattern (Document.find_next_qed st.document loc)
       | _ -> None
+
+let hover st pos =
+  ProverThread.try_run ~doc_id:(Document.id st.document) ~timeout:0.2 (fun () -> hover st pos) |>
+  Result.to_option |> Option.flatten
 
 [%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
   let lconstr = Pcoq.Constr.lconstr

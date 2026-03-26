@@ -530,7 +530,7 @@ let handle_interrupt params =
   let uri = textDocument.uri in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interrupt] ignoring event on non existent document"); []
-  | Some { st } -> Dm.DocumentManager.cancel_ongoing_execution st; []
+  | Some { st } -> Dm.DocumentManager.interrupt_execution st; []
 
 let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a, error) result * events =
   fun id req ->
