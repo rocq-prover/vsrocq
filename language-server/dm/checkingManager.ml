@@ -516,7 +516,7 @@ let execute document st id vst_for_next_task started task tasks background block
 
 let post_execute document st id started background proof_view_event promise task tasks block =
     match promise with
-  | Sel.Promise.Rejected _ -> assert false (* We always fulfill it, even if the command fails or is interrupted *)
+  | Sel.Promise.Rejected e -> raise e (* this is an error in the server, not in rocq *)
   | Sel.Promise.Fulfilled (updates, execution_state, vst_for_next_task, events, exec_error) ->
       let st = { st with execution_state } in
       let st, tasks, block_events =
@@ -649,7 +649,7 @@ let handle_event ~uri document st ev =
 
 let interrupt_execution st =
   Option.iter Sel.Event.cancel st.exec_event_cancel_handle;
-  ExecutionManager.interrupt_rocq_interpreter ()
+  ProverThread.interrupt_rocq_interpreter ()
 
 module Internal = struct
   let is_remotely_executed st id = ExecutionManager.is_remotely_executed st.execution_state id

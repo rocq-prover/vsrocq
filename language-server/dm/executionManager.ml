@@ -475,57 +475,12 @@ let execute_rocq ~token st document (vs, events, interrupted) task =
     execute_task ~token st document (vs, events, interrupted) task in
   updates, st, vst_for_next_todo, events, exec_error
 
-(* We run Rocq in a thread so that we can interrupt it *)
-let job = ref None
-let job_mutex = Mutex.create ()
-let job_condition = Condition.create ()
-let _runner = Thread.create (fun () ->
-  while true do
-    (* get a job *)
-    let (st, document, acc, task, resolver, token) =
-      Mutex.lock job_mutex;
-      while !job = None do Condition.wait job_condition job_mutex done;
-      let rc = match !job with Some x -> x | None -> assert false in
-      Condition.signal job_condition;
-      Mutex.unlock job_mutex;
-      rc
-    in
 
-    (* run the job *)
-    Sel.Promise.fulfill resolver (execute_rocq ~token st document acc task);
-
-    (* erase the job *)
-    Mutex.lock job_mutex;
-    job := None;
-    Condition.signal job_condition;
-    Mutex.unlock job_mutex;
-  done
-) ()
-
-let interrupt_rocq_interpreter () =
-  Mutex.lock job_mutex;
-  while !job <> None do 
-    match !job with
-    | None -> assert false
-    | Some (_,_,_,_,_,token) ->
-        log (fun () -> "interrupting...");
-        Memprof_limits.Token.set token;
-        Condition.wait job_condition job_mutex;
-        log (fun () -> "interrupted!")
-  done;
-  Mutex.unlock job_mutex
-
-let execute_thread st document acc task resolver =
-  Mutex.lock job_mutex;
-  let token = Memprof_limits.Token.create () in
-  job := Some (st, document, acc, task, resolver, token);
-  Condition.signal job_condition;
-  Mutex.unlock job_mutex
 
 let execute st document acc task =
   let promise, r = Sel.Promise.make () in
   (* log (fun () -> Format.asprintf "promise: %a" Sel.Promise.(pp (fun _ _ -> ())) promise); *)
-  execute_thread st document acc task r;
+  ProverThread.run_rocq_thread (fun token -> execute_rocq ~token st document acc task) r;
   promise
 
 
@@ -554,25 +509,6 @@ let build_tasks_for document sch st id =
   let vs, tasks, st, error_id = build_tasks id [] st in
   vs, List.concat_map prepare_task tasks, st, error_id
 
-(* let shift_diagnostics_locs st ~start ~offset =
-  let shift_error (sentence_state as orig) =
-    let sentence_state' = match sentence_state with
-      | Done (Failure ((Some loc,e),qf,st)) ->
-        let loc' = Utilities.shift_loc ~start ~offset loc in
-        if loc' == loc then sentence_state else
-        Done (Failure ((Some loc',e),qf,st))
-      | _ -> sentence_state
-    in
-    if sentence_state' == sentence_state then orig else
-    sentence_state'
-  in
-  { st with of_sentence = SM.map shift_error st.of_sentence } *)
-
-(* let executed_ids st =
-  SM.fold (fun id p acc ->
-    match p with
-    | Done _ -> id :: acc
-    | _ -> acc) st.of_sentence [] *)
 
 let invalidate1 st id =
   try

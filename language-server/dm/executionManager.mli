@@ -73,7 +73,6 @@ val get_id_of_executed_task : prepared_task -> sentence_id
 val build_tasks_for : Document.document -> Scheduler.schedule -> state -> sentence_id -> Vernacstate.t * prepared_task list * state * errored_sentence
 val execute : state -> Document.document -> Vernacstate.t * events * bool -> prepared_task -> 
   ((sentence_id * sentence_checking_result) list * state * Vernacstate.t * events * errored_sentence) Sel.Promise.t
-val interrupt_rocq_interpreter : unit -> unit
 
 val view_task : prepared_task -> [
   `Local of sentence_id |
