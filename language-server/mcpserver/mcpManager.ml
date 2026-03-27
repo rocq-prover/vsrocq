@@ -29,6 +29,7 @@ let get_init_state () =
 type doc_state = {
   mutable st : Dm.DocumentManager.state;
   mutable pending_events : Dm.DocumentManager.event Sel.Event.t list;
+  mutable current_position : Position.t;  (* Track current proof position for queries *)
 }
 
 let states : (string, doc_state) Hashtbl.t = Hashtbl.create 39
@@ -146,7 +147,7 @@ let handle_open_document args =
       let document_text = get_file_text uri text in
       let st, events = Dm.DocumentManager.init vst
       ~opts:(Coqargs.injection_commands local_args) doc_uri ~text:document_text in
-      let doc = { st; pending_events = events } in
+      let doc = { st; pending_events = events; current_position = Position.create ~line:0 ~character:0 } in
       Hashtbl.add states uri doc;
       wait_for_parsing doc;
       ToolsCallResult.success [Content.text (Printf.sprintf "Document %s opened successfully." uri)]
@@ -173,46 +174,56 @@ let with_document uri ~f =
   | None -> ToolsCallResult.error (Printf.sprintf "Document %s is not open" uri)
   | Some doc -> f doc
 
-(** Process interpretation-related events for a document, return proof state result *)
-let with_interpret uri ~get_events =
-  with_document uri ~f:(fun doc ->
-    wait_for_parsing doc;
-    begin match get_events () with
-    | Some events ->
-      doc.pending_events <- doc.pending_events @ events;
-      process_events_until_stable doc
-    | None -> ()
-    end;
-    ToolsCallResult.success [Content.text (format_interp_result doc)])
-
 let handle_interpret_to_point args =
   let open ToolArgs in
   let ({ uri; line; character } : interpret_to_point) = interpret_to_point_of_yojson args in
   log (fun () -> Printf.sprintf "Interpret to point: %s:%d:%d" uri line character);
   let pos = Position.create ~line ~character in
-  with_interpret uri ~get_events:(fun () ->
-    Some (Dm.DocumentManager.interpret_to_position pos !check_mode ~point_interp_mode:!point_interp_mode))
+  with_document uri ~f:(fun doc ->
+    (* Update current position for future queries *)
+    doc.current_position <- pos;
+    wait_for_parsing doc;
+    let events = Dm.DocumentManager.interpret_to_position pos !check_mode ~point_interp_mode:!point_interp_mode in
+    doc.pending_events <- doc.pending_events @ events;
+    process_events_until_stable doc;
+    ToolsCallResult.success [Content.text (format_interp_result doc)])
 
 let handle_interpret_to_end args =
   let open ToolArgs in
   let ({ uri } : interpret_to_end) = interpret_to_end_of_yojson args in
   log (fun () -> Printf.sprintf "Interpret to end: %s" uri);
-  with_interpret uri ~get_events:(fun () ->
-    Some (Dm.DocumentManager.interpret_to_end !check_mode))
+  with_document uri ~f:(fun doc ->
+    wait_for_parsing doc;
+    let events = Dm.DocumentManager.interpret_to_end !check_mode in
+    doc.pending_events <- doc.pending_events @ events;
+    process_events_until_stable doc;
+    (* Update current position to end of document after interpretation to end *)
+    let raw_doc = Dm.DocumentManager.Internal.raw_document doc.st in
+    let end_loc = Dm.RawDocument.end_loc raw_doc in
+    doc.current_position <- Dm.RawDocument.position_of_loc raw_doc end_loc;
+    ToolsCallResult.success [Content.text (format_interp_result doc)])
 
 let handle_step_forward args =
   let open ToolArgs in
   let ({ uri } : step_forward) = step_forward_of_yojson args in
   log (fun () -> Printf.sprintf "Step forward: %s" uri);
-  with_interpret uri ~get_events:(fun () ->
-    Some (Dm.DocumentManager.interpret_to_next !check_mode))
+  with_document uri ~f:(fun doc ->
+    wait_for_parsing doc;
+    let events = Dm.DocumentManager.interpret_to_next !check_mode in
+    doc.pending_events <- doc.pending_events @ events;
+    process_events_until_stable doc;
+    ToolsCallResult.success [Content.text (format_interp_result doc)])
 
 let handle_step_backward args =
   let open ToolArgs in
   let ({ uri } : step_backward) = step_backward_of_yojson args in
   log (fun () -> Printf.sprintf "Step backward: %s" uri);
-  with_interpret uri ~get_events:(fun () ->
-    Some (Dm.DocumentManager.interpret_to_previous !check_mode))
+  with_document uri ~f:(fun doc ->
+    wait_for_parsing doc;
+    let events = Dm.DocumentManager.interpret_to_previous !check_mode in
+    doc.pending_events <- doc.pending_events @ events;
+    process_events_until_stable doc;
+    ToolsCallResult.success [Content.text (format_interp_result doc)])
 
 let handle_get_proof_state args =
   let open ToolArgs in
@@ -221,7 +232,8 @@ let handle_get_proof_state args =
   with_document uri ~f:(fun doc ->
     process_events_until_stable doc;
     let proof_state = McpPrinting.format_proof_state_response doc.st in
-    ToolsCallResult.success [Content.text proof_state])
+    ToolsCallResult.success [Content.text proof_state]
+    ) (* Close the with_document call *)
 
 let handle_edit_line args =
   let open ToolArgs in
@@ -248,7 +260,8 @@ let handle_edit_line args =
     with e ->
       let msg = Printf.sprintf "Edit applied but failed to save file: %s" (Printexc.to_string e) in
       log (fun () -> msg);
-      ToolsCallResult.error msg)
+      ToolsCallResult.error msg
+    ) (* Close the with_document call *)
 
 let handle_apply_edit args =
   let open ToolArgs in
@@ -270,7 +283,8 @@ let handle_apply_edit args =
     with e ->
       let msg = Printf.sprintf "Edit applied but failed to save file: %s" (Printexc.to_string e) in
       log (fun () -> msg);
-      ToolsCallResult.error msg)
+      ToolsCallResult.error msg
+    ) (* Close the with_document call *)
 
 let handle_update_proof args =
   let open ToolArgs in
@@ -300,7 +314,71 @@ let handle_update_proof args =
     with e ->
       let msg = Printf.sprintf "Failed to update proof: %s" (Printexc.to_string e) in
       log (fun () -> msg);
-      ToolsCallResult.error msg)
+      ToolsCallResult.error msg
+    ) (* Close the with_document call *)
+
+let wrap_search_pattern pattern = "(" ^ pattern ^ ")"
+
+let collect_search_results notif_events : Protocol.LspWrapper.query_result list =
+  let rec loop todo results =
+    let ready, new_todo = Sel.pop_timeout ~stop_after_being_idle_for:0.1 todo in
+    match ready with
+    | None -> results
+    | Some (Protocol.LspWrapper.QueryResultNotification qr) ->
+      loop (Sel.Todo.add new_todo [Dm.SearchQuery.query_feedback]) (qr :: results)
+  in
+  let results = loop (Sel.Todo.add Sel.Todo.empty notif_events) [] in
+  List.rev results
+
+let execute_pattern_query (doc : doc_state) (pos : Position.t)
+    (query_fn : Dm.DocumentManager.state -> Position.t -> pattern:string -> (Protocol.Printing.pp, Dm.Types.error) Result.t)
+    (pattern : string)
+    : ToolsCallResult.t =
+  let result = query_fn doc.st pos ~pattern:pattern in
+  match result with
+  | Ok pp -> ToolsCallResult.success [Content.text (Protocol.Printing.string_of_pp pp)]
+  | Error e -> ToolsCallResult.error e.message
+
+let handle_query args =
+  let open ToolArgs in
+  let ({ uri; line; character; query_type; pattern } : query) = query_of_yojson args in
+
+  (* Use current document position if not provided, otherwise use specified position *)
+  let pos = match line, character with
+    | Some l, Some c -> Position.create ~line:l ~character:c
+    | _, _ -> (
+        match Hashtbl.find_opt states uri with
+        | Some doc -> doc.current_position  (* Use current proof position *)
+        | None -> Position.create ~line:0 ~character:0  (* Fallback *)
+      )
+  in
+  log (fun () -> Printf.sprintf "Query: %s at %s:%d:%d" query_type uri pos.line pos.character);
+
+  with_document uri ~f:(fun doc ->
+    wait_for_parsing doc;
+    process_events_until_stable doc;
+    let query_type = String.lowercase_ascii query_type in
+    match query_type with
+    | qt when String.equal qt "search" ->
+        (** Search expects the pattern to be wrapped in parentheses *)
+        let wrapped_pat = wrap_search_pattern pattern in
+        let notif_events = Dm.DocumentManager.search doc.st ~id:"mcp_query" pos wrapped_pat in
+        let results = collect_search_results notif_events in
+        if results = [] then
+          ToolsCallResult.success [Content.text "No results found."]
+        else begin
+          let result_strings = List.rev_map (fun (qr : Protocol.LspWrapper.query_result) ->
+            Printf.sprintf "%s : %s"
+              (Protocol.Printing.string_of_pp qr.name)
+              (Protocol.Printing.string_of_pp qr.statement)
+          ) results in
+          ToolsCallResult.success [Content.text (String.concat "\n" result_strings)]
+        end
+    | qt when String.equal qt "print" -> execute_pattern_query doc pos Dm.DocumentManager.print pattern
+    | qt when String.equal qt "locate" -> execute_pattern_query doc pos Dm.DocumentManager.locate pattern
+    | qt when String.equal qt "about" -> execute_pattern_query doc pos Dm.DocumentManager.about pattern
+    | _ -> ToolsCallResult.error (Printf.sprintf "Unknown query type: %s" query_type)
+  )
 
 (** Dispatch tool calls *)
 let dispatch_tool name args =
@@ -316,6 +394,7 @@ let dispatch_tool name args =
   | "edit_line" -> handle_edit_line args
   | "update_proof" -> handle_update_proof args
   | "apply_edit" -> handle_apply_edit args
+  | "query" -> handle_query args
   | _ -> ToolsCallResult.error (Printf.sprintf "Unknown tool: %s" name)
 
 (** Handle MCP notifications *)
@@ -329,7 +408,7 @@ let handle_notification (notif : Notification.t) =
 
 let protocol_version = "2025-11-25"
 let server_info =
-  ServerInfo.make 
+  ServerInfo.make
     ~name:"vsrocq-model-context-server"
     ~version:VsrocqSettings.version
 

@@ -15,3 +15,5 @@
 type pp [@@deriving yojson]
 
 val pp_of_rocqpp : Pp.t -> pp
+
+val string_of_pp : pp -> string

@@ -71,6 +71,15 @@ module Args = struct
     endCharacter : int;
     newText : string;
   } [@@deriving yojson]
+
+  type query = {
+    uri : string;
+    (* Position (line, character) at which the query should be ran (default: current proof state position) *)
+    line : int option; [@yojson.option]
+    character : int option; [@yojson.option]
+    query_type : string;  (* "search", "print", "locate", "about" *)
+    pattern : string;
+  } [@@deriving yojson]
 end
 
 module Schema = struct
@@ -130,6 +139,16 @@ module Schema = struct
       ("newText", property ~type_:"string" ~description:"The new text to insert");
     ]
     ~required:["uri"; "startLine"; "startCharacter"; "endLine"; "endCharacter"; "newText"]
+
+  let query = JsonSchema.make
+    ~properties:[
+      ("uri", uri_prop);
+      ("line", property ~type_:"integer" ~description:"The 0-indexed line number (optional, defaults to 0)");
+      ("character", property ~type_:"integer" ~description:"The 0-indexed character position (optional, defaults to 0)");
+      ("query_type", property ~type_:"string" ~description:"Type of query: 'search', 'print', 'locate', or 'about'");
+      ("pattern", property ~type_:"string" ~description:"Optional pattern for the query");
+    ]
+    ~required:["uri"; "query_type"]
 end
 
 module Definitions = struct
@@ -187,6 +206,11 @@ module Definitions = struct
     ~description:"Apply a character-level text edit to the document. Replaces text in the specified range with newText. WARNING: LLMs are bad at counting character offsets accurately, which leads to buffer corruption. Prefer edit_line instead unless you need sub-line precision."
     ~inputSchema:Schema.apply_edit
 
+  let query = Tool.make
+    ~name:"query"
+    ~description:"Execute a query on the document. Supported query types: 'search', 'print', 'locate', 'about'. Position is optional and defaults to the current proof state position. For 'search', 'print', 'locate', and 'about' queries, use the pattern field to specify the search pattern or identifier."
+    ~inputSchema:Schema.query
+
   let all : McpBase.Tool.t list = [
     open_document;
     close_document;
@@ -198,5 +222,6 @@ module Definitions = struct
     edit_line;
     update_proof;
     apply_edit;
+    query;
   ]
 end

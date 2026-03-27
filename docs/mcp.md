@@ -4,6 +4,8 @@ It is possible to use the vsrocqtop as an MCP server – giving an LLM the abili
 
 To run the MCP server, use the `-mcp` flag. Additionally, one also has to provide the `-coqlib` flag, which points to the Rocq library directory. (You can find your Rocq lib by running `vsrocqtop -where`).
 
+### Setup
+
 Configuring the MCP server depends on your setup.
 
 #### Claude Code
@@ -47,3 +49,4 @@ If you want to use vsrocq mcp in VSCode (with copilot), the config will look lik
 | `edit_line` | Replace entire lines (startLine to endLine, inclusive, 0-indexed) with new text. |
 | `update_proof` | Re-parse the document and re-execute to the current position. Use this after applying edits externally. |
 | `apply_edit` | Character-level range edit. **Warning:** LLMs are bad at counting character offsets, which leads to buffer corruption. Prefer `edit_line`. |
+| `query` | Execute a query on the document. Supported types: `search`, `print`, `locate`, `about`. Position defaults to the current proof state position. |
