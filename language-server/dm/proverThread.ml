@@ -26,7 +26,7 @@ type rocq_job =
       * Memprof_limits.Token.t
       -> rocq_job
 
-let job_queue : rocq_job list ref = ref []
+let job_queue : rocq_job Queue.t = Queue.create ()
 let job_mutex = Mutex.create ()
 let job_condition = Condition.create ()
 
@@ -37,12 +37,10 @@ let _runner =
         (* get a job *)
         let Job (task, resolver, token) =
           Mutex.lock job_mutex;
-          while !job_queue = [] do
+          while Queue.is_empty job_queue do
             Condition.wait job_condition job_mutex
           done;
-          let rc =
-            match !job_queue with x :: _ -> (x) | [] -> assert false
-          in
+          let rc = Queue.peek job_queue in
           Condition.signal job_condition;
           Mutex.unlock job_mutex;
           rc
@@ -53,7 +51,7 @@ let _runner =
 
         (* erase the job *)
         Mutex.lock job_mutex;
-        job_queue := List.tl !job_queue;
+        ignore(Queue.pop job_queue);
         Condition.signal job_condition;
         Mutex.unlock job_mutex
       done)
@@ -61,21 +59,19 @@ let _runner =
 
 let interrupt_rocq_interpreter () =
   Mutex.lock job_mutex;
-  while !job_queue <> [] do
-    match !job_queue with
-    | [] -> assert false
-    | Job (_, _, token) :: _ ->
-        log (fun () -> "interrupting...");
-        Memprof_limits.Token.set token;
-        Condition.wait job_condition job_mutex;
-        log (fun () -> "interrupted!")
+  while not @@ Queue.is_empty job_queue do
+    let Job (_, _, token) = Queue.peek job_queue in
+    log (fun () -> "interrupting...");
+    Memprof_limits.Token.set token;
+    Condition.wait job_condition job_mutex;
+    log (fun () -> "interrupted!")
   done;
   Mutex.unlock job_mutex
 
 let run_rocq_thread f resolver =
   Mutex.lock job_mutex;
   let token = Memprof_limits.Token.create () in
-  job_queue := !job_queue @ [ Job (f, resolver, token) ];
+  Queue.push (Job (f, resolver, token)) job_queue;
   Condition.signal job_condition;
   Mutex.unlock job_mutex
 
@@ -92,7 +88,7 @@ let run_rocq f =
         Aborted (e, info)
   in
   Mutex.lock job_mutex;
-  job_queue := !job_queue @ [ Job (f, r, token) ];
+  Queue.push (Job (f, r, token)) job_queue;
   Condition.signal job_condition;
   Mutex.unlock job_mutex;
   promise
