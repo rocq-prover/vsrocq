@@ -19,6 +19,8 @@ open Types
 
 let Log log = Log.mk_log "executionManager"
 
+let () = Memprof_limits.start_memprof_limits ()
+
 let success vernac_st = Success (Some vernac_st)
 let error loc qf msg vernac_st = Failure ((loc,msg), qf, (Some vernac_st))
 let error_no_resiliency loc qf msg = Failure ((loc,msg), qf, None)
