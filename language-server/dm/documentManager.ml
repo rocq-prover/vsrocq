@@ -112,6 +112,11 @@ let mk_proof_view_event id =
 let mk_proof_view_event_empty =
   Sel.now ~priority:PriorityManager.proof_view (SendProofView None)
 
+let mk_current_proof_view_event st =
+  match st.observe_id with
+  | Id id -> mk_proof_view_event id
+  | Top -> mk_proof_view_event_empty
+
 let mk_interp_to_event mode tgt =
   [Sel.now ~priority:PriorityManager.interp_to (InterpretTo(mode,tgt))]
 
@@ -676,7 +681,7 @@ let execute st id vst_for_next_todo started task background block =
         let events = proof_view_event @ inject_em_events events @ block_events @ event in
         {state; events; update_view; notification=None}
 
-let get_proof st diff_mode id =
+let get_proof st diff_mode id ~showOnlyPropHypotheses =
   let previous_st id =
     let oid = fst @@ Scheduler.task_for_sentence (Document.schedule st.document) id in
     Option.bind oid (ExecutionManager.get_vernac_state st.execution_state)
@@ -685,7 +690,7 @@ let get_proof st diff_mode id =
   let oid = Option.append id observe_id in
   let ost = Option.bind oid (ExecutionManager.get_vernac_state st.execution_state) in
   let previous = Option.bind oid previous_st in
-  Option.bind ost (ProofState.get_proof ~previous diff_mode)
+  Option.bind ost (ProofState.get_proof ~previous diff_mode ~showOnlyPropHypotheses)
 
 let get_string_proof st id =
   let observe_id = to_sentence_id st.observe_id in
@@ -708,7 +713,7 @@ let handle_execution_manager_event st ev =
   let update_view = true in
   {state=st; events=(inject_em_events events); update_view; notification=None}
 
-let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.PrettyPrint.t) =
+let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.PrettyPrint.t) ~showOnlyPropHypotheses =
   let background = check_mode = Settings.Mode.Continuous in
   match ev with
   | Execute { id; vst_for_next_todo; started; task } ->
@@ -740,7 +745,7 @@ let handle_event ev st ~block check_mode diff_mode (pp_mode: Settings.Goals.Pret
     end
   | SendProofView (Some id) when Document.has_sentence st.document id ->
     let proof, pp_proof = match pp_mode with
-    | Pp -> get_proof st diff_mode (Some id), None 
+    | Pp -> get_proof st diff_mode (Some id) ~showOnlyPropHypotheses, None 
     | String -> None, get_string_proof st (Some id)
     in
     let messages, pp_messages = match pp_mode with

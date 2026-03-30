@@ -33,3 +33,14 @@
 .View {
     width: 100%;
 }
+
+.ButtonGroup {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.filterActive {
+    color: var(--vscode-textLink-foreground);
+}

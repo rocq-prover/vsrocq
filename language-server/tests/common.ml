@@ -159,7 +159,7 @@ let rec handle_dm_events n (events : DocumentManager.event Sel.Todo.t) st =
     | Some ev ->
       (* Stdlib.Format.eprintf "handle_dm_events: handling %a\n"  DocumentManager.pp_event ev; *)
       let st, new_events =
-        match DocumentManager.handle_event ev st ~block:false Protocol.Settings.Mode.Manual Protocol.Settings.Goals.Diff.Mode.Off Protocol.Settings.Goals.PrettyPrint.Pp with
+        match DocumentManager.handle_event ev st ~block:false Protocol.Settings.Mode.Manual Protocol.Settings.Goals.Diff.Mode.Off Protocol.Settings.Goals.PrettyPrint.Pp ~showOnlyPropHypotheses:false with
         | { DocumentManager.state = None; events = events' } -> st, events'
         | { DocumentManager.state = Some st; events = events' } -> st, events'
       in

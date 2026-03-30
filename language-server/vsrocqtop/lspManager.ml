@@ -43,6 +43,7 @@ let max_memory_usage  = ref 4000000000
 
 let full_diagnostics = ref false
 let full_messages = ref false
+let show_only_prop_hypotheses = ref false
 
 let point_interp_mode = ref Settings.PointInterpretationMode.Cursor
 
@@ -132,6 +133,7 @@ let do_configuration settings =
   (* diff_mode := settings.goals.diff.mode; *)
   full_diagnostics := settings.diagnostics.full;
   full_messages := settings.goals.messages.full;
+  show_only_prop_hypotheses := settings.goals.showOnlyPropHypotheses;
   max_memory_usage := settings.memory.limit * 1000000000;
   block_on_first_error := settings.proof.block;
   point_interp_mode := settings.proof.pointInterpretationMode;
@@ -261,6 +263,13 @@ let reset_observe_ids =
     update_view uri st
   in
   Hashtbl.fold reset_doc_observe_id states
+
+let refresh_proof_views () =
+  let refresh_doc path {st; visible=_} events =
+    let uri = DocumentUri.of_path path in
+    inject_dm_events (uri, [Dm.DocumentManager.mk_current_proof_view_event st]) @ events
+  in
+  Hashtbl.fold refresh_doc states []
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
 (* in these rocq versions init_runtime called globally for the process includes init_document
@@ -524,13 +533,15 @@ let sendDocumentProofs id params =
       let proofs = Dm.DocumentManager.get_document_proofs st in
       Ok Request.Client.DocumentProofsResult.{ proofs }, []
 
-let workspaceDidChangeConfiguration params = 
+let workspaceDidChangeConfiguration params =
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
   let settings = Settings.t_of_yojson settings in
+  let old_mode = !check_mode in
   do_configuration settings;
-  match !check_mode with
-  | Continuous -> run_documents ()
-  | Manual -> reset_observe_ids (); ([] : events)
+  match old_mode, !check_mode with
+  | _, Continuous -> run_documents ()
+  | Continuous, Manual -> reset_observe_ids (); []
+  | Manual, Manual -> refresh_proof_views ()
 
 let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a, error) result * events =
   fun id req ->
@@ -646,7 +657,7 @@ let handle_event = function
       log (fun () -> "ignoring event on non-existing document");
       []
     | Some { st; visible } ->
-      let handled_event = Dm.DocumentManager.handle_event e st ~block:!block_on_first_error !check_mode !diff_mode !pretty_print_mode in
+      let handled_event = Dm.DocumentManager.handle_event e st ~block:!block_on_first_error !check_mode !diff_mode !pretty_print_mode ~showOnlyPropHypotheses:!show_only_prop_hypotheses in
       let events = handled_event.events in
       begin match handled_event.state with
         | None -> ()

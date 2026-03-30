@@ -61,6 +61,10 @@ val apply_text_edits : state -> text_edit list -> state * events
 val reset_to_top : state -> state
 (** [reset_to_top state] updates the state to make the observe_id Top *)
 
+val mk_current_proof_view_event : state -> event Sel.Event.t
+(** [mk_current_proof_view_event state] creates a SendProofView event for the
+    current observe_id, without re-executing anything. *)
+
 val get_next_range : state -> Position.t -> Range.t option
 (** [get_next_range st pos] get the range of the next sentence relative to pos *)
 
@@ -112,11 +116,11 @@ val all_diagnostics : state -> Diagnostic.t list
 (** all_diagnostics [doc] returns the diagnostics corresponding to the sentences
     that have been executed in [doc]. *)
 
-val get_proof : state -> Settings.Goals.Diff.Mode.t -> sentence_id option -> ProofState.t option
+val get_proof : state -> Settings.Goals.Diff.Mode.t -> sentence_id option -> showOnlyPropHypotheses:bool -> ProofState.t option
 
 val get_completions : state -> Position.t -> completion_item list 
 
-val handle_event : event -> state -> block:bool -> Settings.Mode.t -> Settings.Goals.Diff.Mode.t -> Settings.Goals.PrettyPrint.t -> handled_event
+val handle_event : event -> state -> block:bool -> Settings.Mode.t -> Settings.Goals.Diff.Mode.t -> Settings.Goals.PrettyPrint.t -> showOnlyPropHypotheses:bool -> handled_event
 (** handles events and returns a new state if it was updated. On top of the next events, it also returns info
     on whether execution has halted due to an error and returns a boolean flag stating whether the view
     should be updated *)
