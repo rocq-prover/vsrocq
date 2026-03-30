@@ -132,6 +132,7 @@ let do_configuration settings =
     point_interp_mode = settings.proof.pointInterpretationMode;
     pp_mode = Option.default Settings.Goals.PrettyPrint.Pp settings.goals.ppmode;
     diff_mode = Settings.Goals.Diff.Mode.Off;
+    show_only_prop_hypotheses = settings.goals.showOnlyPropHypotheses;
     preempt = settings.interrupt.preempt;
     (* Diff mode is broken, cfr #1163 #1164 *)
     (* diff_mode := settings.goals.diff.mode; *)
@@ -259,6 +260,13 @@ let reset_observe_ids =
     update_view uri st
   in
   Hashtbl.fold reset_doc_observe_id states
+
+let refresh_proof_views () =
+  let refresh_doc path {st; visible = _} events =
+    let uri = DocumentUri.of_path path in
+    inject_dm_events (uri, [Dm.DocumentManager.mk_current_proof_view_event st]) @ events
+  in
+  Hashtbl.fold refresh_doc states []
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
 (* in these rocq versions init_runtime called globally for the process includes init_document
@@ -525,10 +533,12 @@ let sendDocumentProofs id params =
 let workspaceDidChangeConfiguration params = 
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
   let settings = Settings.t_of_yojson settings in
+  let old_mode = (Dm.CheckingManager.get_options ()).check_mode in
   do_configuration settings;
-  match settings.proof.mode with
-  | Continuous -> run_documents ()
-  | Manual -> reset_observe_ids (); ([] : events)
+  match old_mode, settings.proof.mode with
+  | _, Continuous -> run_documents ()
+  | Continuous, Manual -> reset_observe_ids (); []
+  | Manual, Manual -> refresh_proof_views ()
 
 let handle_interrupt params =
   let Notification.Client.InterruptParams.{ textDocument } = params in

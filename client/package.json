@@ -183,6 +183,11 @@
             "type": "number",
             "default": 17,
             "markdownDescription": "The maximum depth in goals over which an ellipsis will be displayed (instead of the sub-terms)."
+          },
+          "vsrocq.goals.showOnlyPropHypotheses": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "When enabled, only shows hypotheses of Prop type in the goal view."
           }
         }
       },
@@ -427,6 +432,11 @@
         "title": "Interrupt",
         "category": "Rocq",
         "icon": "$(stop-circle)"
+      },
+      {
+        "command": "extension.rocq.toggleShowOnlyPropHypotheses",
+        "category": "Rocq",
+        "title": "Toggle: Show Only Prop Hypotheses"
       }
     ],
     "menus": {
@@ -641,6 +651,12 @@
         "key": "ctrl+alt+p",
         "mac": "cmd+ctrl+p",
         "command": "extension.rocq.query.print",
+        "when": "editorTextFocus && editorLangId == rocq"
+      },
+      {
+        "key": "ctrl+alt+h",
+        "mac": "cmd+ctrl+h",
+        "command": "extension.rocq.toggleShowOnlyPropHypotheses",
         "when": "editorTextFocus && editorLangId == rocq"
       }
     ],

@@ -312,6 +312,23 @@ export function activate(context: ExtensionContext) {
         registerVsrocqTextCommand("expandAllQueries", () =>
             searchProvider.expandAll(),
         );
+        context.subscriptions.push(
+            commands.registerCommand(
+                "extension.rocq.toggleShowOnlyPropHypotheses",
+                () => {
+                    const config = workspace.getConfiguration("vsrocq");
+                    const current = config.get<boolean>(
+                        "goals.showOnlyPropHypotheses",
+                        false,
+                    );
+                    config.update(
+                        "goals.showOnlyPropHypotheses",
+                        !current,
+                        false,
+                    );
+                },
+            ),
+        );
         registerVsrocqTextCommand("interrupt", (editor) =>
             sendInterrupt(editor, client),
         );
@@ -506,6 +523,14 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
 
                     if (event.affectsConfiguration("vsrocq.goals.maxDepth")) {
                         GoalPanel.changeGoalDisplayDepth();
+                    }
+
+                    if (
+                        event.affectsConfiguration(
+                            "vsrocq.goals.showOnlyPropHypotheses",
+                        )
+                    ) {
+                        GoalPanel.updatePropFilter();
                     }
                 }),
             );

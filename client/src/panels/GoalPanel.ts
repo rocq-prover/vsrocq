@@ -63,6 +63,7 @@ export default class GoalPanel {
         //init the app settings
         this._updateDisplaySettings(this._panel.webview);
         this._updateGoalDepth(this._panel.webview);
+        this._updatePropFilter(this._panel.webview);
     }
 
     /**
@@ -150,6 +151,14 @@ export default class GoalPanel {
         if (GoalPanel.currentPanel) {
             Client.writeToVsrocqChannel("[GoalPanel] Changing goal depth");
             GoalPanel.currentPanel._updateGoalDepth(
+                GoalPanel.currentPanel._panel.webview,
+            );
+        }
+    }
+
+    public static updatePropFilter() {
+        if (GoalPanel.currentPanel) {
+            GoalPanel.currentPanel._updatePropFilter(
                 GoalPanel.currentPanel._panel.webview,
             );
         }
@@ -285,6 +294,14 @@ export default class GoalPanel {
         });
     }
 
+    private _updatePropFilter(webview: Webview) {
+        const config = workspace.getConfiguration("vsrocq.goals");
+        webview.postMessage({
+            command: "updatePropFilter",
+            enabled: config.get<boolean>("showOnlyPropHypotheses", false),
+        });
+    }
+
     /**
      * Sets up an event listener to listen for messages passed from the webview context and
      * executes code based on the message that is received.
@@ -301,6 +318,11 @@ export default class GoalPanel {
                         commands.executeCommand(
                             "workbench.action.openSettings",
                             "vsrocq.goals",
+                        );
+                        break;
+                    case "togglePropFilter":
+                        commands.executeCommand(
+                            "extension.rocq.toggleShowOnlyPropHypotheses",
                         );
                         break;
                     case "pollGoals":
