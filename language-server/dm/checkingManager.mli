@@ -22,10 +22,12 @@ type settings = {
   diff_mode : Protocol.Settings.Goals.Diff.Mode.t;
   pp_mode : Protocol.Settings.Goals.PrettyPrint.t;
   point_interp_mode:Protocol.Settings.PointInterpretationMode.t;
+  show_only_prop_hypotheses : bool;
   preempt : bool;
 }
 
 val set_options : settings -> unit
+val get_options : unit -> settings
 
 type event
 
@@ -56,6 +58,8 @@ val interpret_to_end : unit -> event Sel.Event.t list
 val interpret_to_next : unit -> event Sel.Event.t list
 val interpret_to_previous : unit -> event Sel.Event.t list
 
+val mk_current_proof_view_event : state -> event Sel.Event.t
+
 val interpret_to_position :
   Position.t ->
   event Sel.Event.t list
@@ -85,6 +89,7 @@ module Internal : sig
   val get_proof :
     document ->
     state ->
+    ?showOnlyPropHypotheses:bool ->
     sentence_id option ->
     Protocol.ProofState.t option
 

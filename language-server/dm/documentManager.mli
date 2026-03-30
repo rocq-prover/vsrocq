@@ -51,6 +51,10 @@ val apply_text_edits : state -> text_edit list -> state * events
 val reset_to_top : state -> state
 (** [reset_to_top state] updates the state to make the observe_id Top *)
 
+val mk_current_proof_view_event : state -> event Sel.Event.t
+(** [mk_current_proof_view_event state] creates a proof-view event for the
+    current observe id without changing execution state. *)
+
 val get_next_range : state -> Position.t -> Range.t option
 (** [get_next_range st pos] get the range of the next sentence relative to pos *)
 
@@ -138,7 +142,7 @@ module Internal : sig
   val string_of_state : state -> string
   val observe_id : state -> sentence_id option
   val inject_doc_events : Document.event Sel.Event.t list -> event Sel.Event.t list
-  val get_proof : state -> sentence_id option -> ProofState.t option
+  val get_proof : state -> ?showOnlyPropHypotheses:bool -> sentence_id option -> ProofState.t option
   val validate_document : state -> Document.parsing_end_info -> state
 
 
