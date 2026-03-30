@@ -123,6 +123,8 @@ type sentence = {
   scheduler_state_after : Scheduler.state;
   ast : sentence_state;
   id : sentence_id;
+  messages : feedback_message list;
+  checked : sentence_checking_result option;
 }
 
 type comment = {
@@ -145,13 +147,19 @@ val get_sentence : document -> sentence_id -> sentence option
 val sentences_before : document -> int -> sentence list
 
 val find_sentence : document -> int -> sentence option
-(** [find_sentence pos loc] finds the sentence containing the loc *)
+(** [find_sentence doc loc] finds the sentence containing the loc *)
+
+val find_sentence_pos : document -> Position.t -> sentence option
+(** [find_sentence_pos doc pos] finds the sentence at the pos *)
 
 val find_sentence_before : document -> int -> sentence option
-(** [find_sentence_before pos loc] finds the last sentence before the loc *)
+(** [find_sentence_before doc loc] finds the last sentence before the loc *)
 
 val find_sentence_after : document -> int -> sentence option
-(** [find_sentence_after pos loc] finds the first sentence after the loc *)
+(** [find_sentence_after doc loc] finds the first sentence after the loc *)
+
+val find_sentence_after_pos : document -> Position.t -> sentence option
+(** [find_sentence_after_pos doc pos] finds the first sentence after the pos *)
 
 val find_next_qed : document -> int -> sentence option
 (** [find_next_qed parsed loc] finds the next proof end *)
@@ -162,16 +170,47 @@ val get_first_sentence : document  -> sentence option
 val get_last_sentence : document  -> sentence option
 (** [get_last_sentence doc] returns the last parsed sentence *)
 
+val is_sentence_above : document -> sentence_id -> sentence_id -> bool
+(** [is_sentence_above doc id1 id2] check is id1 is above id2 *)
+
 val schedule : document -> Scheduler.schedule
 
-val has_sentence : document -> Stateid.t -> bool
+val has_sentence : document -> sentence_id -> bool
 (** [has_sentence doc id] tells if id is in the document *)
 
-val range_of_id : document -> Stateid.t -> Range.t
+val range_of_id : document -> sentence_id -> Range.t
 (** [range_of_id doc id] returns a Range object coressponding to the sentence id given in argument *)
 
-val range_of_id_with_blank_space : document -> Stateid.t -> Range.t
+val range_of_id_with_blank_space : document -> sentence_id -> Range.t
 (** [range_of_id_with_blank_space doc id] returns a Range object coressponding to the sentence id given in argument but with the white spaces before (until the previous sentence) *)
+
+val all_feedback : document -> (sentence_id * feedback_message) list
+(** [all_feedback doc] returns all sentences with a feedback *)
+
+val feedback : document -> sentence_id -> feedback_message list
+(** [feedback doc id] returns all feedback messages for id *)
+
+val all_checking_errors : document -> (sentence_id * (Loc.t option * Pp.t * Quickfix.t list option)) list
+(** [all_checking_errors doc] returns all sentences that were checked and resulted in an error *)
+
+val error : document -> sentence_id -> (Loc.t option * Pp.t * Quickfix.t list option) option
+(** [error doc id] returns the checking error for id, if any *)
+
+val append_feedback : document -> sentence_id -> feedback_message -> document
+(** [append_feedback doc id msg] appends msg to existing messages on id *)
+
+val shift_feedbacks_and_checking_errors : start:int -> offset:int -> document -> document
+(** [shift_feedbacks_and_checking_errors ~start ~stop doc] shifts all messages past start by offset *)
+
+val update_checked : document -> sentence_id * sentence_checking_result -> document
+(** [update_checked doc id v] updates the checked field of sentence id *)
+
+val set_unchecked : document -> sentence_id -> document
+(** [remove_checked doc id] marks id as unchecked *)
+
+val is_checked : document -> sentence_id -> bool
+(** [is_checked doc id] tells if id is checked *)
+
 
 module Internal : sig
 

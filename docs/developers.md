@@ -10,36 +10,56 @@ The language server is developed in ocaml and makes it possible to link from the
 
 ### Architecture 
 
+The *document* data structure holds:
+- the text
+- the parsed document (AST of each sentence, mapping between text positions and sentences)
+- the checked document (each sentence comes with a checking result)
+- the feedback (each message by the prover is attached to the corresponding sentence)
+
 The architecture is organized in the following components.
 * **VsCoqtop:** This component handles the main event loop.
 * **LSPManager:** This component handles the JSONRPC encoding, LSP requests, notifications and responses as well as LSP events dispatch.
-* **DocumentManager:** The document manager handles everything that pertains to document representation and parsing.
+* **DocumentManager:** The document manager handles everything that pertains to document representation and parsing, handles feedbacks.
 * **Document:** Raw and parsed document representations.
 * **Scheduler:** Incremental static dependency analysis.
 * **Queries:** This handles the coq queries (Search, About, etc...)
-* **Execution manager:** Maintains coq states. Handles execution and feedback.
-* **Delegation manager:** Handles worker tasks and feedback.
+* **Checking manager:** document checking, exec overview
+* **Execution manager:** Handles execution of the Rocq interpreter
+* **Delegation manager:** Handles worker tasks
 
 ```mermaid
-    stateDiagram-v2
-        A: Vscoqtop
-        B: LSPManager
-        C: DocumentManager
-        D: ExecutionManager
-        note left of D: Coq Vernac
-        E: DelegationManager
-        F: Queries
-        note right of F: Coq API
-        G: Document
-        note right of G: Coq parser
-        H: Scheduler
-        A --> B
-        B --> C
-        B --> D
-        D --> E
-        C --> F
-        C --> G
-        C --> H
+flowchart TD
+    A[vsrocqtop]
+    B[LSPManager]
+
+    C["DocumentManager
+       (document)"]
+    D[ExecutionManager]
+    D1[(Rocq Vernac)]
+    E[DelegationManager]
+    F[Queries]
+    F1[(Rocq API)]
+    G["Document
+       (parser state, outline)"]
+    G1[(Rocq parser)]
+    H[Scheduler]
+    I["CheckingManager
+       (observe_id, checking overview)"]
+    A --> B
+    B --> C
+    I --> D
+    D --> E
+    C --> F
+    C --> G
+    C --> H
+    C --> I
+    D --- D1
+    F --- F1
+    G --- G1
+    style D1 fill: #f3ef1d
+    style F1 fill: #f3ef1d
+    style G1 fill: #f3ef1d
+    
 ```
 
 ### Building

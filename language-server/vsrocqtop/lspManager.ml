@@ -34,19 +34,11 @@ type tab = { st : Dm.DocumentManager.state; visible : bool }
 
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
 
-let check_mode = ref Settings.Mode.Manual
-
-let diff_mode = ref Settings.Goals.Diff.Mode.Off
-
-let pretty_print_mode = ref Settings.Goals.PrettyPrint.Pp
 let max_memory_usage  = ref 4000000000
 
 let full_diagnostics = ref false
 let full_messages = ref false
 
-let point_interp_mode = ref Settings.PointInterpretationMode.Cursor
-
-let block_on_first_error = ref true
 
 let Dm.Types.Log log = Dm.Log.mk_log "lspManager"
 
@@ -127,17 +119,18 @@ let do_configuration settings =
     completion_options = settings.completion;
     enableDiagnostics = settings.diagnostics.enable;
   };
-  check_mode := settings.proof.mode;
-  (* Diff mode is broken, cfr #1163 #1164 *)
-  (* diff_mode := settings.goals.diff.mode; *)
   full_diagnostics := settings.diagnostics.full;
   full_messages := settings.goals.messages.full;
   max_memory_usage := settings.memory.limit * 1000000000;
-  block_on_first_error := settings.proof.block;
-  point_interp_mode := settings.proof.pointInterpretationMode;
-  match settings.goals.ppmode with
-  | None -> ()
-  | Some s -> pretty_print_mode := s
+  Dm.CheckingManager.set_options {
+    Dm.CheckingManager.check_mode = settings.proof.mode;
+    block_on_first_error = settings.proof.block;
+    point_interp_mode = settings.proof.pointInterpretationMode;
+    pp_mode = Option.default Settings.Goals.PrettyPrint.Pp settings.goals.ppmode;
+    diff_mode = Settings.Goals.Diff.Mode.Off;
+    (* Diff mode is broken, cfr #1163 #1164 *)
+    (* diff_mode := settings.goals.diff.mode; *)
+  }
 
 let send_configuration_request () =
   let id = `Int conf_request_id in
@@ -200,7 +193,7 @@ let publish_diagnostics uri doc =
 
 let send_highlights uri doc =
   let { Dm.Types.processing;  processed; prepared } =
-    Dm.DocumentManager.executed_ranges doc !check_mode in
+    Dm.DocumentManager.executed_ranges doc in
   let notification = Notification.Server.UpdateHighlights {
     uri;
     preparedRange = prepared;
@@ -244,7 +237,7 @@ let replace_state path st visible = Hashtbl.replace states path { st; visible}
 let run_documents () =
   let interpret_doc_in_bg path { st : Dm.DocumentManager.state ; visible } events =
       let st = Dm.DocumentManager.reset_to_top st in
-      let (st, events') = Dm.DocumentManager.interpret_in_background st ~should_block_on_error:!block_on_first_error in
+      let (st, events') = Dm.DocumentManager.interpret_in_background st in
       let uri = DocumentUri.of_path path in
       replace_state path st visible;
       update_view uri st;
@@ -291,8 +284,8 @@ let textDocumentDidOpen params =
   let Lsp.Types.DidOpenTextDocumentParams.{ textDocument = { uri; text } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> open_new_document uri text
-  | Some { st } ->
-    let (st, events) = 
+  | Some { st } -> update_view uri st; []
+    (* let (st, events) = 
       if !check_mode = Settings.Mode.Continuous then
         let (st, events) = Dm.DocumentManager.interpret_in_background st ~should_block_on_error:!block_on_first_error in
         (st, events)
@@ -300,7 +293,7 @@ let textDocumentDidOpen params =
         (st, [])
     in
     update_view uri st;
-    inject_dm_events (uri, events)
+    inject_dm_events (uri, events) *)
 
 let textDocumentDidChange params =
   let Lsp.Types.DidChangeTextDocumentParams.{ textDocument; contentChanges } = params in
@@ -389,7 +382,7 @@ let rocqtopInterpretToPoint params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let events = Dm.DocumentManager.interpret_to_position position !check_mode ~point_interp_mode:!point_interp_mode in
+    let events = Dm.DocumentManager.interpret_to_position position in
     let sel_events = inject_dm_events (uri, events) in
     sel_events
  
@@ -398,7 +391,7 @@ let rocqtopStepBackward params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let events = Dm.DocumentManager.interpret_to_previous !check_mode in
+      let events = Dm.DocumentManager.interpret_to_previous () in
       inject_dm_events (uri,events)
 
 let rocqtopStepForward params =
@@ -406,7 +399,7 @@ let rocqtopStepForward params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
   | Some { st; visible } ->
-      let events = Dm.DocumentManager.interpret_to_next !check_mode in
+      let events = Dm.DocumentManager.interpret_to_next () in
       inject_dm_events (uri,events) 
 
   let make_CompletionItem i item : CompletionItem.t = 
@@ -463,7 +456,7 @@ let rocqtopInterpretToEnd params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
   | Some { st; visible } ->
-    let events = Dm.DocumentManager.interpret_to_end !check_mode in
+    let events = Dm.DocumentManager.interpret_to_end () in
     inject_dm_events (uri,events)
 
 let rocqtopLocate id params = 
@@ -528,9 +521,16 @@ let workspaceDidChangeConfiguration params =
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
   let settings = Settings.t_of_yojson settings in
   do_configuration settings;
-  match !check_mode with
+  match settings.proof.mode with
   | Continuous -> run_documents ()
   | Manual -> reset_observe_ids (); ([] : events)
+
+let handle_interrupt params =
+  let Notification.Client.InterruptParams.{ textDocument } = params in
+  let uri = textDocument.uri in
+  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
+  | None -> log (fun () -> "[interrupt] ignoring event on non existent document"); []
+  | Some { st } -> Dm.DocumentManager.interrupt_execution st; []
 
 let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a, error) result * events =
   fun id req ->
@@ -587,6 +587,7 @@ let dispatch_notification =
   | InterpretToEnd params -> log (fun () -> "Received notification: prover/interpretToEnd"); rocqtopInterpretToEnd params
   | StepBackward params -> log (fun () -> "Received notification: prover/stepBackward"); rocqtopStepBackward params
   | StepForward params -> log (fun () -> "Received notification: prover/stepForward"); rocqtopStepForward params
+  | Interrupt params -> log (fun () -> "Received notification: prover/interrupt"); handle_interrupt params
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function
@@ -646,7 +647,7 @@ let handle_event = function
       log (fun () -> "ignoring event on non-existing document");
       []
     | Some { st; visible } ->
-      let handled_event = Dm.DocumentManager.handle_event e st ~block:!block_on_first_error !check_mode !diff_mode !pretty_print_mode in
+      let handled_event = Dm.DocumentManager.handle_event e st in
       let events = handled_event.events in
       begin match handled_event.state with
         | None -> ()

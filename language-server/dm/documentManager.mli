@@ -25,8 +25,6 @@ open CompletionItems
     and get feedback. Note that it does not require IDEs to parse vernacular
     sentences. *)
 
-type observe_id = Id of Types.sentence_id | Top
-
 type blocking_error = {
   last_range: Range.t;
   error_range: Range.t
@@ -38,13 +36,6 @@ type event
 val pp_event : Format.formatter -> event -> unit
 
 type events = event Sel.Event.t list
-
-type handled_event = {
-    state : state option;
-    events: events;
-    update_view: bool;
-    notification: Notification.Server.t option;
-}
 
 val is_parsing : state -> bool
 
@@ -67,32 +58,35 @@ val get_next_range : state -> Position.t -> Range.t option
 val get_previous_range : state -> Position.t -> Range.t option
 (** [get_previous_pos st pos] get the range of the previous sentence relative to pos *)
 
-val interpret_to_position : Position.t -> Settings.Mode.t -> point_interp_mode:Settings.PointInterpretationMode.t -> events
-(** [interpret_to_position state pos check_mode point_interp_mode] navigates to the 
+val interpret_to_position : Position.t -> events
+(** [interpret_to_position pos] navigates to the 
     last sentence ending before or at [pos] and returns the resulting state, events that need to take place, and a possible blocking error. *)
 
-val interpret_to_previous : Settings.Mode.t -> events
-(** [interpret_to_previous doc check_mode] navigates to the previous sentence in [doc]
+val interpret_to_previous : unit -> events
+(** [interpret_to_previous] navigates to the previous sentence in [doc]
     and returns the resulting state. *)
 
-val interpret_to_next : Settings.Mode.t -> events
-(** [interpret_to_next doc] navigates to the next sentence in [doc]
+val interpret_to_next : unit -> events
+(** [interpret_to_next] navigates to the next sentence in [doc]
     and returns the resulting state. *)
 
-val interpret_to_end : Settings.Mode.t -> events
-(** [interpret_to_end doc] navigates to the last sentence in [doc]
+val interpret_to_end : unit -> events
+(** [interpret_to_end] navigates to the last sentence in [doc]
     and returns the resulting state. *)
 
-val interpret_in_background : state -> should_block_on_error:bool -> (state * events)
+val interpret_in_background : state -> (state * events)
 (** [interpret_in_background doc] same as [interpret_to_end] but computation 
     is done in background (with lower priority) *)
 
 val reset : state -> state * events 
 (** resets Rocq *)
 
-val executed_ranges : state -> Settings.Mode.t -> exec_overview
-(** [executes_ranges doc mode] returns the ranges corresponding to the sentences
-    that have been executed. [mode] allows to send a "cut" range that only goes
+val interrupt_execution : state -> unit
+(** [interrupt_execution st] cancels any ongoing execution on [st] *)
+
+val executed_ranges : state -> exec_overview
+(** [executes_ranges doc] returns the ranges corresponding to the sentences
+    that have been executed. [settings.check_mode] allows to send a "cut" range that only goes
     until the observe_id in the case of manual mode *)
 
 val observe_id_range : state -> Range.t option
@@ -112,11 +106,11 @@ val all_diagnostics : state -> Diagnostic.t list
 (** all_diagnostics [doc] returns the diagnostics corresponding to the sentences
     that have been executed in [doc]. *)
 
-val get_proof : state -> Settings.Goals.Diff.Mode.t -> sentence_id option -> ProofState.t option
+val get_proof : state -> sentence_id option -> ProofState.t option
 
 val get_completions : state -> Position.t -> completion_item list 
 
-val handle_event : event -> state -> block:bool -> Settings.Mode.t -> Settings.Goals.Diff.Mode.t -> Settings.Goals.PrettyPrint.t -> handled_event
+val handle_event : event -> state -> (state,event) handled_event
 (** handles events and returns a new state if it was updated. On top of the next events, it also returns info
     on whether execution has halted due to an error and returns a boolean flag stating whether the view
     should be updated *)
@@ -143,7 +137,7 @@ module Internal : sig
 
   val document : state -> Document.document
   val raw_document : state -> RawDocument.t
-  val execution_state : state -> ExecutionManager.state
+  val is_locally_executed : state -> sentence_id -> bool
   val string_of_state : state -> string
   val observe_id : state -> sentence_id option
   val inject_doc_events : Document.event Sel.Event.t list -> event Sel.Event.t list
