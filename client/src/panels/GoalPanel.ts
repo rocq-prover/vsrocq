@@ -48,6 +48,7 @@ export default class GoalPanel {
     //init the app settings
     this._updateDisplaySettings(this._panel.webview);
     this._updateGoalDepth(this._panel.webview);
+    this._updatePropFilter(this._panel.webview);
   }
 
   /**
@@ -131,6 +132,14 @@ export default class GoalPanel {
     if(GoalPanel.currentPanel) {
         Client.writeToVsrocqChannel("[GoalPanel] Changing goal depth");
         GoalPanel.currentPanel._updateGoalDepth(GoalPanel.currentPanel._panel.webview);
+    }
+
+  }
+
+  public static updatePropFilter() {
+
+    if(GoalPanel.currentPanel) {
+        GoalPanel.currentPanel._updatePropFilter(GoalPanel.currentPanel._panel.webview);
     }
 
   }
@@ -239,6 +248,11 @@ export default class GoalPanel {
     webview.postMessage({ "command": "updateGoalDepth", "text": config.maxDepth });
   };
 
+  private _updatePropFilter(webview: Webview) {
+    const config = workspace.getConfiguration('vsrocq.goals');
+    webview.postMessage({ "command": "updatePropFilter", "enabled": config.get<boolean>('showOnlyPropHypotheses', false) });
+  };
+
   /**
    * Sets up an event listener to listen for messages passed from the webview context and
    * executes code based on the message that is received.
@@ -254,8 +268,10 @@ export default class GoalPanel {
         switch (command) {
             case 'openGoalSettings':
                 commands.executeCommand('workbench.action.openSettings', 'vsrocq.goals');
-            // Add more switch case statements here as more webview message commands
-            // are created within the webview context (i.e. inside media/main.js)
+                break;
+            case 'togglePropFilter':
+                commands.executeCommand('extension.rocq.toggleShowOnlyPropHypotheses');
+                break;
         }
       },
       undefined,

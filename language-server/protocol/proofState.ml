@@ -14,6 +14,7 @@
 
 open Printing
 open Lsp.Types
+open EConstr
 
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
@@ -56,7 +57,34 @@ let goal_name = Names.Id.to_string
 let goal_name = Libnames.string_of_path
 [%%endif]
 
-let mk_goal env sigma g =
+let is_prop_hypothesis env sigma typ =
+  try
+    let sort = Retyping.get_sort_of env sigma typ in
+    ESorts.is_prop sigma sort
+  with _ -> false
+
+let should_include_hypothesis env sigma d ~showOnlyPropHypotheses =
+  (not showOnlyPropHypotheses) ||
+    match d with
+    | CompactedDecl.LocalAssum (_, typ) -> is_prop_hypothesis env sigma typ
+    | CompactedDecl.LocalDef (_, _, typ) -> is_prop_hypothesis env sigma typ
+
+let filter_diff_hypotheses env sigma hyps ~showOnlyPropHypotheses =
+  if not showOnlyPropHypotheses then hyps
+  else
+    let compacted =
+      Termops.compact_named_context sigma (EConstr.named_context env) in
+    let rec filter_zip decls hps = match decls, hps with
+      | [], [] -> []
+      | d :: ds, h :: hs ->
+        if should_include_hypothesis env sigma d ~showOnlyPropHypotheses
+        then h :: filter_zip ds hs
+        else filter_zip ds hs
+      | _ -> hyps
+    in
+    filter_zip compacted hyps
+
+let mk_goal env sigma g ~showOnlyPropHypotheses =
   let EvarInfo evi = Evd.find sigma g in
   let env = Evd.evar_filtered_env env evi in
   let min_env = Environ.reset_context env in
@@ -72,8 +100,10 @@ let mk_goal env sigma g =
   let mk_hyp d (env,l) =
     let d' = CompactedDecl.to_named_context d in
     let env' = List.fold_right EConstr.push_named d' env in
-    let hyp = pr_ecompacted_decl env sigma d in
-    (env', hyp :: l)
+    if should_include_hypothesis env sigma d ~showOnlyPropHypotheses then
+      (env', pr_ecompacted_decl env sigma d :: l)
+    else
+      (env', l)
   in
   let (_env, hyps) =
     Context.Compacted.fold mk_hyp
@@ -91,15 +121,18 @@ let diff_goal = Proof_diffs.diff_goal
 let diff_goal ?og_s g = Proof_diffs.diff_goal ~flags:(PrintingFlags.current()) ?og_s g
 [%%endif]
 
-let mk_goal_diff diff_goal_map env sigma g =
+let mk_goal_diff diff_goal_map env sigma g ~showOnlyPropHypotheses =
+  let EvarInfo evi = Evd.find sigma g in
+  let env = Evd.evar_filtered_env env evi in
   let id = Evar.repr g in
   let name = Option.map goal_name (Evd.evar_ident g sigma) in
   let og_s = Proof_diffs.map_goal g diff_goal_map in
   let (hyps, ccl) = diff_goal ?og_s (Proof_diffs.make_goal env sigma g) in
+  let filtered_hyps = filter_diff_hypotheses env sigma hyps ~showOnlyPropHypotheses in
   {
     id;
     name;
-    hypotheses = List.rev_map pp_of_rocqpp hyps;
+    hypotheses = List.rev_map pp_of_rocqpp filtered_hyps;
     goal = pp_of_rocqpp ccl;
   }
 
@@ -120,7 +153,7 @@ let string_of_diff_mode = function
 let set_diff_mode diff_mode =
   Goptions.set_string_option_value Proof_diffs.opt_name @@ string_of_diff_mode diff_mode
 
-let get_proof ~previous diff_mode st =
+let get_proof ~previous diff_mode ~showOnlyPropHypotheses st =
   Vernacstate.unfreeze_full_state st;
   match proof_of_state st with
   | None -> None
@@ -128,15 +161,15 @@ let get_proof ~previous diff_mode st =
     let mk_goal env sigma g =
       match diff_mode with
       | Settings.Goals.Diff.Mode.Off ->
-        mk_goal env sigma g
+        mk_goal env sigma g ~showOnlyPropHypotheses
       | _ ->
         begin
           set_diff_mode diff_mode;
           match Option.bind previous proof_of_state with
-          | None -> mk_goal env sigma g
+          | None -> mk_goal env sigma g ~showOnlyPropHypotheses
           | Some old_proof ->
             let diff_goal_map = Proof_diffs.make_goal_map old_proof proof in
-            mk_goal_diff diff_goal_map env sigma g
+            mk_goal_diff diff_goal_map env sigma g ~showOnlyPropHypotheses
         end
     in
     let env = Global.env () in

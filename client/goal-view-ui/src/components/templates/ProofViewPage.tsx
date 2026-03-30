@@ -8,7 +8,7 @@ import {
     VSCodeButton
 } from '@vscode/webview-ui-toolkit/react';
 
-import { VscGear } from 'react-icons/vsc';
+import { VscGear, VscFilter } from 'react-icons/vsc';
 
 import GoalSection from '../organisms/GoalSection';
 import EmptyState from '../atoms/EmptyState';
@@ -29,14 +29,16 @@ type ProofViewPageProps = {
     settingsClickHandler: () => void;
     helpMessage: string;
     helpMessageHandler: (message: string) => void;
+    showOnlyPropHypotheses: boolean;
+    propFilterClickHandler: () => void;
 };
 
 const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
 
-    const {goals, messages, displaySetting, 
-            collapseGoalHandler, maxDepth, settingsClickHandler, 
+    const {goals, messages, displaySetting,
+            collapseGoalHandler, maxDepth, settingsClickHandler,
             helpMessage, helpMessageHandler,
-            toggleContextHandler,
+            toggleContextHandler, showOnlyPropHypotheses, propFilterClickHandler,
         } = props;
 
     const renderGoals = () => {
@@ -120,19 +122,36 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
         <div className={classes.Page}>
             <div className={classes.ButtonContainer}>
                 <div className={classes.HelpMessage}>{helpMessage}</div>
-                <VSCodeButton 
-                    appearance={'icon'} 
-                    onClick={settingsClickHandler}
-                    onMouseOver={() => {
-                        helpMessageHandler("Open proof view panel settings.");
-                    }}
-                    onMouseOut={() => {
-                        helpMessageHandler("");
-                    }}
-                    aria-label='Settings'
-                >
-                    <VscGear/>
-                </VSCodeButton>
+                <div className={classes.ButtonGroup}>
+                    <VSCodeButton
+                        appearance={'icon'}
+                        onClick={propFilterClickHandler}
+                        onMouseOver={() => {
+                            helpMessageHandler(showOnlyPropHypotheses ? "Show all hypotheses." : "Show only Prop hypotheses.");
+                        }}
+                        onMouseOut={() => {
+                            helpMessageHandler("");
+                        }}
+                        aria-label='Toggle Prop filter'
+                    >
+                        <span className={showOnlyPropHypotheses ? classes.filterActive : undefined}>
+                            <VscFilter/>
+                        </span>
+                    </VSCodeButton>
+                    <VSCodeButton
+                        appearance={'icon'}
+                        onClick={settingsClickHandler}
+                        onMouseOver={() => {
+                            helpMessageHandler("Open proof view panel settings.");
+                        }}
+                        onMouseOut={() => {
+                            helpMessageHandler("");
+                        }}
+                        aria-label='Settings'
+                    >
+                        <VscGear/>
+                    </VSCodeButton>
+                </div>
             </div>
             <Accordion title={'Proof'} collapsed={false}>
                 {collapsibleGoalsDisplay}
