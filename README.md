@@ -1,16 +1,8 @@
 [![CI][action-shield]][action-link]
-[![Contributing][contributing-shield]][contributing-link]
-[![Code of Conduct][conduct-shield]][conduct-link]
 [![Zulip][zulip-shield]][zulip-link]
 
 [action-shield]: https://github.com/rocq-prover/vsrocq/actions/workflows/ci.yml/badge.svg
 [action-link]: https://github.com/rocq-prover/vsrocq/actions/workflows/ci.yml
-
-[contributing-shield]: https://img.shields.io/badge/contributions-welcome-%23f7931e.svg
-[contributing-link]: https://github.com/rocq-prover/vsrocq/manifesto/blob/master/CONTRIBUTING.md
-
-[conduct-shield]: https://img.shields.io/badge/%E2%9D%A4-code%20of%20conduct-%23f15a24.svg
-[conduct-link]: https://github.com/rocq-prover/vsrocq/manifesto/blob/master/CODE_OF_CONDUCT.md
 
 [zulip-shield]: https://img.shields.io/badge/chat-on%20zulip-%23c1272d.svg
 [zulip-link]: https://rocq-prover.zulipchat.com/#narrow/channel/237662-VsRocq-devs-.26-users
