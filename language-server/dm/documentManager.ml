@@ -408,237 +408,43 @@ let handle_event ev st =
     lift_handled_event (function None -> Some st | Some checking_state -> Some { st with checking_state })
       inject_im_events he
 
-
-let context_of_sentence st (s : Document.sentence option) =
-  match s with
-  | None ->
-      Utilities.context_of_vernac_state st.init_vs
-  | Some { checked } ->
-      match Utilities.get_proof_context checked with
-      | Some x -> x
-      | None -> 
-         Utilities.context_of_vernac_state st.init_vs
-
-(** Get context at the start of the sentence containing [pos] *)
-let get_context st pos =
-    context_of_sentence st (Document.find_sentence_before_pos st.document pos)
-
-let get_completions st pos =
-  match Document.find_sentence_before_pos st.document pos with
-  | None -> 
-      log (fun () -> "Can't get completions, no sentence found before the cursor");
-      []
-  | Some { checked } ->
-    let ost = Utilities.get_vernac_state checked in
-    let settings = ExecutionManager.get_options () in
-    match Option.bind ost @@ CompletionSuggester.get_completions settings.completion_options with
-    | None -> 
-        log (fun () -> "No completions available");
-        []
-    | Some lemmas -> lemmas
-
-[%%if rocq ="8.18" || rocq ="8.19"]
-[%%elif rocq ="8.20"]
-  let parsable_make = Pcoq.Parsable.make
-  let unfreeze = Pcoq.unfreeze
-  let entry_parse = Pcoq.Entry.parse
-[%%else]
-  let parsable_make = Procq.Parsable.make
-  let unfreeze = Procq.unfreeze
-  let entry_parse = Procq.Entry.parse
-[%%endif]
-
-[%%if rocq ="8.18" || rocq ="8.19"]
-let parse_entry st pos entry pattern =
-  let pa = Pcoq.Parsable.make (Gramlib.Stream.of_string pattern) in
-  let st = match Document.find_sentence_before st.document pos with
-  | None -> st.init_vs.Vernacstate.synterp.parsing
-  | Some { synterp_state } -> synterp_state.Vernacstate.Synterp.parsing
-  in
-  Vernacstate.Parser.parse st entry pa
-[%%else]
-let parse_entry st pos entry pattern =
-  let pa = parsable_make (Gramlib.Stream.of_string pattern) in
-  let st = match Document.find_sentence_before st.document pos with
-  | None -> Vernacstate.(Synterp.parsing st.init_vs.synterp)
-  | Some { synterp_state } -> Vernacstate.Synterp.parsing synterp_state
-  in  
-  unfreeze st;
-  entry_parse entry pa
-[%%endif]
-
-[%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
-  let smart_global = Pcoq.Prim.smart_global
-[%%else]
-  let smart_global = Procq.Prim.smart_global
-[%%endif]
-
-let about st pos ~pattern =
-  (* TODO: run in execmanager *)
+let rocq_state_for st pos =
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  let sigma, env = get_context st pos in
-    try
-      let ref_or_by_not = parse_entry st loc (smart_global) pattern in
-      let udecl = None (* TODO? *) in
-      Ok (pp_of_rocqpp @@ Prettyp.print_about env sigma ref_or_by_not udecl)
-    with e ->
-      let e, info = Exninfo.capture e in
-      let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
-      Error ({message; code=None})
+  let sentence = Document.find_sentence_before st.document loc in
+  let vs = Option.map (fun x -> Utilities.get_vernac_state x.Document.checked) sentence in
+  let vs = Option.default st.init_vs @@ Option.flatten vs in
+  vs
 
-let search st ~id pos pattern =
-  let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  let sigma, env = get_context st pos in
-    let query, r = parse_entry st loc (G_vernac.search_queries) pattern in
-    SearchQuery.interp_search ~id env sigma query r
+let print st pos ~pattern =
+  let vs = rocq_state_for st pos in
+  QueryManager.print ~doc_id:(Document.id st.document) ~vs ~pattern
 
-(** Try to generate hover text from [pattern] the context of the given [sentence] *)
-let hover_of_sentence st loc pattern sentence = 
-  let sigma, env = context_of_sentence st sentence in
-    try
-      let ref_or_by_not = parse_entry st loc (smart_global) pattern in
-      Language.Hover.get_hover_contents env sigma ref_or_by_not
-    with e ->
-      let e, info = Exninfo.capture e in
-      log (fun () -> "Exception while handling hover: " ^ (Pp.string_of_ppcmds @@ CErrors.iprint (e, info)));
-      None
+let search st ~id pos s =
+  let vs = rocq_state_for st pos in
+  QueryManager.search ~doc_id:(Document.id st.document) ~vs ~id s
 
-let hover st pos =
-  (* Tries to get hover at three difference places:
-     - At the start of the current sentence
-     - At the start of the next sentence (for symbols defined in the current sentence)
-       e.g. Definition, Inductive
-     - At the next QED (for symbols defined after proof), if the next sentence 
-       is in proof mode e.g. Lemmas, Definition with tactics *)
-  let opattern = RawDocument.word_at_position (Document.raw_document st.document) pos in
-  match opattern with
-  | None -> log (fun () -> "hover: no word found at cursor"); None
-  | Some pattern ->
-    log (fun () -> "hover: found word at cursor: \"" ^ pattern ^ "\"");
-    let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-    (* hover at previous sentence *)
-    match hover_of_sentence st loc pattern (Document.find_sentence_before st.document loc) with
-    | Some _ as x -> x
-    | None -> 
-    match Document.find_sentence_after st.document loc with
-    | None -> None (* Skip if no next sentence *)
-    | Some sentence as opt ->
-    (* hover at next sentence *)
-    match hover_of_sentence st loc pattern opt with
-    | Some _ as x -> x
-    | None -> 
-    match sentence.ast with
-    | Error _ -> None
-    | Parsed ast -> 
-      match ast.classification with
-    (* next sentence in proof mode, hover at qed *)
-      | VtProofStep _ | VtStartProof _ -> 
-        hover_of_sentence st loc pattern (Document.find_next_qed st.document loc)
-      | _ -> None
-
-let hover st pos =
-  ProverThread.try_run ~doc_id:(Document.id st.document) ~timeout:0.2 (fun () -> hover st pos) |>
-  Result.to_option |> Option.flatten
-
-[%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
-  let lconstr = Pcoq.Constr.lconstr
-[%%else]
-  let lconstr = Procq.Constr.lconstr
-[%%endif]
-
-
-[%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
-let jump_to_definition _  _ = None
-[%%else]
-let jump_to_definition st pos =
-  let raw_doc = Document.raw_document st.document in
-  let loc = RawDocument.loc_of_position raw_doc pos in
-  let opattern = RawDocument.word_at_position raw_doc pos in
-  match opattern with
-  | None -> log (fun () -> "jumpToDef: no word found at cursor"); None
-  | Some pattern ->
-    log (fun () -> "jumpToDef: found word at cursor: \"" ^ pattern ^ "\"");
-    try
-    let qid = parse_entry st loc (Procq.Prim.qualid) pattern in
-      let ref = Nametab.locate_extended qid in
-        match Nametab.cci_src_loc ref with
-          | None -> None
-          | Some loc ->
-            begin match loc.Loc.fname with
-              | Loc.ToplevelInput | InFile  { dirpath = None } -> None
-              | InFile { dirpath = Some dp } ->
-                  let f = Loadpath.locate_absolute_library @@ Libnames.dirpath_of_string dp in
-                  begin match f with
-                    | Ok f ->
-                      let f =  Filename.remove_extension f ^ ".v" in
-                      (if Sys.file_exists f then
-                        let b_pos = Position.create ~character:(loc.bp - loc.bol_pos) ~line:(loc.line_nb - 1) in
-                        let e_pos = Position.create ~character:(loc.ep - loc.bol_pos) ~line:(loc.line_nb - 1) in
-                        let range = Range.create ~end_:b_pos ~start:e_pos in
-                        Some (range, f)
-                      else
-                        None
-                      )
-                    | Error _ -> None
-                  end
-            end
-        with e ->
-          let e, info = Exninfo.capture e in
-          log (fun () -> Pp.string_of_ppcmds @@ CErrors.iprint (e, info)); None
-
-[%%endif]
+let locate st pos ~pattern =
+  let vs = rocq_state_for st pos in
+  QueryManager.locate ~doc_id:(Document.id st.document) ~vs ~pattern
 
 let check st pos ~pattern =
-  let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  let sigma, env = get_context st pos in
-    let rc = parse_entry st loc lconstr pattern in
-    try
-      let redexpr = None in
-      Ok (pp_of_rocqpp @@ Vernacentries.check_may_eval env sigma redexpr rc)
-    with e ->
-      let e, info = Exninfo.capture e in
-      let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
-      Error ({message; code=None})
+  let vs = rocq_state_for st pos in
+  QueryManager.check ~doc_id:(Document.id st.document) ~vs ~pattern
 
-[%%if rocq ="8.18" || rocq ="8.19"]
-let print_located_qualid _ qid = Prettyp.print_located_qualid qid
-[%%else]
-let print_located_qualid = Prettyp.print_located_qualid
-[%%endif]
+let jump_to_definition st pos =
+  let opattern = RawDocument.word_at_position (Document.raw_document st.document) pos in
+  let vs = rocq_state_for st pos in
+  QueryManager.jump_to_definition ~doc_id:(Document.id st.document) ~vs opattern
+let hover st pos =
+  QueryManager.hover st.document pos
+ 
+let about st pos ~pattern =
+  let vs = rocq_state_for st pos in
+  QueryManager.about ~doc_id:(Document.id st.document) ~vs ~pattern
 
-[%%if rocq ="8.18" || rocq ="8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
-let pr_glob_without_symbols env sigma c =
-  Constrextern.without_symbols (Printer.pr_glob_constr_env env sigma) c
-[%%else]
-let pr_glob_without_symbols env sigma c =
-  let flags = PrintingFlags.Extern.current() in
-  let flags = { flags with notations = false } in
-  Printer.pr_glob_constr_env ~flags env sigma c
-[%%endif]
-
-let locate st pos ~pattern = 
-  let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  let sigma, env = get_context st pos in
-    match parse_entry st loc (smart_global) pattern with
-    | { v = AN qid } -> Ok (pp_of_rocqpp @@ print_located_qualid env qid)
-    | { v = ByNotation (ntn, sc)} ->
-      Ok( pp_of_rocqpp @@ Notation.locate_notation
-        (pr_glob_without_symbols env sigma) ntn sc)
-
-[%%if rocq ="8.18" || rocq ="8.19"]
-  let print_name = Prettyp.print_name
-[%%else]
-  let print_name =
-    let access = Library.indirect_accessor[@@warning "-3"] in
-    Prettyp.print_name access
-[%%endif]
-
-let print st pos ~pattern = 
-  let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
-  let sigma, env = get_context st pos in
-    let qid = parse_entry st loc (smart_global) pattern in
-    let udecl = None in (*TODO*)
-    Ok ( pp_of_rocqpp @@ print_name env sigma qid udecl )
+let get_completions st pos =
+  let vs = rocq_state_for st pos in
+  QueryManager.get_completions ~doc_id:(Document.id st.document) ~vs
 
 (* Ignore nested proofs option (lives in STM) instead of failing with
    anomaly when it is set in a .vo we Require.
