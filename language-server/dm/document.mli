@@ -149,11 +149,11 @@ val sentences_before : document -> int -> sentence list
 val find_sentence : document -> int -> sentence option
 (** [find_sentence doc loc] finds the sentence containing the loc *)
 
-val find_sentence_pos : document -> Position.t -> sentence option
-(** [find_sentence_pos doc pos] finds the sentence at the pos *)
-
 val find_sentence_before : document -> int -> sentence option
 (** [find_sentence_before doc loc] finds the last sentence before the loc *)
+
+val find_sentence_before_pos : document -> Position.t -> sentence option
+(** [find_sentence_before_pos doc pos] finds the sentence before the pos *)
 
 val find_sentence_after : document -> int -> sentence option
 (** [find_sentence_after doc loc] finds the first sentence after the loc *)

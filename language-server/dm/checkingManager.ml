@@ -398,7 +398,7 @@ let interpret_to_next_position document st pos check_mode =
 let real_interpret_to_position document st pos check_mode ~point_interp_mode =
   match point_interp_mode with
   | Settings.PointInterpretationMode.Cursor -> begin
-      match Document.find_sentence_pos document pos with
+      match Document.find_sentence_before_pos document pos with
       | None -> (st, []) (* document is empty *)
       | Some { id } -> interpret_to document st id check_mode
     end

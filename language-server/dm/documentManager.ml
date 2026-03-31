@@ -172,7 +172,7 @@ let all_diagnostics st =
 
 let get_info_messages st pos =
   match Option.append
-    (Option.bind pos (Document.find_sentence_pos st.document) |> Option.map (fun ({ id } : Document.sentence) -> id))
+    (Option.bind pos (Document.find_sentence_before_pos st.document) |> Option.map (fun ({ id } : Document.sentence) -> id))
     (CheckingManager.get_observe_id st.checking_state)
   with
   | None -> log (fun () -> "get_messages: Could not find id");[]
@@ -271,7 +271,7 @@ let get_document_symbols st =
   get_document_symbols outline [] []
 
 let get_next_range st pos =
-  match Document.find_sentence_pos st.document pos with
+  match Document.find_sentence_before_pos st.document pos with
   | None -> None
   | Some { stop; id } ->
       match Document.find_sentence_after st.document (stop+1) with
@@ -279,7 +279,7 @@ let get_next_range st pos =
       | Some { id } -> Some (Document.range_of_id st.document id)
 
 let get_previous_range st pos =
-  match Document.find_sentence_pos st.document pos with
+  match Document.find_sentence_before_pos st.document pos with
   | None -> None
   | Some { start; id } ->
       match Document.find_sentence_before st.document (start) with
@@ -417,10 +417,10 @@ let context_of_sentence st (s : Document.sentence option) =
 
 (** Get context at the start of the sentence containing [pos] *)
 let get_context st pos =
-    context_of_sentence st (Document.find_sentence_pos st.document pos)
+    context_of_sentence st (Document.find_sentence_before_pos st.document pos)
 
 let get_completions st pos =
-  match Document.find_sentence_pos st.document pos with
+  match Document.find_sentence_before_pos st.document pos with
   | None -> 
       log (fun () -> "Can't get completions, no sentence found before the cursor");
       []

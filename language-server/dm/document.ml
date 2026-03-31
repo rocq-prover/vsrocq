@@ -366,7 +366,7 @@ let find_sentence_before parsed loc =
   | _ -> None
 
 (* moved here from DM, maybe can be simplified / use find_sentence_after *)
-let find_sentence_pos document pos =
+let find_sentence_before_pos document pos =
   let loc = RawDocument.loc_of_position (raw_document document) pos in
   find_sentence_before document loc
 
