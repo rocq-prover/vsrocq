@@ -278,8 +278,6 @@ let%test_unit "mcp.edit.multiline_edit" =
   (* Test editing across multiple lines using line/character positions *)
   let st, init_events = em_init_test_doc ~text:"Definition x := 1.\nDefinition y := 2." in
   (* Get raw document to understand positions *)
-  let doc = DocumentManager.Internal.document st in
-  let raw_doc = Document.raw_document doc in
   (* Edit: change line 1 "Definition y := 2." to "Definition y := 42." *)
   (* Line 1 starts at character 18 (after "Definition x := 1.\n") *)
   (* "Definition y := 2." is at positions 18-36 approximately *)
@@ -440,8 +438,8 @@ let test_query_handler uri query_type ?line ?character ?pattern () =
   Mcpserver.McpManager.handle_query (`Assoc args)
 
 let%test_unit "query.tool.parsing.minimal" =
-  (* Test minimal query parsing - should work with just uri and query_type *)
-  let result = test_query_handler "file:///test.v" "search" () in
+  (* Test minimal query parsing - should work with uri, query_type, and pattern *)
+  let result = test_query_handler "file:///test.v" "search" ~pattern:"nat" () in
   (* Should fail with "not open" since we don't have a real document *)
   [%test_eq: bool] true (Option.is_some result.isError)
 
@@ -455,9 +453,9 @@ let%test_unit "query.tool.parsing.with_pattern" =
   let result = test_query_handler "file:///test.v" "about" ~pattern:"nat" () in
   [%test_eq: bool] true (Option.is_some result.isError)
 
-let%test_unit "query.tool.error_handling.missing_pattern" =
-  (* Test error handling for queries that require patterns *)
-  let result = test_query_handler "file:///test.v" "print" () in
+let%test_unit "query.tool.error_handling.empty_pattern" =
+  (* Test error handling for queries with empty patterns *)
+  let result = test_query_handler "file:///test.v" "print" ~pattern:"" () in
   [%test_eq: bool] true (Option.is_some result.isError)
 
 let%test_unit "query.tool.error_handling.unknown_type" =
@@ -468,10 +466,10 @@ let%test_unit "query.tool.error_handling.unknown_type" =
 let%test_unit "query.tool.uses_current_position" =
   (* Test that queries use the current proof position when no position is specified *)
   (* This test verifies the position tracking functionality *)
-  let result = test_query_handler "file:///test.v" "search" () in
+  let result = test_query_handler "file:///test.v" "search" ~pattern:"nat" () in
   [%test_eq: bool] true (Option.is_some result.isError)
   (* Note: We can't easily test the exact position without a real document,
-     but this verifies the query handler works with optional position parameters *) 
+     but this verifies the query handler works with optional position parameters *)
 
 let%test_unit "mcp.update_proof.returns_state_before_edit" =
   (* Test that after an edit and calling update_proof,
