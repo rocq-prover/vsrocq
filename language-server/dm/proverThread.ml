@@ -16,7 +16,7 @@
 
 open Types
 
-let (Log log) = Log.mk_log "proverThread"
+let (Log _log) = Log.mk_log "proverThread"
 
 (* We run Rocq in a thread so that we can interrupt it *)
 type rocq_job =
