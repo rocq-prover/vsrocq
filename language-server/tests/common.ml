@@ -145,6 +145,13 @@ let task st id spec =
   let init, t = Scheduler.task_for_sentence sch id in
   init, run (task t spec)
 
+let () = CheckingManager.(set_options {
+  block_on_first_error = false;
+  check_mode = Protocol.Settings.Mode.Manual;
+  diff_mode = Protocol.Settings.Goals.Diff.Mode.Off;
+  pp_mode = Protocol.Settings.Goals.PrettyPrint.Pp;
+  point_interp_mode = Protocol.Settings.PointInterpretationMode.Cursor
+})
 
 let rec handle_dm_events n (events : DocumentManager.event Sel.Todo.t) st =
   if n <= 0 then (Stdlib.Format.eprintf "handle_dm_events run out of steps:\nTodo = %a\n" (Sel.Todo.pp DocumentManager.pp_event) events; Stdlib.exit 1)
@@ -159,9 +166,9 @@ let rec handle_dm_events n (events : DocumentManager.event Sel.Todo.t) st =
     | Some ev ->
       (* Stdlib.Format.eprintf "handle_dm_events: handling %a\n"  DocumentManager.pp_event ev; *)
       let st, new_events =
-        match DocumentManager.handle_event ev st ~block:false Protocol.Settings.Mode.Manual Protocol.Settings.Goals.Diff.Mode.Off Protocol.Settings.Goals.PrettyPrint.Pp with
-        | { DocumentManager.state = None; events = events' } -> st, events'
-        | { DocumentManager.state = Some st; events = events' } -> st, events'
+        match DocumentManager.handle_event ev st with
+        | { Types.state = None; events = events' } -> st, events'
+        | { Types.state = Some st; events = events' } -> st, events'
       in
       let todo = Sel.Todo.add remaining new_events in
       handle_dm_events (n-1) todo st
