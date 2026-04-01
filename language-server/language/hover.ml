@@ -198,13 +198,13 @@ let ref_of_const = function
 [%%endif]
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
-let arguments_names env x =
+let arguments_names _env x =
   Arguments_renaming.arguments_names x
-let rename_type env x =
+let rename_type _env x =
   Arguments_renaming.rename_type x
-let find_arguments_scope env x =
+let find_arguments_scope _env x =
   Notation.find_arguments_scope x
-let get_bidirectionality_hint env x =
+let get_bidirectionality_hint _env x =
   Pretyping.get_bidirectionality_hint x
 [%%else]
 let arguments_names env x =
