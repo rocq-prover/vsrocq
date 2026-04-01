@@ -130,6 +130,30 @@ let write_file_text uri text =
   close_out oc;
   log (fun () -> Printf.sprintf "Written file %s" uri)
 
+(** Ensure the in-memory document is synchronized with disk content.
+    Automatically updates the state if the file has changed externally. *)
+let ensure_document_sync (doc: doc_state) uri =
+  try
+    let disk_text = get_file_text uri None in
+    let raw = Dm.DocumentManager.Internal.raw_document doc.st in
+    if disk_text = Dm.RawDocument.text raw then
+      log (fun () -> "Document already in sync")
+    else begin
+      log (fun () -> "Document changed on disk, syncing...");
+      let end_pos = Dm.RawDocument.position_of_loc raw (Dm.RawDocument.end_loc raw) in
+      let range = Range.create
+        ~start:(Position.create ~line:0 ~character:0)
+        ~end_:end_pos in
+      let st, events = Dm.DocumentManager.apply_text_edits doc.st [(range, disk_text)] in
+      doc.st <- st;
+      doc.pending_events <- doc.pending_events @ events;
+      wait_for_parsing doc;
+      process_events_until_stable doc;
+      log (fun () -> "Document synced successfully")
+    end
+  with e ->
+    log (fun () -> Printf.sprintf "Failed to sync document: %s" (Printexc.to_string e))
+
 let handle_open_document args =
   let open ToolArgs in
   let { uri; text } = open_document_of_yojson args in
@@ -230,91 +254,10 @@ let handle_get_proof_state args =
   let ({ uri } : get_proof_state) = get_proof_state_of_yojson args in
   log (fun () -> Printf.sprintf "Get proof state: %s" uri);
   with_document uri ~f:(fun doc ->
+    ensure_document_sync doc uri;
     process_events_until_stable doc;
     let proof_state = McpPrinting.format_proof_state_response doc.st in
     ToolsCallResult.success [Content.text proof_state]
-    ) (* Close the with_document call *)
-
-let handle_edit_line args =
-  let open ToolArgs in
-  let ({ uri; startLine; endLine; newText } : ToolArgs.edit_line) = edit_line_of_yojson args in
-  log (fun () -> Printf.sprintf "Edit line: %s lines %d-%d" uri startLine endLine);
-  with_document uri ~f:(fun doc ->
-    let raw = Dm.DocumentManager.Internal.raw_document doc.st in
-    let end_pos = Dm.RawDocument.position_of_loc raw (Dm.RawDocument.end_loc raw) in
-    let end_line, end_character =
-      if endLine < end_pos.line then endLine + 1, 0
-      else end_pos.line, end_pos.character
-    in
-    let range = Range.create
-      ~start:(Position.create ~line:startLine ~character:0)
-      ~end_:(Position.create ~line:end_line ~character:end_character) in
-    let st, events = Dm.DocumentManager.apply_text_edits doc.st [(range, newText)] in
-    doc.st <- st;
-    doc.pending_events <- doc.pending_events @ events;
-    wait_for_parsing doc;
-    let updated_text = Dm.RawDocument.text (Dm.DocumentManager.Internal.raw_document doc.st) in
-    try
-      write_file_text uri updated_text;
-      ToolsCallResult.success [Content.text "Edit applied and file saved successfully."]
-    with e ->
-      let msg = Printf.sprintf "Edit applied but failed to save file: %s" (Printexc.to_string e) in
-      log (fun () -> msg);
-      ToolsCallResult.error msg
-    ) (* Close the with_document call *)
-
-let handle_apply_edit args =
-  let open ToolArgs in
-  let { uri; startLine; startCharacter; endLine; endCharacter; newText } = apply_edit_of_yojson args in
-  log (fun () -> Printf.sprintf "Apply edit: %s (%d,%d)-(%d,%d)" uri startLine startCharacter endLine endCharacter);
-  let range = Range.create
-    ~start:(Position.create ~line:startLine ~character:startCharacter)
-    ~end_:(Position.create ~line:endLine ~character:endCharacter) in
-  with_document uri ~f:(fun doc ->
-    let st, events = Dm.DocumentManager.apply_text_edits doc.st [(range, newText)] in
-    doc.st <- st;
-    doc.pending_events <- doc.pending_events @ events;
-    wait_for_parsing doc;
-    process_events_until_stable doc;
-    let updated_text = Dm.RawDocument.text (Dm.DocumentManager.Internal.raw_document doc.st) in
-    try
-      write_file_text uri updated_text;
-      ToolsCallResult.success [Content.text "Edit applied and file saved successfully."]
-    with e ->
-      let msg = Printf.sprintf "Edit applied but failed to save file: %s" (Printexc.to_string e) in
-      log (fun () -> msg);
-      ToolsCallResult.error msg
-    ) (* Close the with_document call *)
-
-let handle_update_proof args =
-  let open ToolArgs in
-  let ({ uri } : update_proof) = update_proof_of_yojson args in
-  log (fun () -> Printf.sprintf "Update proof: %s" uri);
-  with_document uri ~f:(fun doc ->
-    try
-      let disk_text = get_file_text uri None in
-      let raw = Dm.DocumentManager.Internal.raw_document doc.st in
-      if disk_text = Dm.RawDocument.text raw then
-        log (fun () -> "Update proof: file unchanged")
-      else begin
-        log (fun () -> "Update proof: file changed, applying diff");
-        let raw = Dm.DocumentManager.Internal.raw_document doc.st in
-        let end_pos = Dm.RawDocument.position_of_loc raw (Dm.RawDocument.end_loc raw) in
-        let range = Range.create
-          ~start:(Position.create ~line:0 ~character:0)
-          ~end_:end_pos in
-        let st, events = Dm.DocumentManager.apply_text_edits doc.st [(range, disk_text)] in
-        doc.st <- st;
-        doc.pending_events <- doc.pending_events @ events;
-      end;
-      wait_for_parsing doc;
-      process_events_until_stable doc;
-      let proof_state = McpPrinting.format_proof_state_response doc.st in
-      ToolsCallResult.success [Content.text proof_state]
-    with e ->
-      let msg = Printf.sprintf "Failed to update proof: %s" (Printexc.to_string e) in
-      log (fun () -> msg);
-      ToolsCallResult.error msg
     ) (* Close the with_document call *)
 
 let wrap_search_pattern pattern = "(" ^ pattern ^ ")"
@@ -391,9 +334,6 @@ let dispatch_tool name args =
   | "step_forward" -> handle_step_forward args
   | "step_backward" -> handle_step_backward args
   | "get_proof_state" -> handle_get_proof_state args
-  | "edit_line" -> handle_edit_line args
-  | "update_proof" -> handle_update_proof args
-  | "apply_edit" -> handle_apply_edit args
   | "query" -> handle_query args
   | _ -> ToolsCallResult.error (Printf.sprintf "Unknown tool: %s" name)
 
