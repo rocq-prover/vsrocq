@@ -14,7 +14,6 @@
 
 [%%import "vsrocq_config.mlh"]
 
-open Lsp.Types
 open Protocol
 open Protocol.LspWrapper
 open Protocol.ExtProtocol
@@ -251,10 +250,6 @@ let reset_overview st document unchanged_id =
   in
   { st with observe_id }
 
-let prepare_overview st prepared =
-  let overview = { st.overview with prepared } in
-  { st with overview }
-
 let overview st = st.overview
 
 let print_exec_overview overview =
@@ -268,8 +263,6 @@ let print_exec_overview overview =
   log (fun () -> "--------- Processed ranges ---------");
   List.iter (fun r -> log (fun () -> Range.to_string r)) processed;
   log (fun () -> "-------------------------------------")
-
-let print_exec_overview_of_state st = print_exec_overview st.overview
 
 let overview_until_range st range =
   let find_final_range l = List.find_opt (fun (r : Range.t) -> Range.included ~in_:r range) l in

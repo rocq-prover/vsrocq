@@ -16,7 +16,6 @@ open Types
 open Lsp.Types
 open Protocol
 open Protocol.LspWrapper
-open Protocol.ExtProtocol
 open Protocol.Printing
 open CompletionItems
 

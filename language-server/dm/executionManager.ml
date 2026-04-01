@@ -13,7 +13,6 @@
 (**************************************************************************)
 
 open Protocol
-open Protocol.LspWrapper
 open Scheduler
 open Types
 
