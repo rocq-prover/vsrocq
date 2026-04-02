@@ -85,7 +85,7 @@ export function activate(context: ExtensionContext) {
                     window.showErrorMessage("Could not launch language server" + err.message, {modal: true, detail: err.message}, {title: "Get Rocq", id: 0}, {title: "Install VsRocq Legacy (Required for Rocq <= 8.17)", id: 1})
                     .then(act => {
                         if(act?.id === 0) {
-                            commands.executeCommand("vscode.open", Uri.parse('https://rocq.inria.fr/download'));
+                            commands.executeCommand("vscode.open", Uri.parse('https://rocq-prover.org/install'));
                         }
                         if (act?.id === 1) {
                             commands.executeCommand("extension.open", "rocq-community.vsrocq1");
