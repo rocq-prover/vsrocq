@@ -38,6 +38,8 @@ val reset : state -> Vernacstate.t -> feedback_pipe:feedback_pipe -> state
 val reset_to_top : state -> state
 (** [reset_to_top state] updates the state to make the observe_id Top *)
 
+val interrupt_execution : state -> unit
+
 val get_observe_id : state -> sentence_id option
 val reset_overview : state -> document -> sentence_id option -> state
 val overview : state -> exec_overview
@@ -66,12 +68,6 @@ val invalidate : state -> sentence_id -> state
 val validate_document : document -> state -> state * event Sel.Event.t list
 val vernac_state_of_sentence : document -> sentence_id -> Vernacstate.t option
 
-val get_proof :
-  document ->
-  state ->
-  sentence_id option ->
-  Protocol.ProofState.t option
-
 val get_messages :
   document ->
   sentence_id ->
@@ -85,5 +81,12 @@ val handle_event :
   document_updates * (state, event) handled_event
 
 module Internal : sig
+  val get_proof :
+    document ->
+    state ->
+    sentence_id option ->
+    Protocol.ProofState.t option
+
+
   val is_remotely_executed : state -> sentence_id -> bool
 end

@@ -1,0 +1,33 @@
+(executable
+ (name static_callgraph)
+ (modules static_callgraph)
+ (preprocess (pps ppx_optcomp))
+ (libraries compiler-libs.common str))
+
+(cram
+ (deps
+  static_callgraph.exe
+  static_callgraph_safe_barriers.txt
+  static_callgraph_whitelist.txt
+  ../../dm/.dm.objs/byte/dm.cmt
+  ../../dm/.dm.objs/byte/dm__CheckingManager.cmt
+  ../../dm/.dm.objs/byte/dm__CompletionItems.cmt
+  ../../dm/.dm.objs/byte/dm__CompletionSuggester.cmt
+  ../../dm/.dm.objs/byte/dm__DelegationManager.cmt
+  ../../dm/.dm.objs/byte/dm__Document.cmt
+  ../../dm/.dm.objs/byte/dm__DocumentManager.cmt
+  ../../dm/.dm.objs/byte/dm__ExecutionManager.cmt
+  ../../dm/.dm.objs/byte/dm__Log.cmt
+  ../../dm/.dm.objs/byte/dm__ParTactic.cmt
+  ../../dm/.dm.objs/byte/dm__PriorityManager.cmt
+  ../../dm/.dm.objs/byte/dm__ProverThread.cmt
+  ../../dm/.dm.objs/byte/dm__QueryManager.cmt
+  ../../dm/.dm.objs/byte/dm__RawDocument.cmt
+  ../../dm/.dm.objs/byte/dm__Scheduler.cmt
+  ../../dm/.dm.objs/byte/dm__SearchQuery.cmt
+  ../../dm/.dm.objs/byte/dm__Types.cmt
+  ../../dm/.dm.objs/byte/dm__Utilities.cmt))
+
+(alias
+ (name documentManager)
+ (deps (alias runtest)))

@@ -22,7 +22,7 @@ The architecture is organized in the following components.
 * **DocumentManager:** The document manager handles everything that pertains to document representation and parsing, handles feedbacks.
 * **Document:** Raw and parsed document representations.
 * **Scheduler:** Incremental static dependency analysis.
-* **Queries:** This handles the coq queries (Search, About, etc...)
+* **QueryManager:** This handles the Rocq queries (Search, About, etc... hover, completion)
 * **Checking manager:** document checking, exec overview
 * **Execution manager:** Handles execution of the Rocq interpreter
 * **Delegation manager:** Handles worker tasks
@@ -34,17 +34,22 @@ flowchart TD
 
     C["DocumentManager
        (document)"]
-    D[ExecutionManager]
-    D1[(Rocq Vernac)]
-    E[DelegationManager]
-    F[Queries]
+    D["ExecutionManager
+       (schedule2task, exec promise)"]
+    D1[(Rocq Interpreter)]
+    E["DelegationManager
+       (spawn, kill)"]
+    F[QueryManager]
     F1[(Rocq API)]
     G["Document
        (parser state, outline)"]
-    G1[(Rocq parser)]
+    G1[(Rocq Parser)]
     H[Scheduler]
     I["CheckingManager
        (observe_id, checking overview)"]
+    J[\"proverThread
+        (sequentialize, interrupt)"/]
+    K[\proverWorker/]
     A --> B
     B --> C
     I --> D
@@ -53,12 +58,20 @@ flowchart TD
     C --> G
     C --> H
     C --> I
-    D --- D1
-    F --- F1
-    G --- G1
+    D --- J
+    J ---|stateful| D1
+    F --- J
+    J ---|stateful| F1
+    G --- J
+    J ---|stateful| G1
+    E --- K
+    K ---|stateful| D1
+    H ---|pure| F1
     style D1 fill: #f3ef1d
     style F1 fill: #f3ef1d
     style G1 fill: #f3ef1d
+    style J fill: #75e15c
+    style K fill: #75e15c
     
 ```
 
