@@ -8,8 +8,6 @@ Problematic calls
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.CheckingManager.mk_execution_promise_event -> Dm.CheckingManager.mk_execution_promise_event.k
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.get_proof -> Option.bind -> Protocol.ProofState.get_proof
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.get_string_proof -> Option.bind -> Protocol.PpProofState.get_proof
-  handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.add_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Proof_using.get_default_proof_using
-  handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.patch_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Proof_using.get_default_proof_using
 
 Calls sequentialized via ProverThread APIs
 
