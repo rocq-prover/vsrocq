@@ -44,6 +44,8 @@ Dm\.CheckingManager\.shift_overview\.shift_loc
 Dm\.CheckingManager\.overview_until_range\.find_final_range
 Dm\.Log\.mk_log -> CErrors\.iprint
 Dm\.ExecutionManager\.build_tasks_for\.build_tasks
+Dm\.ExecutionManager\.complete_proof\.assign
+Dm\.ExecutionManager\.execute\.assign
 ProofWorker\.\(worker_available\|handle_event\)
 Dm\.Document\.invalidate\.
 Dm\.Scheduler\.base_id\.aux
