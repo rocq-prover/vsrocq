@@ -124,6 +124,7 @@ type state = {
   observe_id : observe_id;
   exec_event_cancel_handle : Sel.Event.cancellation_handle option;
   execution_state : ExecutionManager.state;
+  doc_id : document_id;
 }
 
 let init ~feedback_pipe vs =
@@ -132,6 +133,7 @@ let init ~feedback_pipe vs =
     observe_id = Top;
     exec_event_cancel_handle = None;
     execution_state = ExecutionManager.init ~feedback_pipe vs;
+    doc_id = feedback_pipe.doc_id;
   }
 
 let reset st vs ~feedback_pipe =
@@ -524,7 +526,7 @@ let execute document st id vst_for_next_task started task tasks background block
       (* Sentences have been invalidate, probably because the user edited while executing *)
   | Some _ ->
       log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
-      let execution_state, result =ExecutionManager.execute st.execution_state document vst_for_next_task task in
+      let execution_state, result = ExecutionManager.execute st.execution_state document vst_for_next_task task in
       let st = { st with execution_state } in
       match result with
       | Done { updates; vs = vst_for_next_task; events; exec_error } ->
@@ -605,9 +607,11 @@ let handle_event ~uri document st ev =
       ([], make_handled_event ~state ~update_view:true ~events ())
   | SendProofView (Some id) when Document.has_sentence document id ->
       let proof, pp_proof =
-        match pp_mode with
-        | Pp -> (get_proof document st (Some id), None)
-        | String -> (None, get_string_proof document st (Some id))
+        ProverThread.run ~doc_id:st.doc_id ~timeout:1.0 (fun () ->
+          match pp_mode with
+          | Pp -> (get_proof document st (Some id), None)
+          | String -> (None, get_string_proof document st (Some id)))
+        |> function Terminated(a,b) -> a,b | _ -> None,None
       in
       let messages, pp_messages =
         match pp_mode with Pp -> (get_messages document id, []) | String -> ([], get_string_messages document id)
@@ -649,4 +653,5 @@ let interrupt_execution st =
 
 module Internal = struct
   let is_remotely_executed st id = ExecutionManager.is_remotely_executed st.execution_state id
+  let get_proof = get_proof
 end
