@@ -300,18 +300,27 @@ let validate_document state (Document.{unchanged_id; invalid_ids; previous_docum
   let checking_state = CheckingManager.reset_overview state.checking_state previous_document unchanged_id in
   { state with checking_state; document_state = Parsed }
 
-[%%if rocq ="8.18" || rocq ="8.19"]
-let start_library top opts = Coqinit.start_library ~top opts
-[%%else]
-let start_library top opts =
-  let intern = Vernacinterp.fs_intern in
-  Coqinit.start_library ~intern ~top opts;
-[%%endif]
-
 [%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
 let dirpath_of_top = Coqargs.dirpath_of_top
 [%%else]
 let dirpath_of_top = Coqinit.dirpath_of_top
+[%%endif]
+
+[%%if rocq ="8.18" || rocq ="8.19"]
+let start_library ~doc_id uri ~opts init_vs =
+  ProverThread.run ~doc_id ~timeout:1.0 (fun () -> 
+    Vernacstate.unfreeze_full_state init_vs;
+    let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
+    Coqinit.start_library ~top opts;
+    Vernacstate.freeze_full_state ()) |> get_interruptible_result
+[%%else]
+let start_library ~doc_id uri ~opts init_vs =
+  ProverThread.run ~doc_id ~timeout:1.0 (fun () -> 
+    Vernacstate.unfreeze_full_state init_vs;
+    let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
+    let intern = Vernacinterp.fs_intern in
+    Coqinit.start_library ~intern ~top opts;
+    Vernacstate.freeze_full_state ()) |> get_interruptible_result
 [%%endif]
 
 let local_feedback feedback_queue : event Sel.Event.t =
@@ -334,13 +343,7 @@ let init_feedback_pipe ~doc_id =
 
 let init init_vs ~opts uri ~text =
   let doc_id = Utilities.fresh_doc_id () in
-  let init_vs =
-    ProverThread.run ~doc_id ~timeout:1.0 (fun () ->
-      Vernacstate.unfreeze_full_state init_vs;
-      let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
-      start_library top opts;
-      Vernacstate.freeze_full_state ()) in
-  let init_vs = get_interruptible_result init_vs in
+  let init_vs = start_library ~doc_id uri ~opts init_vs in
   let document = Document.create_document ~doc_id init_vs.Vernacstate.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in
