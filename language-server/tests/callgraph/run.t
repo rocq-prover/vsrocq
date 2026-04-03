@@ -2,9 +2,7 @@ Compare the DocumentManager callgraph tool output against the checked-in referen
 
   $ ./static_callgraph.exe --whitelist static_callgraph_whitelist.txt --safe-barriers static_callgraph_safe_barriers.txt ../../dm/.dm.objs/byte/dm__DocumentManager.cmt
   about -> Dm.QueryManager.about -> Dm.ProverThread.try_run -> [thunk] -> *
-  about -> Dm.QueryManager.about -> Dm.QueryManager.to_types_error -> CErrors.iprint
   check -> Dm.QueryManager.check -> Dm.ProverThread.try_run -> [thunk] -> *
-  check -> Dm.QueryManager.check -> Dm.QueryManager.to_types_error -> CErrors.iprint
   executed_ranges -> Dm.CheckingManager.executed_ranges -> Dm.CheckingManager.overview_until_range -> Dm.CheckingManager.overview_until_range.find_final_range
   get_completions -> Dm.QueryManager.get_completions -> Dm.ProverThread.try_run -> [thunk] -> *
   get_document_proofs -> Protocol.ProofState.mk_proof_block
@@ -40,8 +38,6 @@ Compare the DocumentManager callgraph tool output against the checked-in referen
   interpret_in_background -> Dm.CheckingManager.interpret_in_background -> Dm.CheckingManager.observe -> Dm.ExecutionManager.build_tasks_for -> Dm.ExecutionManager.build_tasks_for.build_tasks
   jump_to_definition -> Dm.QueryManager.jump_to_definition -> Dm.ProverThread.try_run -> [thunk] -> *
   locate -> Dm.QueryManager.locate -> Dm.ProverThread.try_run -> [thunk] -> *
-  locate -> Dm.QueryManager.locate -> Dm.QueryManager.to_types_error -> CErrors.iprint
   print -> Dm.QueryManager.print -> Dm.ProverThread.try_run -> [thunk] -> *
-  print -> Dm.QueryManager.print -> Dm.QueryManager.to_types_error -> CErrors.iprint
   search -> Dm.QueryManager.search -> Dm.ProverThread.try_run -> [thunk] -> *
   start_library -> Coqinit.start_library

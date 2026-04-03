@@ -23,7 +23,7 @@ Tok\.
 Evd\.from_env
 Feedback\.
 CWarnings\.create
-CErrors\.\(anomaly\|noncritical\)
+CErrors\.\(anomaly\|noncritical\|user_err\)
 Names\.Id\.
 Loc\.
 

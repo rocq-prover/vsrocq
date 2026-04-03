@@ -240,14 +240,21 @@ let get_completions ~vs =
 (**************************************************************************)
 
 let to_types_error = function
-  | Result.Ok x -> x
-  | Result.Error e ->
-      let message = Pp.string_of_ppcmds @@ CErrors.iprint e in
+  | Terminated (Ok x) -> Ok x
+  | Terminated (Error x) -> (Error x)
+  | Interrupted -> Error ({message = "Interrupted"; code=None})
+  | Aborted message ->
+      let message = Pp.string_of_ppcmds message in
       Error ({message; code=None})
 
 let to_list = function
-  | Result.Ok x -> x
-  | Result.Error _ -> []
+  | Terminated x -> x
+  | Aborted _ | Interrupted -> []
+
+let to_option = function
+  | Terminated x -> Some x
+  | Aborted _ | Interrupted -> None
+
 
 (* how long a query can take *)
 let timeout = 0.2
@@ -258,9 +265,7 @@ let check ~doc_id ~vs ~pattern =
 
 let jump_to_definition ~doc_id ~vs opattern =
   ProverThread.try_run ~doc_id ~timeout (fun () -> jump_to_definition ~vs opattern) |>
-  function
-  | Result.Ok x -> x
-  | Result.Error _ -> None
+  to_option |> Option.flatten
 
 let locate ~doc_id ~vs ~pattern =
   ProverThread.try_run ~doc_id ~timeout (fun () -> locate ~vs ~pattern) |>
@@ -277,7 +282,7 @@ let print ~doc_id ~vs ~pattern =
 let hover document pos =
   ProverThread.try_run ~doc_id:(Document.id document) ~timeout
     (fun () -> hover document pos) |>
-  Result.to_option |> Option.flatten
+  to_option |> Option.flatten
 
 let about ~doc_id ~vs ~pattern =
   ProverThread.try_run ~doc_id ~timeout (fun () -> about vs ~pattern) |>

@@ -134,4 +134,11 @@ let lift_handled_event update_state inject_events { state; events; update_view; 
   { state = update_state state; events = inject_events events; update_view; notification }
 
 type 'a interruptible_result =
-  Terminated of 'a | Aborted of Exninfo.iexn | Interrupted
+  Terminated of 'a | Aborted of Pp.t | Interrupted
+
+let get_interruptible_result x =
+  match x with
+  | Interrupted -> CErrors.user_err Pp.(str"The operation was interrupted or timed out")
+  | Aborted msg -> CErrors.user_err msg
+  | Terminated x -> x
+
