@@ -210,11 +210,12 @@ let add_using proof proof_using _ =
   Declare.Proof.set_proof_using proof proof_using |> snd
 [%%endif]
 
-let interp_qed_delayed ~proof_using ~state_id ~st =
+let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
+  ProverThread.run ~doc_id ~timeout:1.0 (fun () ->
   let lemmas = Option.get @@ st.Vernacstate.interp.lemmas in
   let f proof =
     let proof = add_using proof proof_using lemmas in
-    let fix_exn = None in (* FIXME *)
+    let fix_exn = None in (* important, otherwise assign is not pure *)
     let f, assign = Future.create_delegate ~blocking:false ~name:"XX" fix_exn in
     Declare.Proof.close_future_proof ~feedback_id:state_id proof f, assign
   in
@@ -226,7 +227,8 @@ let interp_qed_delayed ~proof_using ~state_id ~st =
   let interp = Vernacinterp.interp_qed_delayed_proof ~proof ~st ~control pending in
   (*log fun () -> "interp_qed_delayed done";*)
   let st = { st with interp } in
-  st, success st, assign
+  st, success st, assign) 
+  |> get_interruptible_result
 
 let id_of_first_task ~default = function
   | [] -> default
@@ -398,7 +400,7 @@ type execution_result =
 
 let interrupt_execution { feedback_pipe = { doc_id } } = ProverThread.interrupt ~doc_id
 
-let thread_execute ~doc_id ~state_id ~st ~error_recovery ast =
+let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
   let promise = ProverThread.eventually_run ~doc_id (fun () -> 
     interp_ast ~doc_id ~state_id ~st ~error_recovery ast) in
   let promise_to_result p =
@@ -418,6 +420,18 @@ let thread_execute ~doc_id ~state_id ~st ~error_recovery ast =
           { updates; vs = st; events = []; exec_error }
   in
   WillDo(promise,promise_to_result)
+
+let complete_proof ~doc_id vernac_st assign =
+  ProverThread.run ~doc_id ~timeout:1.0 (fun () ->
+    Vernacstate.LemmaStack.with_top (Option.get @@ vernac_st.Vernacstate.interp.lemmas) ~f:(fun proof ->
+      log (fun () -> "Resolved future");
+      Declare.Proof.return_proof proof))
+  |> (function
+    | Interrupted -> `Exn (CErrors.UserError (Pp.str "error closing proof"), Exninfo.null)
+    | Aborted msg -> `Exn (CErrors.UserError msg, Exninfo.null)
+    | Terminated x -> `Val x)
+  |> assign
+          
 
 let execute st document vs task : state * execution_result =
   match task with
@@ -442,28 +456,23 @@ let execute st document vs task : state * execution_result =
         log (fun () -> Format.asprintf "skipping execution of already executed %s" (Stateid.to_string id));
         st, Done { updates = []; vs; events = []; exec_error }
       else
-        st, thread_execute ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
+        st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
   | PQuery { id; ast; synterp; error_recovery } ->
       let vs = { vs with Vernacstate.synterp } in
-      st, thread_execute ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
+      st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
   | PDelegate { terminator_id; opener_id; last_step_id; tasks; proof_using } ->
       match find_fulfilled_opt document opener_id with
       | Some (Success _) ->
         let job =  { ProofJob.tasks; initial_vernac_state = vs; doc_id = st.feedback_pipe.doc_id; terminator_id } in
         let job_handle = DelegationManager.mk_job_handle (0,terminator_id) in
         (* The proof was successfully opened *)
-        let last_vs, _v, assign = interp_qed_delayed ~state_id:terminator_id ~proof_using ~st:vs in
+        let last_vs, _v, assign = interp_qed_delayed ~doc_id:st.feedback_pipe.doc_id ~state_id:terminator_id ~proof_using ~st:vs in
         let complete_job status =
           try match status with
           | Success None ->
             log (fun () -> "Resolved future (without sending back the witness)");
             assign (`Exn (Failure "no proof",Exninfo.null))
-          | Success (Some vernac_st) ->
-            let f proof =
-              log (fun () -> "Resolved future");
-              assign (`Val (Declare.Proof.return_proof proof))
-            in
-            Vernacstate.LemmaStack.with_top (Option.get @@ vernac_st.Vernacstate.interp.lemmas) ~f
+          | Success (Some vernac_st) -> complete_proof ~doc_id:st.feedback_pipe.doc_id vernac_st assign
           | Failure ((loc,err),_,_) ->
               log (fun () -> "Aborted future");
               assign (`Exn (CErrors.UserError err, Option.fold_left Loc.add_loc Exninfo.null loc))
