@@ -398,22 +398,34 @@ let read_lines file_path =
       in
       loop [])
 
+let sanitize_pattern_line line =
+  let line =
+    match String.index_opt line '#' with
+    | Some comment_start -> String.sub line 0 comment_start
+    | None -> line
+  in
+  String.trim line
+
+let compile_component_regexp pattern =
+  Str.regexp ("^" ^ pattern)
+
 let load_regexps file_path =
   read_lines file_path
-  |> List.map (fun line ->
-       let line =
-         match String.index_opt line '#' with
-         | Some comment_start -> String.sub line 0 comment_start
-         | None -> line
-       in
-       String.trim line)
+  |> List.map sanitize_pattern_line
   |> List.filter (fun line -> line <> "")
-  |> List.map (fun x -> "^" ^ x)
-  |> List.map Str.regexp
+  |> List.map compile_component_regexp
 
-    let load_whitelist = load_regexps
+let load_whitelist file_path =
+  read_lines file_path
+  |> List.map sanitize_pattern_line
+  |> List.filter (fun line -> line <> "")
+  |> List.map (fun line ->
+       line
+       |> Str.split (Str.regexp_string " -> ")
+       |> List.map String.trim
+       |> List.map compile_component_regexp)
 
-    let load_safe_barriers = load_regexps
+let load_safe_barriers = load_regexps
 
 let strip_root_prefix root_prefix display_name =
   let root = join_with_dot root_prefix in
@@ -437,8 +449,26 @@ let display_chain analysis root_prefix chain =
   |> List.map (fun node -> strip_root_prefix root_prefix (display_name analysis node))
   |> compress_display_chain
 
-let is_whitelisted whitelist entry =
-  List.exists (fun regexp -> Str.string_match regexp entry 0) whitelist
+let matches_regexp regexp entry =
+  Str.string_match regexp entry 0
+
+let whitelist_matches_chain_suffix whitelist rendered_chain =
+  List.exists
+    (fun pattern ->
+      let pattern_length = List.length pattern in
+      let chain_length = List.length rendered_chain in
+      if pattern_length > chain_length then false
+      else
+        let rec drop count items =
+          if count <= 0 then items
+          else
+            match items with
+            | [] -> []
+            | _ :: tail -> drop (count - 1) tail
+        in
+        let suffix = drop (chain_length - pattern_length) rendered_chain in
+        List.for_all2 matches_regexp pattern suffix)
+    whitelist
 
 let string_ends_with ~suffix text =
   let suffix_length = String.length suffix in
@@ -450,7 +480,7 @@ let safe_barrier_index safe_barriers rendered_chain =
   let rec loop index = function
     | [] -> None
     | entry :: tail ->
-      if is_whitelisted safe_barriers entry then Some index
+      if List.exists (fun regexp -> matches_regexp regexp entry) safe_barriers then Some index
       else loop (index + 1) tail
   in
   loop 0 rendered_chain
@@ -481,9 +511,8 @@ let write_report whitelist safe_barriers analysis root_prefix channel chains =
         |> display_chain analysis root_prefix
         |> truncate_at_safe_barrier safe_barriers
       in
-      match List.rev rendered_chain with
-      | last :: _ when last <> "*" && is_whitelisted whitelist last -> ()
-      | _ ->
+      if whitelist_matches_chain_suffix whitelist rendered_chain then ()
+      else
         let rendered_line = String.concat " -> " rendered_chain in
         rendered_lines := StringSet.add rendered_line !rendered_lines)
     chains;

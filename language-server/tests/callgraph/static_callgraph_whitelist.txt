@@ -25,6 +25,7 @@ Feedback\.
 CWarnings\.create
 CErrors\.\(anomaly\|noncritical\)
 Names\.Id\.
+Loc\.
 
 # Ours #######################
 Protocol\.LspWrapper\.
@@ -36,5 +37,6 @@ Dm\.RawDocument\.get_character_loc\.loop
 Dm\.RawDocument\.get_character_pos\.loop
 Dm\.Types\.
 get_document_symbols\.
-Internal.string_of_state.string_of_state
-Dm.CheckingManager.shift_overview.shift_loc
+Internal\.string_of_state\.string_of_state
+Dm\.CheckingManager\.shift_overview\.shift_loc
+Dm\.Log\.mk_log -> CErrors\.iprint
