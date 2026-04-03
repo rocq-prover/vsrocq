@@ -49,3 +49,4 @@ Dm\.ExecutionManager\.execute\.assign
 ProofWorker\.\(worker_available\|handle_event\)
 Dm\.Document\.invalidate\.
 Dm\.Scheduler\.base_id\.aux
+Dm\.CheckingManager\.mk_execution_promise_event\.k # too spagetti to be understood

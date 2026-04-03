@@ -30,7 +30,7 @@ let%test_unit "goals: encoding after replay from top" =
   let exec_events = DocumentManager.interpret_to_next () in
   let todo = Sel.Todo.(add empty exec_events) in
   let st = handle_dm_events todo st in
-  let proof = Stdlib.Option.get (DocumentManager.get_proof st None) in
+  let proof = Stdlib.Option.get (DocumentManager.Internal.get_proof st None) in
   let messages = DocumentManager.get_messages st (Option.value_exn @@ DocumentManager.Internal.observe_id st) in
   (*added bogus values for the other code path (getting everything as strings)*)
   let _json = Protocol.ExtProtocol.Notification.Server.ProofViewParams.yojson_of_t { proof = Some proof; messages; pp_proof = None; pp_messages = []; range = Range.top() } in
@@ -42,5 +42,5 @@ let%test_unit "goals: proof is available after error" =
   let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add empty exec_events) in
   let st = handle_dm_events todo st in
-  let proof = DocumentManager.get_proof st None in
+  let proof = DocumentManager.Internal.get_proof st None in
   [%test_eq: bool] true (Option.is_some proof)
