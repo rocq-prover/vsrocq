@@ -79,9 +79,7 @@ Compare the DocumentManager callgraph tool output against the checked-in referen
   handle_event -> validate_document -> Dm.CheckingManager.reset_overview -> Dm.CheckingManager.build_processed_overview -> Stdlib.List.fold_right -> Dm.CheckingManager.update_processed -> Dm.CheckingManager.log -> Dm.Log.mk_log -> CErrors.iprint
   handle_feedback_event -> Dm.Document.append_feedback -> Dm.Document.log -> Dm.Log.mk_log -> CErrors.iprint
   hover -> Dm.QueryManager.hover -> Dm.ProverThread.try_run -> [thunk] -> *
-  init -> Vernacstate.freeze_full_state
-  init -> Vernacstate.unfreeze_full_state
-  init -> start_library -> Coqinit.start_library
+  init -> Dm.ProverThread.run -> *
   interpret_in_background -> Dm.CheckingManager.interpret_in_background -> Dm.CheckingManager.log -> Dm.Log.mk_log -> CErrors.iprint
   interpret_in_background -> Dm.CheckingManager.interpret_in_background -> Dm.CheckingManager.observe -> Dm.ExecutionManager.build_tasks_for -> Dm.ExecutionManager.build_tasks_for.build_tasks
   interpret_in_background -> Dm.CheckingManager.interpret_in_background -> Dm.CheckingManager.observe -> Dm.ExecutionManager.build_tasks_for -> Dm.ExecutionManager.log -> Dm.Log.mk_log -> CErrors.iprint
@@ -94,7 +92,6 @@ Compare the DocumentManager callgraph tool output against the checked-in referen
   print -> Dm.QueryManager.print -> Dm.ProverThread.try_run -> [thunk] -> *
   print -> Dm.QueryManager.print -> Dm.QueryManager.to_types_error -> CErrors.iprint
   print -> rocq_state_for -> Option.map -> Dm.Utilities.get_vernac_state -> Dm.DelegationManager.log -> Dm.Log.mk_log -> CErrors.iprint
-  reset -> Vernacstate.unfreeze_full_state
   rocq_state_for -> Option.map -> Dm.Utilities.get_vernac_state -> Dm.DelegationManager.log -> Dm.Log.mk_log -> CErrors.iprint
   search -> Dm.QueryManager.search -> Dm.ProverThread.try_run -> [thunk] -> *
   search -> rocq_state_for -> Option.map -> Dm.Utilities.get_vernac_state -> Dm.DelegationManager.log -> Dm.Log.mk_log -> CErrors.iprint
