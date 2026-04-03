@@ -1,13 +1,11 @@
 Compare the DocumentManager callgraph tool output against the checked-in reference.
 
   $ ./static_callgraph.exe --whitelist static_callgraph_whitelist.txt --safe-barriers static_callgraph_safe_barriers.txt ../../dm/.dm.objs/byte/dm__DocumentManager.cmt
-  Internal.string_of_state -> Internal.string_of_state.string_of_state
   Internal.validate_document -> validate_document -> Dm.CheckingManager.invalidate -> Dm.ExecutionManager.invalidate -> Dm.ExecutionManager.log -> Dm.Log.mk_log -> CErrors.iprint
   Internal.validate_document -> validate_document -> Dm.CheckingManager.reset_overview -> Dm.CheckingManager.build_processed_overview -> Stdlib.List.fold_right -> Dm.CheckingManager.update_processed -> Dm.CheckingManager.log -> Dm.Log.mk_log -> CErrors.iprint
   about -> Dm.QueryManager.about -> Dm.ProverThread.try_run -> [thunk] -> *
   about -> Dm.QueryManager.about -> Dm.QueryManager.to_types_error -> CErrors.iprint
   about -> rocq_state_for -> Option.map -> Dm.Utilities.get_vernac_state -> Dm.DelegationManager.log -> Dm.Log.mk_log -> CErrors.iprint
-  apply_text_edits -> Dm.CheckingManager.shift_overview -> Dm.CheckingManager.shift_overview.shift_loc
   apply_text_edits -> Dm.Document.shift_feedbacks_and_checking_errors -> Dm.Document.shift_sentence -> Dm.Utilities.shift_checking_result -> Dm.Utilities.shift_loc -> Loc.shift_loc
   apply_text_edits -> Dm.Document.shift_feedbacks_and_checking_errors -> Dm.Document.shift_sentence -> Dm.Utilities.shift_checking_result -> Dm.Utilities.shift_loc -> Loc.unloc
   apply_text_edits -> Dm.Document.shift_feedbacks_and_checking_errors -> Dm.Document.shift_sentence -> Dm.Utilities.shift_checking_result -> Dm.Utilities.shift_quickfix -> Dm.Utilities.shift_1qf -> Dm.Utilities.shift_loc -> Loc.shift_loc

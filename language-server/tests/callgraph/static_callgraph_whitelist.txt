@@ -9,7 +9,7 @@ Memprof_limits\.Token\.
 Str\.
 Sel\.\(Promise\|Event\|On\)\.
 Sel\.now
-
+Mutex\.
 
 # Rocq ######################
 CList\.

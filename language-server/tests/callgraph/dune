@@ -1,6 +1,7 @@
 (executable
  (name static_callgraph)
  (modules static_callgraph)
+ (preprocess (pps ppx_optcomp))
  (libraries compiler-libs.common str))
 
 (cram

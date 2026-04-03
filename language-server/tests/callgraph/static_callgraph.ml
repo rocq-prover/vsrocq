@@ -1,3 +1,4 @@
+
 open Cmt_format
 open Typedtree
 
@@ -164,6 +165,24 @@ let add_callsite_node analysis callee_target loc =
   let display_names = ensure_display_name analysis.display_names node callee_display_name in
   { analysis with graph; local_nodes; display_names }, node
 
+[%%if ocaml_version < (5, 0, 0)]
+let iter_apply_arguments args handle_argument =
+  List.iter
+    (fun (_, argument) ->
+      match argument with
+      | None -> ()
+      | Some argument -> handle_argument argument)
+    args
+[%%else]
+let iter_apply_arguments args handle_argument =
+  List.iter
+    (fun (_, argument) ->
+      match argument with
+      | Omitted () -> ()
+      | Arg argument -> handle_argument argument)
+    args
+[%%endif]
+
 let rec iter_function_calls analysis source expression =
   let analysis_ref = ref analysis in
   let record_call current_source path =
@@ -185,26 +204,20 @@ let rec iter_function_calls analysis source expression =
                 self.expr self callee;
                 None
             in
-            List.iter
-              (fun (_, argument) ->
-                match argument with
-                | Omitted () -> ()
-                | Arg argument ->
-                  begin match argument.exp_desc with
-                  | Texp_function _ ->
-                    let thunk_source =
-                      match callee_target with
-                      | Some callee_target ->
-                        let analysis, callsite_node = add_callsite_node !analysis_ref callee_target exp.exp_loc in
-                        let graph = add_edge analysis.graph source callsite_node in
-                        analysis_ref := { analysis with graph };
-                        callsite_node
-                      | None -> source
-                    in
-                    analysis_ref := iter_function_calls !analysis_ref thunk_source argument
-                  | _ -> self.expr self argument
-                  end)
-              args
+            iter_apply_arguments args (fun argument ->
+              match argument.exp_desc with
+              | Texp_function _ ->
+                let thunk_source =
+                  match callee_target with
+                  | Some callee_target ->
+                    let analysis, callsite_node = add_callsite_node !analysis_ref callee_target exp.exp_loc in
+                    let graph = add_edge analysis.graph source callsite_node in
+                    analysis_ref := { analysis with graph };
+                    callsite_node
+                  | None -> source
+                in
+                analysis_ref := iter_function_calls !analysis_ref thunk_source argument
+              | _ -> self.expr self argument)
           | _ -> ()
         end;
         match exp.exp_desc with
@@ -222,6 +235,29 @@ let module_name module_binding =
 
 let bound_idents pattern =
   Typedtree.pat_bound_idents pattern
+
+[%%if ocaml_version < (5, 0, 0)]
+let collect_module_expr_desc collect_structure collect_module_expr prefix analysis = function
+  | Tmod_structure structure -> collect_structure prefix analysis structure
+  | Tmod_functor (_, body) -> collect_module_expr prefix analysis body
+  | Tmod_apply (module_expr, argument, _) ->
+    let analysis = collect_module_expr prefix analysis module_expr in
+    collect_module_expr prefix analysis argument
+  | Tmod_constraint (module_expr, _, _, _) -> collect_module_expr prefix analysis module_expr
+  | Tmod_unpack (_, _) -> analysis
+  | Tmod_ident _ -> analysis
+[%%else]
+let collect_module_expr_desc collect_structure collect_module_expr prefix analysis = function
+  | Tmod_structure structure -> collect_structure prefix analysis structure
+  | Tmod_functor (_, body) -> collect_module_expr prefix analysis body
+  | Tmod_apply (module_expr, argument, _) ->
+    let analysis = collect_module_expr prefix analysis module_expr in
+    collect_module_expr prefix analysis argument
+  | Tmod_apply_unit module_expr -> collect_module_expr prefix analysis module_expr
+  | Tmod_constraint (module_expr, _, _, _) -> collect_module_expr prefix analysis module_expr
+  | Tmod_unpack (_, _) -> analysis
+  | Tmod_ident _ -> analysis
+[%%endif]
 
 let rec collect_structure prefix analysis structure =
   List.fold_left (collect_structure_item prefix) analysis structure.str_items
@@ -259,16 +295,7 @@ and collect_value_binding prefix analysis binding =
     List.fold_left (fun analysis source -> iter_function_calls analysis source binding.vb_expr) analysis sources
 
 and collect_module_expr prefix analysis module_expr =
-  match module_expr.mod_desc with
-  | Tmod_structure structure -> collect_structure prefix analysis structure
-  | Tmod_functor (_, body) -> collect_module_expr prefix analysis body
-  | Tmod_apply (module_expr, argument, _) ->
-    let analysis = collect_module_expr prefix analysis module_expr in
-    collect_module_expr prefix analysis argument
-  | Tmod_apply_unit module_expr -> collect_module_expr prefix analysis module_expr
-  | Tmod_constraint (module_expr, _, _, _) -> collect_module_expr prefix analysis module_expr
-  | Tmod_unpack (_, _) -> analysis
-  | Tmod_ident _ -> analysis
+  collect_module_expr_desc collect_structure collect_module_expr prefix analysis module_expr.mod_desc
 
 let maybe_read_cmt file_path =
   try Some (read_cmt file_path) with
