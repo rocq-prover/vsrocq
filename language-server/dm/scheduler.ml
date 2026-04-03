@@ -148,7 +148,11 @@ let find_proof_using (ast : Synterp.vernac_control_entry) =
   match ast.CAst.v.expr with
   | VernacSynPure(VernacProof(_,Some e)) -> Some e
   | _ -> log (fun () -> "no ast for proof using, looking at a default");
-         Proof_using.get_default_proof_using ()
+      None
+  (* FIXME: once https://github.com/rocq-prover/rocq/pull/21887 gets in, we can really do this:
+       Proof_using.get_default_proof_using ()
+     when parsing the sentence and store it in the ast (or next to it) directly.
+  *)
 
 (* TODO: There is also a #[using] annotation on the proof opener we should
    take into account (but it is not on a proof sentence, but rather
