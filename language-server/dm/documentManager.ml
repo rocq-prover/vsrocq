@@ -333,13 +333,14 @@ let init_feedback_pipe ~doc_id =
   feedback_pipe, feedback
 
 let init init_vs ~opts uri ~text =
-  Vernacstate.unfreeze_full_state init_vs;
-  let top = try (dirpath_of_top (TopPhysical (DocumentUri.to_path uri))) with
-    e -> raise e
-  in
-  start_library top opts;
-  let init_vs = Vernacstate.freeze_full_state () in
   let doc_id = Utilities.fresh_doc_id () in
+  let init_vs =
+    ProverThread.run ~doc_id ~timeout:1.0 (fun () ->
+      Vernacstate.unfreeze_full_state init_vs;
+      let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
+      start_library top opts;
+      Vernacstate.freeze_full_state ()) in
+  let init_vs = Result.fold ~ok:(fun x -> x) ~error:Exninfo.iraise init_vs in
   let document = Document.create_document ~doc_id init_vs.Vernacstate.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in
@@ -350,7 +351,6 @@ let init init_vs ~opts uri ~text =
 let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
   Utilities.feedback_pipe_cleanup feedback_pipe;
   let text = RawDocument.text @@ Document.raw_document document in
-  Vernacstate.unfreeze_full_state init_vs; (* Why? *)
   let doc_id = Utilities.fresh_doc_id () in
   let document = Document.create_document ~doc_id init_vs.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
