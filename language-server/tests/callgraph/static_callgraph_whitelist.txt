@@ -1,0 +1,39 @@
+# External libs (including stdlib) ##################
+Uutf\.
+Option\.
+List\.
+Int\.
+Unix\.
+Lsp\.
+Memprof_limits\.Token\.
+Str\.
+Sel\.\(Promise\|Event\|On\)\.
+Sel\.now
+
+
+# Rocq ######################
+CList\.
+Stateid\.
+Pp\.
+Exninfo\.
+Quickfix\.
+Gramlib\.Stream\.
+Tok\.
+Evd\.from_env
+Feedback\.
+CWarnings\.create
+CErrors\.\(anomaly\|noncritical\)
+Names\.Id\.
+
+# Ours #######################
+Protocol\.LspWrapper\.
+Protocol\.Printing\.
+LM\.
+SM\.
+Dm\.Log\.
+Dm\.RawDocument\.get_character_loc\.loop
+Dm\.RawDocument\.get_character_pos\.loop
+Dm\.Types\.
+get_document_symbols\.
+Internal.string_of_state.string_of_state
+Dm.CheckingManager.shift_overview.shift_loc
