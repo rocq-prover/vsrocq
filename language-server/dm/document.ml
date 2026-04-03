@@ -146,9 +146,6 @@ let pp_event fmt = function
 
 type events = event Sel.Event.t list
 
-let create_parse_event ~doc_id f parse_state =
-  let priority = Some PriorityManager.parsing in
-  Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id (fun () -> f parse_state)) (fun x -> Parse x)
 let range_of_sentence raw (sentence : sentence) =
   let start = RawDocument.position_of_loc raw sentence.start in
   let end_ = RawDocument.position_of_loc raw sentence.stop in
@@ -777,6 +774,9 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
       junk_sentence_end stream;
       handle_parse_error start start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state
   end
+and create_parse_event ~doc_id parse_state =
+  let priority = Some PriorityManager.parsing in
+  Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id (fun () -> parse_more parse_state)) (fun x -> Parse x)
 
 
 let rec unchanged_id id = function
@@ -849,7 +849,7 @@ let validate_document ({ parsed_loc; raw_doc; cancel_handle; doc_id } as documen
   log (fun () -> Format.sprintf "Parsing more from pos %i" stop);
   let started = Unix.gettimeofday () in
   let parsed_state = {stop; top_id;synterp_state; stream; raw=raw_doc; parsed=[]; errors=[]; parsed_comments=[]; loc=None; started; previous_document=document} in
-  let event = create_parse_event ~doc_id parse_more parsed_state in
+  let event = create_parse_event ~doc_id parsed_state in
   let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
   {document with cancel_handle}, [event]
 
@@ -882,7 +882,7 @@ let handle_event document = function
 | Parse (Sel.Promise.Fulfilled (Aborted e)) -> CErrors.user_err e
 | Parse (Sel.Promise.Fulfilled (Terminated (true,parse_state))) -> 
   (* let event = create_parse_event parse_state in *)
-  let event = create_parse_event ~doc_id:document.doc_id parse_more parse_state in
+  let event = create_parse_event ~doc_id:document.doc_id parse_state in
   let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
   {document with cancel_handle}, [event], None
 | Parse (Sel.Promise.Fulfilled (Terminated (false,parse_state))) -> 
