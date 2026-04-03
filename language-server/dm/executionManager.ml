@@ -410,7 +410,7 @@ let thread_execute ~doc_id ~state_id ~st ~error_recovery ast =
           let updates = [state_id, v] in
           let exec_error = exec_error_of_execution_status state_id v in
           { updates; vs; events = []; exec_error }
-      | Aborted e -> Exninfo.iraise e (* bug in vsrocq *)
+      | Aborted e -> CErrors.user_err e (* bug in vsrocq *)
       | Interrupted ->
           let v = error_no_resiliency None None Pp.(str "Interrupted by the user") in
           let updates = [state_id, v] in
