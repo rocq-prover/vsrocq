@@ -23,7 +23,7 @@ val run :
   doc_id:Types.document_id ->
   timeout:float ->
   (unit -> 'a) ->
-  ('a, Exninfo.iexn) Result.t
+  'a Types.interruptible_result
 (** [run ~doc_id ~timeout thunk] interrupts any running thunk, then runs [thunk] with
     [timeout]. The interrupted thunk, if any, will eventually be re-run *)
 
@@ -31,7 +31,7 @@ val try_run :
   doc_id:Types.document_id ->
   timeout:float ->
   (unit -> 'a) ->
-  ('a, Exninfo.iexn) Result.t
+  'a Types.interruptible_result
 (** [try_run ~doc_id ~timeout thunk] runs [thunk] with [timeout] if no other thunk
     is running. *)
 

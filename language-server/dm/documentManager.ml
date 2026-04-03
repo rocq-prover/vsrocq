@@ -340,7 +340,7 @@ let init init_vs ~opts uri ~text =
       let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
       start_library top opts;
       Vernacstate.freeze_full_state ()) in
-  let init_vs = Result.fold ~ok:(fun x -> x) ~error:Exninfo.iraise init_vs in
+  let init_vs = get_interruptible_result init_vs in
   let document = Document.create_document ~doc_id init_vs.Vernacstate.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in

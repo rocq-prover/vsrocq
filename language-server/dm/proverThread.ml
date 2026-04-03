@@ -109,7 +109,7 @@ let limit f token =
   | Terminated (Ok x) -> Terminated x
   | exception e ->
       let e, info = Exninfo.capture e in
-      Aborted (e, info)
+      Aborted (CErrors.iprint (e, info))
 
 let busy_wait timeout p token =
   let timeout = Unix.gettimeofday () +. timeout in
@@ -119,11 +119,9 @@ let busy_wait timeout p token =
   Memprof_limits.Token.set token;
   try
     match Sel.Promise.get p with
-    | Sel.Promise.Fulfilled (Terminated x) -> Result.Ok x
-    | Sel.Promise.Fulfilled (Aborted e) -> Result.Error e
-    | Sel.Promise.Fulfilled Interrupted -> Result.Error (Exninfo.capture @@ Failure "Rocq times out")
+    | Sel.Promise.Fulfilled x -> x
     | Sel.Promise.Rejected e -> raise e (* bug *)
-  with Failure _ -> Result.Error (Exninfo.capture @@ Failure "Rocq times out")
+  with Failure _ -> Aborted (Pp.str "Rocq times out")
 
 
 let run ~doc_id ~timeout f =
@@ -159,7 +157,7 @@ let try_run ~doc_id ~timeout f =
     busy_wait timeout p token
   end else begin
     Mutex.unlock jobs_mutex;
-    Result.Error (Exninfo.capture @@ Failure "Rocq is busy")
+    Aborted (Pp.str "Rocq is busy")
   end
 
 
