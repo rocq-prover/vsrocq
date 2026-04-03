@@ -148,7 +148,7 @@ type events = event Sel.Event.t list
 
 let create_parse_event ~doc_id f parse_state =
   let priority = Some PriorityManager.parsing in
-  Sel.On.promise ~name:"Parse" ?priority (ProverThread.run ~doc_id (fun () -> f parse_state)) (fun x -> Parse x)
+  Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id (fun () -> f parse_state)) (fun x -> Parse x)
 let range_of_sentence raw (sentence : sentence) =
   let start = RawDocument.position_of_loc raw sentence.start in
   let end_ = RawDocument.position_of_loc raw sentence.stop in

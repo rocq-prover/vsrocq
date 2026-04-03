@@ -1,3 +1,4 @@
 # Truncate calls that cross well-understood worker boundaries.
-Dm\.ProverThread\.try_run
 Dm\.ProverThread\.run
+Dm\.ProverThread\.eventually_run
+Dm\.ProverThread\.try_run

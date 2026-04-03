@@ -10,6 +10,7 @@ Str\.
 Sel\.\(Promise\|Event\|On\)\.
 Sel\.now
 Mutex\.
+Queue\.
 
 # Rocq ######################
 CList\.

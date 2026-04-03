@@ -42,7 +42,7 @@ Compare the DocumentManager callgraph tool output against the checked-in referen
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.interp_qed_delayed -> Vernacinterp.interp_qed_delayed_proof
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.interp_qed_delayed -> Vernacstate.LemmaStack.with_top
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.log -> Dm.Log.mk_log -> CErrors.iprint
-  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.thread_execute -> Dm.ProverThread.run -> *
+  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.thread_execute -> Dm.ProverThread.eventually_run -> *
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> ProofWorker.worker_available
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Vernacstate.LemmaStack.with_top
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute_promise -> Dm.CheckingManager.post_execute -> Dm.CheckingManager.execution_finished -> Dm.CheckingManager.log -> Dm.Log.mk_log -> CErrors.iprint
@@ -59,7 +59,7 @@ Compare the DocumentManager callgraph tool output against the checked-in referen
   handle_event -> Dm.CheckingManager.validate_document -> Dm.CheckingManager.interpret_in_background -> Dm.CheckingManager.log -> Dm.Log.mk_log -> CErrors.iprint
   handle_event -> Dm.CheckingManager.validate_document -> Dm.CheckingManager.interpret_in_background -> Dm.CheckingManager.observe -> Dm.ExecutionManager.build_tasks_for -> Dm.ExecutionManager.build_tasks_for.build_tasks
   handle_event -> Dm.CheckingManager.validate_document -> Dm.CheckingManager.interpret_in_background -> Dm.CheckingManager.observe -> Dm.ExecutionManager.build_tasks_for -> Dm.ExecutionManager.log -> Dm.Log.mk_log -> CErrors.iprint
-  handle_event -> Dm.Document.handle_event -> Dm.Document.create_parse_event -> Dm.ProverThread.run -> *
+  handle_event -> Dm.Document.handle_event -> Dm.Document.create_parse_event -> Dm.ProverThread.eventually_run -> *
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.add_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.DelegationManager.log -> Dm.Log.mk_log -> CErrors.iprint
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.add_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.base_id -> Dm.Scheduler.base_id.aux
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.add_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Dm.DelegationManager.log -> Dm.Log.mk_log -> CErrors.iprint
@@ -73,7 +73,7 @@ Compare the DocumentManager callgraph tool output against the checked-in referen
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.patch_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Dm.DelegationManager.log -> Dm.Log.mk_log -> CErrors.iprint
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.patch_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Proof_using.get_default_proof_using
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.log -> Dm.Log.mk_log -> CErrors.iprint
-  handle_event -> Dm.Document.validate_document -> Dm.Document.create_parse_event -> Dm.ProverThread.run -> *
+  handle_event -> Dm.Document.validate_document -> Dm.Document.create_parse_event -> Dm.ProverThread.eventually_run -> *
   handle_event -> Dm.Document.validate_document -> Dm.Document.log -> Dm.Log.mk_log -> CErrors.iprint
   handle_event -> validate_document -> Dm.CheckingManager.invalidate -> Dm.ExecutionManager.invalidate -> Dm.ExecutionManager.log -> Dm.Log.mk_log -> CErrors.iprint
   handle_event -> validate_document -> Dm.CheckingManager.reset_overview -> Dm.CheckingManager.build_processed_overview -> Stdlib.List.fold_right -> Dm.CheckingManager.update_processed -> Dm.CheckingManager.log -> Dm.Log.mk_log -> CErrors.iprint
