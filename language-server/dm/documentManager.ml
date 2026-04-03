@@ -188,6 +188,7 @@ let get_info_messages st pos =
 
 
 let get_document_proofs st =
+  ProverThread.run ~doc_id:st.feedback_pipe.doc_id ~timeout:10.0 (fun () ->
   let outline = Document.outline st.document in
   let is_theorem Document.{ type_ } =
     match type_ with
@@ -209,7 +210,8 @@ let get_document_proofs st =
       ProofState.mk_proof_block statement steps range
   in
   let proofs, _  = List.partition is_theorem outline in
-  List.map mk_proof_block proofs
+  List.map mk_proof_block proofs)
+  |> get_interruptible_result
 
 let to_document_symbol elem =
   let Document.{name; statement; range; type_} = elem in
@@ -484,13 +486,14 @@ let executed_ranges st =
 let observe_id_range st = CheckingManager.observe_id_range st.document st.checking_state
 
 let get_messages st id = CheckingManager.get_messages st.document id
-let get_proof st id = CheckingManager.get_proof st.document st.checking_state id
 let reset_to_top st =
   { st with checking_state = CheckingManager.reset_to_top st.checking_state }
 
 module Internal = struct
           
   let document st = st.document
+
+  let get_proof st id = CheckingManager.Internal.get_proof st.document st.checking_state id
           
   let raw_document st = 
     Document.raw_document st.document
