@@ -165,6 +165,29 @@ let add_callsite_node analysis callee_target loc =
   let display_names = ensure_display_name analysis.display_names node callee_display_name in
   { analysis with graph; local_nodes; display_names }, node
 
+let rec type_is_function ty =
+  match Types.get_desc ty with
+  | Types.Tarrow _ -> true
+  | Types.Tlink ty -> type_is_function ty
+  | Types.Tsubst (ty, _) -> type_is_function ty
+  | Types.Tpoly (ty, _) -> type_is_function ty
+  | _ -> false
+
+let expression_is_function exp =
+  type_is_function exp.exp_type
+
+[%%if ocaml_version < (5, 0, 0)]
+let function_argument_cases exp =
+  match exp.exp_desc with
+  | Texp_match (_, cases, _) -> Some cases
+  | _ -> None
+[%%else]
+let function_argument_cases exp =
+  match exp.exp_desc with
+  | Texp_match (_, cases, _, _) -> Some cases
+  | _ -> None
+[%%endif]
+
 [%%if ocaml_version < (5, 0, 0)]
 let iter_apply_arguments args handle_argument =
   List.iter
@@ -191,6 +214,31 @@ let rec iter_function_calls analysis source expression =
     analysis_ref := { analysis with graph };
     target
   in
+  let callback_source callee_target loc =
+    let analysis, callsite_node = add_callsite_node !analysis_ref callee_target loc in
+    let graph = add_edge analysis.graph source callsite_node in
+    analysis_ref := { analysis with graph };
+    callsite_node
+  in
+  let rec record_function_argument_call current_source exp =
+    match exp.exp_desc with
+    | Texp_ident (path, _, _) ->
+      ignore (record_call current_source path)
+    | Texp_let (_, _, body)
+    | Texp_sequence (_, body) ->
+      record_function_argument_call current_source body
+    | Texp_ifthenelse (_, then_exp, else_exp) ->
+      record_function_argument_call current_source then_exp;
+      Option.iter (record_function_argument_call current_source) else_exp
+    | Texp_function _
+    | Texp_apply _ ->
+      ()
+    | _ ->
+      begin match function_argument_cases exp with
+      | Some cases -> List.iter (fun case -> record_function_argument_call current_source case.c_rhs) cases
+      | None -> ()
+      end
+  in
   let iterator =
     { Tast_iterator.default_iterator with
       expr = (fun self exp ->
@@ -205,19 +253,16 @@ let rec iter_function_calls analysis source expression =
                 None
             in
             iter_apply_arguments args (fun argument ->
-              match argument.exp_desc with
-              | Texp_function _ ->
+              if expression_is_function argument then begin
                 let thunk_source =
                   match callee_target with
-                  | Some callee_target ->
-                    let analysis, callsite_node = add_callsite_node !analysis_ref callee_target exp.exp_loc in
-                    let graph = add_edge analysis.graph source callsite_node in
-                    analysis_ref := { analysis with graph };
-                    callsite_node
+                  | Some callee_target -> callback_source callee_target exp.exp_loc
                   | None -> source
                 in
+                record_function_argument_call thunk_source argument;
                 analysis_ref := iter_function_calls !analysis_ref thunk_source argument
-              | _ -> self.expr self argument)
+              end else
+                self.expr self argument)
           | _ -> ()
         end;
         match exp.exp_desc with

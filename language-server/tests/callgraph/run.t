@@ -4,8 +4,10 @@ Problematic calls
   get_document_proofs -> Protocol.ProofState.mk_proof_block
   get_document_proofs -> Protocol.ProofState.mk_proof_statement
   get_document_proofs -> Stdlib.List.map -> Protocol.ProofState.mk_proof_step
-  get_proof -> Dm.CheckingManager.get_proof -> Protocol.ProofState.get_proof
-  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.get_proof -> Protocol.ProofState.get_proof
+  get_proof -> Dm.CheckingManager.get_proof -> Option.bind -> Protocol.ProofState.get_proof
+  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.CheckingManager.mk_execution_promise_event -> Dm.CheckingManager.mk_execution_promise_event.k
+  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.get_proof -> Option.bind -> Protocol.ProofState.get_proof
+  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.get_string_proof -> Option.bind -> Protocol.PpProofState.get_proof
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.add_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Proof_using.get_default_proof_using
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.patch_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Proof_using.get_default_proof_using
 
@@ -18,6 +20,7 @@ Calls sequentialized via ProverThread APIs
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.complete_proof -> Dm.ProverThread.run -> *
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.interp_qed_delayed -> Dm.ProverThread.run -> *
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.promise_execution -> Dm.ProverThread.eventually_run -> *
+  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> ProofWorker.worker_available -> *
   handle_event -> Dm.Document.handle_event -> Dm.Document.create_parse_event -> Dm.ProverThread.eventually_run -> *
   handle_event -> Dm.Document.validate_document -> Dm.Document.create_parse_event -> Dm.ProverThread.eventually_run -> *
   hover -> Dm.QueryManager.hover -> Dm.ProverThread.try_run -> [thunk] -> *
