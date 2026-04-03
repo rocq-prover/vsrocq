@@ -1,0 +1,16 @@
+(executable
+ (name static_callgraph)
+ (modules static_callgraph)
+ (preprocess (staged_pps ppx_optcomp ppx_deriving.ord))
+ (libraries compiler-libs.common str))
+
+(cram
+ (deps
+  static_callgraph.exe
+  static_callgraph_safe_barriers.txt
+  static_callgraph_whitelist.txt
+  (glob_files ../../dm/.dm.objs/byte/*.cmt)))
+
+(alias
+ (name documentManager)
+ (deps (alias runtest)))
