@@ -399,7 +399,7 @@ type execution_result =
 let interrupt_execution { feedback_pipe = { doc_id } } = ProverThread.interrupt ~doc_id
 
 let thread_execute ~doc_id ~state_id ~st ~error_recovery ast =
-  let promise = ProverThread.run ~doc_id (fun () -> 
+  let promise = ProverThread.eventually_run ~doc_id (fun () -> 
     interp_ast ~doc_id ~state_id ~st ~error_recovery ast) in
   let promise_to_result p =
     match p with
