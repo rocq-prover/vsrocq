@@ -421,7 +421,6 @@ let real_interpret_to_previous document st check_mode =
       | Some { start } -> (
           match Document.find_sentence_before document start with
           | None ->
-              Vernacstate.unfreeze_full_state (ExecutionManager.get_initial_vernac_state st.execution_state);
               let range = Range.top () in
               ({ st with observe_id = Top }, [ mk_move_cursor_event range; mk_proof_view_event_empty ])
           | Some { id } ->

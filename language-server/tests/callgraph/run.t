@@ -13,7 +13,6 @@ Problematic calls
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.interp_qed_delayed -> Vernacstate.LemmaStack.with_top
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Vernacstate.LemmaStack.with_top
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.get_proof -> Protocol.ProofState.get_proof
-  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.real_interpret_to_previous -> Vernacstate.unfreeze_full_state
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.add_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Proof_using.get_default_proof_using
   handle_event -> Dm.Document.handle_event -> Dm.Document.handle_invalidate -> Dm.Document.invalidate -> Dm.Document.patch_sentence -> Dm.Scheduler.schedule_sentence -> Dm.Scheduler.push_state -> Dm.Scheduler.is_opaque_flat_proof -> Dm.Scheduler.find_proof_using_annotation -> Dm.Scheduler.find_proof_using -> Proof_using.get_default_proof_using
 
