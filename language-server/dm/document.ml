@@ -879,7 +879,7 @@ let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; p
 let handle_event document = function
 | Parse (Sel.Promise.Rejected e) -> raise e
 | Parse (Sel.Promise.Fulfilled Interrupted) -> assert false
-| Parse (Sel.Promise.Fulfilled (Aborted e)) -> Exninfo.iraise e
+| Parse (Sel.Promise.Fulfilled (Aborted e)) -> CErrors.user_err e
 | Parse (Sel.Promise.Fulfilled (Terminated (true,parse_state))) -> 
   (* let event = create_parse_event parse_state in *)
   let event = create_parse_event ~doc_id:document.doc_id parse_more parse_state in
