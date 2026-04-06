@@ -145,7 +145,7 @@
           "vsrocq.goals.auto": {
             "scope": "window",
             "type": "boolean",
-            "default": "true",
+            "default": true,
             "description": "Should the goal view automatically display when navigating a rocq document."
           },
           "vsrocq.goals.display": {
