@@ -74,6 +74,7 @@ const app = () => {
 
             case 'printResponse':
                 handlePrintNotification(msg.data.result);
+                break;
 
             case 'launchedSearch': 
                 //TODO: Add UI elements to show user the searching state

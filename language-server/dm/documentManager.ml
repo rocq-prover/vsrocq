@@ -627,9 +627,14 @@ let locate st pos ~pattern =
 let print st pos ~pattern = 
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
   let sigma, env = get_context st pos in
-    let qid = parse_entry st loc (smart_global) pattern in
-    let udecl = None in (*TODO*)
-    Ok ( pp_of_rocqpp @@ print_name env sigma qid udecl )
+    try
+      let qid = parse_entry st loc (smart_global) pattern in
+      let udecl = None in (*TODO*)
+      Ok ( pp_of_rocqpp @@ print_name env sigma qid udecl )
+    with e ->
+      let e, info = Exninfo.capture e in
+      let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
+      Error ({message; code=None})
 
 (* Ignore nested proofs option (lives in STM) instead of failing with
    anomaly when it is set in a .vo we Require.
