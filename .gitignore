@@ -13,3 +13,4 @@ language-server/mcpserver/dune
 client/out/
 .DS_Store
 result
+*.vsix
