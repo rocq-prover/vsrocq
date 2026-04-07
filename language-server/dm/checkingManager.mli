@@ -77,6 +77,11 @@ val get_messages :
   sentence_id ->
   (DiagnosticSeverity.t * Protocol.Printing.pp) list
 
+val get_string_messages :
+  document ->
+  sentence_id ->
+  (DiagnosticSeverity.t * string) list
+
 val handle_event :
   uri:Lsp.Uri.t ->
   document ->

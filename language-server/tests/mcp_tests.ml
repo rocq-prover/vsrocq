@@ -25,7 +25,7 @@ open Mcpserver.McpBase.Content
 
 let%test_unit "mcp.printing.format_interp_result.no_proof" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 1." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   let result = Mcpserver.McpPrinting.format_interp_result st in
@@ -36,7 +36,7 @@ let%test_unit "mcp.printing.format_interp_result.no_proof" =
 let%test_unit "mcp.printing.format_interp_result.with_proof" =
   let st, init_events = em_init_test_doc ~text:"Lemma foo : 1 = 1. Proof." in
   let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   let result = Mcpserver.McpPrinting.format_interp_result st in
@@ -47,7 +47,7 @@ let%test_unit "mcp.printing.format_interp_result.with_proof" =
 
 let%test_unit "mcp.printing.format_interp_result.with_hypotheses" =
   let st, init_events = em_init_test_doc ~text:"Lemma foo : forall n : nat, n = n. Proof. intros n." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   let result = Mcpserver.McpPrinting.format_interp_result st in
@@ -57,7 +57,7 @@ let%test_unit "mcp.printing.format_interp_result.with_hypotheses" =
 
 let%test_unit "mcp.printing.format_interp_result.with_error" =
   let st, init_events = em_init_test_doc ~text:"Definition x := y." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   let result = Mcpserver.McpPrinting.format_interp_result st in
@@ -78,7 +78,7 @@ let%test_unit "mcp.printing.get_proof_state.no_execution" =
 
 let%test_unit "mcp.printing.get_proof_state.after_execution" =
   let st, init_events = em_init_test_doc ~text:"Lemma foo : 1 = 1. Proof." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   let result = Mcpserver.McpPrinting.get_proof_state st in
@@ -93,7 +93,7 @@ let%test_unit "mcp.printing.get_messages.at_start" =
 
 let%test_unit "mcp.printing.get_errors.no_errors" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 1." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   let result = Mcpserver.McpPrinting.get_errors st in
@@ -102,7 +102,7 @@ let%test_unit "mcp.printing.get_errors.no_errors" =
 
 let%test_unit "mcp.printing.get_errors.with_errors" =
   let st, init_events = em_init_test_doc ~text:"undefined_var." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   let result = Mcpserver.McpPrinting.get_errors st in
@@ -115,7 +115,7 @@ let%test_unit "mcp.printing.get_errors.with_errors" =
 let%test_unit "mcp.operations.step_forward" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 1. Definition y := 2." in
   let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
-  let events = DocumentManager.interpret_to_next Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_next () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* After stepping forward once, observe_id should be s1 *)
@@ -128,15 +128,15 @@ let%test_unit "mcp.operations.step_backward" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 1. Definition y := 2." in
   let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
   (* First step forward twice *)
-  let events = DocumentManager.interpret_to_next Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_next () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
-  let events = DocumentManager.interpret_to_next Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_next () in
   let todo = Sel.Todo.(add todo events) in
   let st = handle_dm_events todo st in
   [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s2.id)) (DocumentManager.Internal.observe_id st);
   (* Now step backward *)
-  let events = DocumentManager.interpret_to_previous Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_previous () in
   let todo = Sel.Todo.(add todo events) in
   let st = handle_dm_events todo st in
   [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s1.id)) (DocumentManager.Internal.observe_id st)
@@ -144,7 +144,7 @@ let%test_unit "mcp.operations.step_backward" =
 let%test_unit "mcp.operations.interpret_to_end" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 1. Definition y := 2. Definition z := 3." in
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* Should be at the last sentence *)
@@ -156,8 +156,7 @@ let%test_unit "mcp.operations.interpret_to_point" =
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
   (* Interpret to a position in the middle of the document (line 1) *)
   let pos = Lsp.Types.Position.create ~line:1 ~character:0 in
-  let events = DocumentManager.interpret_to_position pos Settings.Mode.Manual
-    ~point_interp_mode:Protocol.Settings.PointInterpretationMode.Cursor in
+  let events = DocumentManager.interpret_to_position pos in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* Should have executed at least s1 *)
@@ -170,7 +169,7 @@ let%test_unit "mcp.operations.proof_workflow" =
   let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
 
   (* Execute to end to verify the whole proof works *)
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
 
@@ -186,7 +185,7 @@ let%test_unit "mcp.operations.proof_workflow" =
 let%test_unit "mcp.operations.multiple_goals" =
   (* Test a proof with multiple goals after split *)
   let st, init_events = em_init_test_doc ~text:"Lemma foo : True /\\ True.\nProof.\n  split." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* After split, should have 2 goals *)
@@ -196,7 +195,7 @@ let%test_unit "mcp.operations.multiple_goals" =
 let%test_unit "mcp.operations.shelved_goals" =
   (* Test a proof with shelved goals *)
   let st, init_events = em_init_test_doc ~text:"Lemma foo : True.\nProof.\n  shelve." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   let result = Mcpserver.McpPrinting.format_interp_result st in
@@ -216,13 +215,13 @@ let edit_text st ~start ~stop ~text =
 
 let%test_unit "mcp.edit.basic" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 1." in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   check_no_diag st;
   (* Edit the definition - replace "1" with "2" *)
   let st = edit_text st ~start:16 ~stop:17 ~text:"2" in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add Sel.Todo.empty events) in
   let st = handle_dm_events todo st in
   check_no_diag st
@@ -231,7 +230,7 @@ let%test_unit "mcp.edit.line_character_positions" =
   (* Test that line/character positions work correctly for apply_edit *)
   let st, init_events = em_init_test_doc ~text:"Definition x := 1.\nDefinition y := 2." in
   (* Execute to end *)
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* Get the raw document *)
@@ -297,7 +296,7 @@ let%test_unit "mcp.edit.multiline_edit" =
 let%test_unit "mcp.edit.invalidates_execution" =
   let st, init_events = em_init_test_doc ~text:"Definition x := 1. Definition y := x." in
   let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s2.id)) (DocumentManager.Internal.observe_id st);
@@ -376,7 +375,7 @@ let%test_unit "mcp.update_proof.triggers_reparse" =
   (* Test that update_proof triggers re-parsing by checking document text is preserved *)
   let st, init_events = em_init_test_doc ~text:"Definition x := 1." in
   (* Execute the document *)
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* Now call update_proof (empty edit) - should trigger re-parse *)
@@ -391,7 +390,7 @@ let%test_unit "mcp.update_proof.invalidates_after_edit" =
   (* Test that edit properly invalidates the state *)
   let st, init_events = em_init_test_doc ~text:"Definition x := 1. Definition y := x." in
   (* Execute to the end *)
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* Verify we're at the end *)
@@ -406,7 +405,7 @@ let%test_unit "mcp.update_proof.after_external_edit" =
   let initial_text = "Lemma foo : 1 = 1. Proof. reflexivity. Defined." in
   let st, init_events = em_init_test_doc ~text:initial_text in
   (* Execute to the end - should have a completed proof *)
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* Should have executed all sentences *)
@@ -479,7 +478,7 @@ let%test_unit "mcp.update_proof.returns_state_before_edit" =
   (* Parse the document to get sentence positions - there are 3 sentences *)
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
   (* Execute to the end - should have executed all sentences *)
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* Verify we're at the last sentence *)
@@ -516,7 +515,7 @@ let%test_unit "mcp.update_proof.state_before_edit_in_proof" =
   (* Parse to get sentence positions: s1, s2, s3, s4 *)
   let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
   (* Execute to the end - should be at s4 *)
-  let events = DocumentManager.interpret_to_end Settings.Mode.Manual in
+  let events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add init_events events) in
   let st = handle_dm_events todo st in
   (* Verify we're at the last sentence s4 *)

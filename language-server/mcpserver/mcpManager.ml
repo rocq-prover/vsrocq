@@ -69,8 +69,7 @@ and process_events_loop doc todo =
       (* No more ready events - stop processing *)
       ()
     | Some ready ->
-      let handled = Dm.DocumentManager.handle_event ready doc.st
-        ~block:!block_on_first_error !check_mode !diff_mode !pretty_print_mode in
+      let handled = Dm.DocumentManager.handle_event ready doc.st in
       begin match handled.state with
       | Some new_st ->
         doc.st <- new_st
@@ -207,7 +206,7 @@ let handle_interpret_to_point args =
     (* Update current position for future queries *)
     doc.current_position <- pos;
     wait_for_parsing doc;
-    let events = Dm.DocumentManager.interpret_to_position pos !check_mode ~point_interp_mode:!point_interp_mode in
+    let events = Dm.DocumentManager.interpret_to_position pos in
     doc.pending_events <- doc.pending_events @ events;
     process_events_until_stable doc;
     ToolsCallResult.success [Content.text (format_interp_result doc)])
@@ -218,7 +217,7 @@ let handle_interpret_to_end args =
   log (fun () -> Printf.sprintf "Interpret to end: %s" uri);
   with_document uri ~f:(fun doc ->
     wait_for_parsing doc;
-    let events = Dm.DocumentManager.interpret_to_end !check_mode in
+    let events = Dm.DocumentManager.interpret_to_end () in
     doc.pending_events <- doc.pending_events @ events;
     process_events_until_stable doc;
     (* Update current position to end of document after interpretation to end *)
@@ -233,7 +232,7 @@ let handle_step_forward args =
   log (fun () -> Printf.sprintf "Step forward: %s" uri);
   with_document uri ~f:(fun doc ->
     wait_for_parsing doc;
-    let events = Dm.DocumentManager.interpret_to_next !check_mode in
+    let events = Dm.DocumentManager.interpret_to_next () in
     doc.pending_events <- doc.pending_events @ events;
     process_events_until_stable doc;
     ToolsCallResult.success [Content.text (format_interp_result doc)])
@@ -244,7 +243,7 @@ let handle_step_backward args =
   log (fun () -> Printf.sprintf "Step backward: %s" uri);
   with_document uri ~f:(fun doc ->
     wait_for_parsing doc;
-    let events = Dm.DocumentManager.interpret_to_previous !check_mode in
+    let events = Dm.DocumentManager.interpret_to_previous () in
     doc.pending_events <- doc.pending_events @ events;
     process_events_until_stable doc;
     ToolsCallResult.success [Content.text (format_interp_result doc)])
