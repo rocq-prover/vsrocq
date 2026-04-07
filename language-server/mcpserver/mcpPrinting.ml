@@ -78,8 +78,7 @@ let get_observe_range (st : Dm.DocumentManager.state) : Range.t option =
 
 let get_proof_state (st : Dm.DocumentManager.state) : string =
   let observe_id = Dm.DocumentManager.Internal.observe_id st in
-  let ost = Option.bind observe_id
-    (Dm.ExecutionManager.get_vernac_state (Dm.DocumentManager.Internal.execution_state st)) in
+  let ost = Option.bind observe_id (Dm.CheckingManager.vernac_state_of_sentence (Dm.DocumentManager.Internal.document st)) in
   match ost with
   | None -> "No proof state available (document may not be executed to this point)."
   | Some vst -> format_proof_state (Protocol.PpProofState.get_proof vst)
@@ -88,14 +87,14 @@ let get_messages (st : Dm.DocumentManager.state) : string option =
   match Dm.DocumentManager.Internal.observe_id st with
   | None -> None
   | Some id ->
-    let messages = Dm.DocumentManager.get_string_messages st id in
+    let document = Dm.DocumentManager.Internal.document st in
+    let messages = Dm.CheckingManager.get_string_messages document id in
     if messages = [] then None
     else Some (format_messages messages)
 
 let get_errors (st : Dm.DocumentManager.state) : string option =
-  let exec_state = Dm.DocumentManager.Internal.execution_state st in
   let document = Dm.DocumentManager.Internal.document st in
-  let all_errors = Dm.ExecutionManager.all_errors exec_state in
+  let all_errors = Dm.Document.all_checking_errors document in
   let valid_errors = List.filter (fun (id, _) ->
     Option.has_some (Dm.Document.get_sentence document id)
   ) all_errors in
