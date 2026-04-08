@@ -14,10 +14,16 @@
 
 open Lsp.Types
 
-(** Format a range as a human-readable string *)
+(** This file contatins utils related to printing mcp results in human/llm
+  readable form  *)
+
 let format_range (range : Range.t) : string =
   Printf.sprintf "line %d, character %d to line %d, character %d"
     (range.start.line + 1) range.start.character
+    (range.end_.line + 1) range.end_.character
+
+let format_range_end (range : Range.t) : string =
+  Printf.sprintf "line %d, character %d"
     (range.end_.line + 1) range.end_.character
 
 let format_proof_state (ps : Protocol.PpProofState.t option) : string =
@@ -109,7 +115,7 @@ let get_errors (st : Dm.DocumentManager.state) : string option =
 let format_interp_result (st : Dm.DocumentManager.state) : string =
   let position_info = match get_observe_range st with
     | None -> "Position: document start (no sentences executed)"
-    | Some range -> Printf.sprintf "Position: %s" (format_range range)
+    | Some range -> Printf.sprintf "Position: %s" (format_range_end range)
   in
   let proof_state = get_proof_state st in
   let messages = get_messages st in
@@ -126,7 +132,7 @@ let format_interp_result (st : Dm.DocumentManager.state) : string =
 let format_proof_state_response (st : Dm.DocumentManager.state) : string =
   let position_info = match get_observe_range st with
     | None -> "Position: document start (no sentences executed)"
-    | Some range -> Printf.sprintf "Position: %s" (format_range range)
+    | Some range -> Printf.sprintf "Position: %s" (format_range_end range)
   in
   let proof_state = get_proof_state st in
   let messages = get_messages st in

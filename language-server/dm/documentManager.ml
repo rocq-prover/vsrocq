@@ -60,7 +60,6 @@ let inject_im_events events = List.map inject_im_event events
 let inject_doc_event x = Sel.Event.map (fun e -> DocumentEvent e) x
 let inject_doc_events events = List.map inject_doc_event events
 
-  
 type events = event Sel.Event.t list
 
 let is_parsing st =  st.document_state = Parsing
