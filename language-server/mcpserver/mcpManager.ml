@@ -305,26 +305,31 @@ let handle_query args =
     wait_for_parsing doc;
     process_events_until_stable doc;
     let query_type = String.lowercase_ascii query_type in
-    match query_type with
-    | qt when String.equal qt "search" ->
-        (** Search expects the pattern to be wrapped in parentheses *)
-        let wrapped_pat = wrap_search_pattern pattern in
-        let notif_events = Dm.DocumentManager.search doc.st ~id:"mcp_query" pos wrapped_pat in
-        let results = collect_search_results notif_events in
-        if results = [] then
-          ToolsCallResult.success [Content.text "No results found."]
-        else begin
-          let result_strings = List.rev_map (fun (qr : Protocol.LspWrapper.query_result) ->
-            Printf.sprintf "%s : %s"
-              (Protocol.Printing.string_of_pp qr.name)
-              (Protocol.Printing.string_of_pp qr.statement)
-          ) results in
-          ToolsCallResult.success [Content.text (String.concat "\n" result_strings)]
-        end
-    | qt when String.equal qt "print" -> execute_pattern_query doc pos Dm.DocumentManager.print pattern
-    | qt when String.equal qt "locate" -> execute_pattern_query doc pos Dm.DocumentManager.locate pattern
-    | qt when String.equal qt "about" -> execute_pattern_query doc pos Dm.DocumentManager.about pattern
-    | _ -> ToolsCallResult.error (Printf.sprintf "Unknown query type: %s" query_type)
+    try
+      match query_type with
+      | qt when String.equal qt "search" ->
+          (* Search expects the pattern to be wrapped in parentheses *)
+          let wrapped_pat = wrap_search_pattern pattern in
+          let notif_events = Dm.DocumentManager.search doc.st ~id:"mcp_query" pos wrapped_pat in
+          let results = collect_search_results notif_events in
+          if results = [] then
+            ToolsCallResult.success [Content.text "No results found."]
+          else begin
+            let result_strings = List.rev_map (fun (qr : Protocol.LspWrapper.query_result) ->
+              Printf.sprintf "%s : %s"
+                (Protocol.Printing.string_of_pp qr.name)
+                (Protocol.Printing.string_of_pp qr.statement)
+            ) results in
+            ToolsCallResult.success [Content.text (String.concat "\n" result_strings)]
+          end
+      | qt when String.equal qt "print" -> execute_pattern_query doc pos Dm.DocumentManager.print pattern
+      | qt when String.equal qt "locate" -> execute_pattern_query doc pos Dm.DocumentManager.locate pattern
+      | qt when String.equal qt "about" -> execute_pattern_query doc pos Dm.DocumentManager.about pattern
+      | _ -> ToolsCallResult.error (Printf.sprintf "Unknown query type: %s" query_type)
+    with e ->
+      let info = Exninfo.capture e in
+      let message = Pp.string_of_ppcmds @@ CErrors.iprint_no_report info in
+      ToolsCallResult.error (Printf.sprintf "Query failed: %s" message)
   )
 
 (** Dispatch tool calls *)
@@ -359,36 +364,42 @@ let server_info =
 (** Handle MCP requests *)
 let handle_request (req : Request.t) =
   log (fun () -> Printf.sprintf "Handling request: %s" req.method_);
-  match req.method_ with
-  | "initialize" ->
-    let params = Option.map InitializeParams.t_of_yojson req.params in
-    log (fun () -> Printf.sprintf "Initialize from: %s"
-      (match params with Some p -> p.clientInfo.name | None -> "unknown"));
-    let result = InitializeResult.{
-      protocolVersion = protocol_version;
-      serverInfo = server_info;
-      capabilities = { tools = Some { listChanged = None } };
-    } in
-    Response.ok req.id (InitializeResult.yojson_of_t result)
+  try
+    match req.method_ with
+    | "initialize" ->
+      let params = Option.map InitializeParams.t_of_yojson req.params in
+      log (fun () -> Printf.sprintf "Initialize from: %s"
+        (match params with Some p -> p.clientInfo.name | None -> "unknown"));
+      let result = InitializeResult.{
+        protocolVersion = protocol_version;
+        serverInfo = server_info;
+        capabilities = { tools = Some { listChanged = None } };
+      } in
+      Response.ok req.id (InitializeResult.yojson_of_t result)
 
-  | "tools/list" ->
-    let result = ToolsListResult.{ tools = VsrocqTools.Definitions.all } in
-    Response.ok req.id (ToolsListResult.yojson_of_t result)
+    | "tools/list" ->
+      let result = ToolsListResult.{ tools = VsrocqTools.Definitions.all } in
+      Response.ok req.id (ToolsListResult.yojson_of_t result)
 
-  | "tools/call" ->
-    begin match req.params with
-    | None -> Response.err req.id (-32602) "Missing params for tools/call"
-    | Some params ->
-      let call_params = ToolsCallParams.t_of_yojson params in
-      let result = dispatch_tool call_params.name call_params.arguments in
-      Response.ok req.id (ToolsCallResult.yojson_of_t result)
-    end
+    | "tools/call" ->
+      begin match req.params with
+      | None -> Response.err req.id (-32602) "Missing params for tools/call"
+      | Some params ->
+        let call_params = ToolsCallParams.t_of_yojson params in
+        let result = dispatch_tool call_params.name call_params.arguments in
+        Response.ok req.id (ToolsCallResult.yojson_of_t result)
+      end
 
-  | "ping" ->
-    Response.ok req.id (`Assoc [])
+    | "ping" ->
+      Response.ok req.id (`Assoc [])
 
-  | _ ->
-    Response.err req.id (-32601) (Printf.sprintf "Method not found: %s" req.method_)
+    | _ ->
+      Response.err req.id (-32601) (Printf.sprintf "Method not found: %s" req.method_)
+  with e ->
+    let info = Exninfo.capture e in
+    let message = Pp.string_of_ppcmds @@ CErrors.iprint_no_report info in
+    log (fun () -> Printf.sprintf "Exception in handle_request: %s" message);
+    Response.err req.id (-32603) (Printf.sprintf "Internal error: %s" message)
 
 (** Read a JSON-RPC message from stdin in MCP format (direct JSON) *)
 let read_message () =
