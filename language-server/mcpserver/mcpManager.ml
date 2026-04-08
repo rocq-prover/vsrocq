@@ -203,6 +203,7 @@ let handle_interpret_to_point args =
   log (fun () -> Printf.sprintf "Interpret to point: %s:%d:%d" uri line character);
   let pos = Position.create ~line ~character in
   with_document uri ~f:(fun doc ->
+    ensure_document_sync doc uri;
     (* Update current position for future queries *)
     doc.current_position <- pos;
     wait_for_parsing doc;
@@ -216,6 +217,7 @@ let handle_interpret_to_end args =
   let ({ uri } : interpret_to_end) = interpret_to_end_of_yojson args in
   log (fun () -> Printf.sprintf "Interpret to end: %s" uri);
   with_document uri ~f:(fun doc ->
+    ensure_document_sync doc uri;
     wait_for_parsing doc;
     let events = Dm.DocumentManager.interpret_to_end () in
     doc.pending_events <- doc.pending_events @ events;
@@ -231,6 +233,7 @@ let handle_step_forward args =
   let ({ uri } : step_forward) = step_forward_of_yojson args in
   log (fun () -> Printf.sprintf "Step forward: %s" uri);
   with_document uri ~f:(fun doc ->
+    ensure_document_sync doc uri;
     wait_for_parsing doc;
     let events = Dm.DocumentManager.interpret_to_next () in
     doc.pending_events <- doc.pending_events @ events;
@@ -242,6 +245,7 @@ let handle_step_backward args =
   let ({ uri } : step_backward) = step_backward_of_yojson args in
   log (fun () -> Printf.sprintf "Step backward: %s" uri);
   with_document uri ~f:(fun doc ->
+    ensure_document_sync doc uri;
     wait_for_parsing doc;
     let events = Dm.DocumentManager.interpret_to_previous () in
     doc.pending_events <- doc.pending_events @ events;
@@ -297,6 +301,7 @@ let handle_query args =
   log (fun () -> Printf.sprintf "Query: %s at %s:%d:%d" query_type uri pos.line pos.character);
 
   with_document uri ~f:(fun doc ->
+    ensure_document_sync doc uri;
     wait_for_parsing doc;
     process_events_until_stable doc;
     let query_type = String.lowercase_ascii query_type in
