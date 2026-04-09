@@ -172,6 +172,23 @@
     },
     {
       "applyEndPatternLast": 1,
+      "begin": "\\(\\*\\*(?!\\*)",
+      "end": "\\*\\)",
+      "name": "comment.doc.coq",
+      "patterns": [
+        {
+          "include": "#doc_comment"
+        },
+        {
+          "include": "#block_comment"
+        },
+        {
+          "include": "#block_double_quoted_string"
+        }
+      ]
+    },
+    {
+      "applyEndPatternLast": 1,
       "begin": "\\(\\*(?!#)",
       "end": "\\*\\)",
       "name": "comment.block.coq",
@@ -214,6 +231,23 @@
     }
   ],
   "repository": {
+    "doc_comment": {
+      "applyEndPatternLast": 1,
+      "begin": "\\(\\*\\*(?!\\*)",
+      "end": "\\*\\)",
+      "name": "comment.doc.coq",
+      "patterns": [
+        {
+          "include": "#doc_comment"
+        },
+        {
+          "include": "#block_comment"
+        },
+        {
+          "include": "#block_double_quoted_string"
+        }
+      ]
+    },
     "block_comment": {
       "applyEndPatternLast": 1,
       "begin": "\\(\\*(?!#)",
