@@ -230,8 +230,8 @@ export default class SearchViewProvider implements vscode.WebviewViewProvider {
                         client.sendRequest(req, params).then(
                             (result: PrintRocqResponse) => {
                                 const notification = {"statement": result, "id": id};
-                                webview.postMessage({"command": "locateResponse", "result": notification});
-                            }, 
+                                webview.postMessage({"command": "printResponse", "result": notification});
+                            },
                             (err: QueryError) => {
                                 const error = {"code": err.code, "message": err.message};
                                 webview.postMessage({"command": "searchError", "error": error, "id": id});
