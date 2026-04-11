@@ -12,8 +12,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type pp [@@deriving yojson]
+(** Common settings for VSRocq server components *)
 
-val pp_of_rocqpp : Pp.t -> pp
-
-val string_of_pp : pp -> string
+let version = "2.3.4"

@@ -88,3 +88,13 @@ let rec pp_of_rocqpp t = match Pp.repr t with
   | Pp.Ppcmd_force_newline -> Ppcmd_force_newline
   | Pp.Ppcmd_comment l -> Ppcmd_comment l
 [%%endif]
+
+let rec string_of_pp = function
+  | Ppcmd_empty -> ""
+  | Ppcmd_string s -> s
+  | Ppcmd_glue ps -> String.concat "" (List.map string_of_pp ps)
+  | Ppcmd_box (_, p) -> string_of_pp p
+  | Ppcmd_tag (_, p) -> string_of_pp p
+  | Ppcmd_print_break (_, _) -> " "
+  | Ppcmd_force_newline -> "\n"
+  | Ppcmd_comment ss -> String.concat " " ss
