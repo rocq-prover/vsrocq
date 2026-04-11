@@ -260,34 +260,34 @@ let to_option = function
 let timeout = 0.2
 
 let check ~doc_id ~vs ~pattern =
-  ProverThread.try_run ~doc_id ~timeout (fun () -> check ~vs ~pattern) |>
+  ProverThread.run ~doc_id ~timeout (fun () -> check ~vs ~pattern) |>
   to_types_error
 
 let jump_to_definition ~doc_id ~vs opattern =
-  ProverThread.try_run ~doc_id ~timeout (fun () -> jump_to_definition ~vs opattern) |>
+  ProverThread.run ~doc_id ~timeout (fun () -> jump_to_definition ~vs opattern) |>
   to_option |> Option.flatten
 
 let locate ~doc_id ~vs ~pattern =
-  ProverThread.try_run ~doc_id ~timeout (fun () -> locate ~vs ~pattern) |>
+  ProverThread.run ~doc_id ~timeout (fun () -> locate ~vs ~pattern) |>
   to_types_error
 
 let search ~doc_id ~vs ~id pattern =
-  ProverThread.try_run ~doc_id ~timeout (fun () -> search ~vs ~id pattern) |>
+  ProverThread.run ~doc_id ~timeout:0.5 (fun () -> search ~vs ~id pattern) |>
   to_list
 
 let print ~doc_id ~vs ~pattern = 
-  ProverThread.try_run ~doc_id ~timeout (fun () -> print ~vs ~pattern) |>
+  ProverThread.run ~doc_id ~timeout (fun () -> print ~vs ~pattern) |>
   to_types_error
 
 let hover document pos =
-  ProverThread.try_run ~doc_id:(Document.id document) ~timeout
+  ProverThread.run ~doc_id:(Document.id document) ~timeout
     (fun () -> hover document pos) |>
   to_option |> Option.flatten
 
 let about ~doc_id ~vs ~pattern =
-  ProverThread.try_run ~doc_id ~timeout (fun () -> about vs ~pattern) |>
+  ProverThread.run ~doc_id ~timeout (fun () -> about vs ~pattern) |>
   to_types_error
 
 let get_completions ~doc_id ~vs =
-  ProverThread.try_run ~doc_id ~timeout:0.5 (fun () -> get_completions ~vs) |>
+  ProverThread.run ~doc_id ~timeout:0.5 (fun () -> get_completions ~vs) |>
   to_list
