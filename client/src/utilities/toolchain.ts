@@ -103,7 +103,7 @@ export default class VsRocqToolchainManager implements Disposable {
     private vsrocqtopWhere() : Promise<void> {
         
         const config = workspace.getConfiguration('vsrocq').get('args') as string[];
-        const options = ["-where"].concat(config);
+        const options = ["-without-project-file", "-where"].concat(config);
         const cmd = [this._vsrocqtopPath].concat(options).join(' ');
 
         return new Promise((resolve, reject: ((reason: ToolchainError) => void)) => {
