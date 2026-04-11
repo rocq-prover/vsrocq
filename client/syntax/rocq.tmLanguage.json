@@ -157,6 +157,23 @@
     },
     {
       "applyEndPatternLast": 1,
+      "begin": "\\(\\*\\*(?!\\*)",
+      "end": "\\*\\)",
+      "name": "comment.doc.rocq",
+      "patterns": [
+        {
+          "include": "#doc_comment"
+        },
+        {
+          "include": "#block_comment"
+        },
+        {
+          "include": "#block_double_quoted_string"
+        }
+      ]
+    },
+    {
+      "applyEndPatternLast": 1,
       "begin": "\\(\\*(?!#)",
       "end": "\\*\\)",
       "name": "comment.block.rocq",
@@ -199,6 +216,23 @@
     }
   ],
   "repository": {
+    "doc_comment": {
+      "applyEndPatternLast": 1,
+      "begin": "\\(\\*\\*(?!\\*)",
+      "end": "\\*\\)",
+      "name": "comment.doc.rocq",
+      "patterns": [
+        {
+          "include": "#doc_comment"
+        },
+        {
+          "include": "#block_comment"
+        },
+        {
+          "include": "#block_double_quoted_string"
+        }
+      ]
+    },
     "block_comment": {
       "applyEndPatternLast": 1,
       "begin": "\\(\\*(?!#)",
