@@ -145,7 +145,7 @@ let eventually_run ~doc_id f =
   Mutex.unlock jobs_mutex;
   promise
 
-let try_run ~doc_id ~timeout f =
+(* let try_run ~doc_id ~timeout f =
   log (fun () -> "main: try_run");
   Mutex.lock jobs_mutex;
   if jobs.running = None && Queue.is_empty jobs.queue then begin
@@ -158,6 +158,6 @@ let try_run ~doc_id ~timeout f =
   end else begin
     Mutex.unlock jobs_mutex;
     Aborted (Pp.str "Rocq is busy")
-  end
+  end *)
 
 
