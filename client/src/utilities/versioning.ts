@@ -3,10 +3,7 @@ import { compareVersions } from "compare-versions";
 import Client from "../client";
 
 export const getRocqdocUrl = (rocqVersion: string) => {
-    if(compareVersions(rocqVersion, "8.18.0") >= 0 && compareVersions(rocqVersion, "9.0.0") < 0) {
-        return (`https://rocq.inria.fr/doc/V${rocqVersion}/refman/index.html`);
-    }
-    return "https://rocq.inria.fr/doc/master/refman/index.html";
+        return (`https://rocq-prover.org/doc/V${rocqVersion}/refman/index.html`);
 };
 
 export const checkVersion = (client: Client, context: ExtensionContext) => {
