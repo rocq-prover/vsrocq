@@ -89,10 +89,10 @@ let run ~doc_id f =
   promise
 
 let try_run ~doc_id ~timeout f =
-  let token = Memprof_limits.Token.create () in
-  let p, r = Sel.Promise.make () in
   Mutex.lock jobs_mutex;
   if jobs.running = None && Queue.is_empty jobs.queue then begin
+    let token = Memprof_limits.Token.create () in
+    let p, r = Sel.Promise.make () in
     Queue.push (Job (doc_id, limit f, r, token)) jobs.queue;
     Condition.signal jobs_condition;
     Mutex.unlock jobs_mutex;
