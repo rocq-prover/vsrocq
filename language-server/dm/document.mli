@@ -164,6 +164,9 @@ val find_sentence_after_pos : document -> Position.t -> sentence option
 val find_next_qed : document -> int -> sentence option
 (** [find_next_qed parsed loc] finds the next proof end *)
 
+val find_next_qed_pos : document -> Position.t -> sentence option
+(** [find_next_qed_pos parsed pos] finds the next proof end *)
+
 val get_first_sentence : document  -> sentence option
 (** [get_first_sentence doc] returns the first parsed sentence *)
 

@@ -411,6 +411,10 @@ let find_next_qed parsed loc =
   | () -> None
   | exception (Found n) -> Some n
 
+let find_next_qed_pos parsed pos =
+  let loc = RawDocument.loc_of_position (raw_document parsed) pos in
+  find_next_qed parsed loc
+
 let get_first_sentence parsed = 
   Option.map (fun (_,id) -> sentence_of_id parsed id) @@
     LM.find_first_opt (fun _ -> true) parsed.sentences_by_end
