@@ -7,7 +7,7 @@ import { makeVersionedDocumentId } from './utilities/utils';
 
 export const sendInterrupt = (editor: TextEditor, client: Client) => {
     const textDocument = makeVersionedDocumentId(editor);
-    client.sendNotification("vscoq/interrupt", {textDocument});
+    client.sendNotification("prover/interrupt", {textDocument});
 };
 
 export const sendInterpretToPoint = (editor: TextEditor, client: Client) => {
