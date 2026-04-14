@@ -85,7 +85,7 @@ module Notification = struct
       | "prover/interpretToEnd" ->
         let+ params = Lsp.Import.Json.message_params params InterpretToEndParams.t_of_yojson in
         InterpretToEnd params
-      | "vscoq/interrupt" ->
+      | "prover/interrupt" ->
         let+ params = Lsp.Import.Json.message_params params InterruptParams.t_of_yojson in
         Interrupt params
       | _ ->
