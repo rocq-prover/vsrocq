@@ -116,7 +116,7 @@ By default, we display the processed lines in the VSCode gutter.
 
 ## Goal view 
 
-For the goal view we provide a request verb `vscoq/updateProofView` and its corresponding response. 
+For the goal view we provide a request verb `prover/updateProofView` and its corresponding response. 
 
 We now make use of PpStrings to display the goals with syntactic coloration.
 
