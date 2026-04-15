@@ -14,11 +14,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
     - name: Install Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 16.x
+        node-version: 22.x
     - run: |
         cd client
         npm run package
@@ -37,7 +37,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
     - name: Configure Dune
       run: |
         mkdir -p ~/.config/dune
@@ -93,7 +93,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: Use OCaml ${{ matrix.ocaml-compiler }}
       uses: avsm/setup-ocaml@v3
@@ -115,7 +115,7 @@ jobs:
 
     - uses: actions/setup-node@v3
       with:
-        node-version: 16
+        node-version: 22
 
     - run: cd client && npm run package
     - run: eval $(opam env) && cd client && xvfb-run npm test
@@ -135,7 +135,7 @@ jobs:
         git config --global core.eol lf
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: Build language server
       run: .\language-server\build-windows-platform.bat
@@ -146,7 +146,7 @@ jobs:
 
     - uses: actions/setup-node@v3
       with:
-        node-version: 16
+        node-version: 22
 
     - run: cd client && npm run package && npm test
       env:
@@ -162,7 +162,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: Use OCaml ${{ matrix.ocaml-compiler }}
       uses: avsm/setup-ocaml@v3
@@ -189,7 +189,7 @@ jobs:
 
     - uses: actions/setup-node@v3
       with:
-        node-version: 16
+        node-version: 22
 
     - run: |
         eval $(opam env)
@@ -209,7 +209,7 @@ jobs:
     needs: [build-extension, nix-dev-build, install-opam, dev-setup-opam]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v4
@@ -235,11 +235,11 @@ jobs:
     if: success()
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
     - name: Install Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 16.x
+        node-version: 22.x
     - name: Pre publish phase
       run: |
         cd client
