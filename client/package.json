@@ -629,7 +629,7 @@
     "colors": [
       {
         "id": "rocq.decorations.processedBackground",
-        "description": "Background of processed (checked) region",
+        "description": "Background of checked region",
         "defaults": {
           "light": "#00960033",
           "dark": "#00960033",
@@ -639,7 +639,7 @@
       },
       {
         "id": "rocq.decorations.processingBackground",
-        "description": "Background of processing region",
+        "description": "Background of the region being checked",
         "defaults": {
           "light": "#0000FF4D",
           "dark": "#0000FF4D",
@@ -649,7 +649,7 @@
       },
       {
         "id": "rocq.decorations.preparedBackground",
-        "description": "Background of prepared region",
+        "description": "Background of the region scheduled for checking",
         "defaults": {
           "light": "#00FFFF33",
           "dark": "#00FFFF33",
