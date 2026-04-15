@@ -21,16 +21,13 @@
     "@react-hook/resize-observer": "^2.0.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "uuidv4": "^6.2.13"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "globals": "^17.4.0",
-    "typescript": "~6.0.2",
     "unplugin-dts": "^1.0.0-beta.6",
-    "vite": "^8.0.4",
     "vscode-languageclient": "^9.0.1"
   }
 }
