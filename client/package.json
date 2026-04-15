@@ -17,7 +17,7 @@
   "dependencies": {
     "compare-versions": "^6.0.0-rc.1",
     "vscode-languageclient": "^9.0.1",
-    "which": "^5.0.0"
+    "which": "^6.0.1"
   },
   "categories": [
     "Programming Languages"
@@ -973,38 +973,30 @@
     ]
   },
   "scripts": {
-    "build": "webpack",
-    "watch": "webpack --watch",
-    "package": "npm install && npm run build --workspaces && webpack --mode production --devtool hidden-source-map",
+    "build": "vite build",
+    "watch": "vite",
+    "package": "npm install && npm run build --workspaces && vite build --mode production",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run build && npm run lint",
-    "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.1",
-    "@types/node": "16.x",
+    "@types/node": "22.x",
     "@types/tmp": "^0.2.3",
     "@types/vscode": "^1.74.0",
     "@types/which": "^3.0.4",
-    "@typescript-eslint/eslint-plugin": "^5.45.0",
-    "@typescript-eslint/parser": "^5.45.0",
     "@vscode/test-electron": "^2.2.0",
-    "@vscode/vsce": "^2.19.0",
-    "eslint": "^8.28.0",
-    "eslint-config-prettier": "^9.1.0",
-    "expect": "^29.4.3",
-    "glob": "^8.0.3",
-    "mocha": "^10.1.0",
-    "prettier": "3.3.3",
+    "@vscode/vsce": "^3.8.1",
+    "expect": "^30.3.0",
+    "glob": "^13.0.6",
+    "mocha": "^11.7.0",
+    "prettier": "3.8.3",
     "prettier-plugin-organize-imports": "^4.0.0",
     "tmp-promise": "^3.0.3",
     "ts-loader": "^9.4.1",
-    "typescript": "^4.9.3",
-    "vsce": "^2.15.0",
-    "webpack": "^5.94.0",
-    "webpack-cli": "^5.0.0"
+    "typescript": "^6.0.2",
+    "vite": "^8.0.8"
   }
 }

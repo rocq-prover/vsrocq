@@ -99,7 +99,7 @@ Both of the two coq exclusive panels are react apps. We use the [atomic design p
 * From the client folder run `npm install` which will ensure all dependencies are installed for the extension and the web apps. 
 * Still from the client folder, run `npm run build --workspaces` to build the extension and all the sub-web apps.
 * To package the extension run `npm run package`
-* To make an installable `.vsx` package, use `npm install -g @vscode/vsce` (once) and `vsce package`.
+* To make an installable `.vsx` package, `npx vsce package`.
   This package can be installed locally in any code workspace or all (not recommended, as it can overwrite an existing 
   globally installed vsx `code --install-extension vscoq-*.vsix`)
 * For publishing to VSCode market place use the [vsce tool](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)
