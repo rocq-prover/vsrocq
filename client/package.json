@@ -13,7 +13,7 @@
   "engines": {
     "vscode": "^1.74.0"
   },
-  "workspaces": ["goal-view-ui", "pp-display", "search-ui"],
+  "workspaces": ["pp-display", "goal-view-ui", "search-ui"],
   "dependencies": {
     "compare-versions": "^6.0.0-rc.1",
     "vscode-languageclient": "^9.0.1",
