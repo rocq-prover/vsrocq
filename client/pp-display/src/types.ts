@@ -1,4 +1,4 @@
-import { integer } from "vscode-languageclient";
+import type { integer } from "vscode-languageclient";
 export type PpTag = string;
 
 export enum PpMode {
