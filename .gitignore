@@ -10,7 +10,6 @@ language-server/tests/dune
 language-server/dm/vsrocq_config.mlh
 language-server/tests/vsrocq_config.mlh
 language-server/*.install
-client/yarn-error.log
 client/.vscode-test/
 client/out/
 .DS_Store
