@@ -262,12 +262,19 @@ module Structured = struct
       let sorted = List.stable_sort (fun (x, _) (y, _) -> Float.compare x y) lemmaUnfs in
       List.map snd sorted
 end
+
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
+let default_flags_of _ ts = Evarconv.default_flags_of ts
+[%%else]
+let default_flags_of sigma ts = Evarconv.default_flags_of sigma ts
+[%%endif]
+
 module SelectiveUnification = struct
   let rankByUnifiability (goal : Evd.econstr) sigma env (lemmas : CompletionItems.completion_item list) : CompletionItems.completion_item list =
     let goal_size = type_size sigma goal in
     let worst_value = 1000 in (* the worst value we expect to assign. This value is mostly arbitrary*)
     let make_sortable (lemma : CompletionItems.completion_item) =
-      let flags = Evarconv.default_flags_of TransparentState.full in
+      let flags = default_flags_of sigma TransparentState.full in
       let rec aux (iterations: int) (typ : types) : (CompletionItems.completion_item * int)=
         if type_size sigma typ + goal_size > 500 then (lemma, worst_value) (*The number 500 is an arbitrary limit on how big lemmas we are willing to look at*)
         else
