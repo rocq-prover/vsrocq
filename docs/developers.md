@@ -95,11 +95,10 @@ Both of the two coq exclusive panels are react apps. We use the [atomic design p
 
 ### Building 
 
-* Make sure you have up to date `yarn` and `node.js`. For example, at the time of writing this guide, `yarn` version 1.22.19 and `node.js` version 19.0.1
-* From the client folder run `yarn run install:all` which will ensure all dependencies are installed for the extension and the web apps. 
-* Still from the client folder, run `yarn run build:all`  this will ensure that both web apps are built. 
-* You can then run `yarn run compile` which will compile the extension.
-* To package the extension run `yarn run package`
+* Make sure you have up to date `npm` and `node.js`. For example, at the time of writing this guide, `node.js` version 19.0.1
+* From the client folder run `npm install` which will ensure all dependencies are installed for the extension and the web apps. 
+* Still from the client folder, run `npm run build --workspaces` to build the extension and all the sub-web apps.
+* To package the extension run `npm run package`
 * To make an installable `.vsx` package, use `npm install -g @vscode/vsce` (once) and `vsce package`.
   This package can be installed locally in any code workspace or all (not recommended, as it can overwrite an existing 
   globally installed vsx `code --install-extension vscoq-*.vsix`)
@@ -107,9 +106,9 @@ Both of the two coq exclusive panels are react apps. We use the [atomic design p
 
 ### Debugging 
 
-You can debug the web apps independently. From the client folder just run `yarn run start:goal-view-ui` or `yarn run start:search-ui`. This will launch the corresponding web app in local development server. You can then access it through your usual browser or the VSCode browser. 
+You can debug the web apps independently. From the client folder just run `npm run start -w goal-view-ui` or `npm run start -w search-ui`. This will launch the corresponding web app in local development server. You can then access it through your usual browser or the VSCode browser. 
 
-Note that both the apps can also be built independently through the `yarn run build:goal-view-ui` or `yarn run build:search-ui` commands. 
+Note that both the apps can also be built independently through the `npm run build -w goal-view-ui` or `npm run build -w search-ui` commands. 
 
 To launch the extension in debug mode, assuming you have built the language-server, you can either use a nix dev shell to run vscode (`nix develop .#vscoq-client -c code .`) or handle your own config.
 
@@ -117,11 +116,11 @@ Note that you need to set the path to vscoqtop in the VSCode user settings (just
 
 ## E2E tests
 
-From the client folder run `yarn test`. To pass arguments to the language
+From the client folder run `npm test`. To pass arguments to the language
 server you can use the `VSCOQARGS` env variable, e.g.
 
 ```shell
-VSCOQARGS='-vscoq-d all' yarn test
+VSCOQARGS='-vscoq-d all' npm test
 ```
 Remember that if the language server fails to initialize, the log is not
 displayed in the output panel as usual, but rather written to a file named
