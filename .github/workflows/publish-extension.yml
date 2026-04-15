@@ -30,7 +30,7 @@ jobs:
       - name: Pre publish phase
         run: |
           cd client
-          yarn run package
+          npm run package
       - name: Publish to Open VSX Registry
         if: ${{inputs.marketplace == 'openvsx' || inputs.marketplace == 'both'}}
         uses: HaaLeo/publish-vscode-extension@v1.6.2
@@ -38,7 +38,6 @@ jobs:
         with:
           pat: ${{ secrets.OVSX_PAT }}
           packagePath: ./client/
-          yarn: true
           preRelease: ${{ inputs.preRelease }}
       - name: Publish to Visual Studio Marketplace
         if: ${{inputs.marketplace == 'vscode' || inputs.marketplace == 'both'}}
@@ -48,5 +47,4 @@ jobs:
           packagePath: ./client/
           registryUrl: https://marketplace.visualstudio.com
           extensionFile: ${{ steps.publishToOpenVSX.outputs.vsixPath }}
-          yarn: true
           preRelease: ${{ inputs.preRelease }}

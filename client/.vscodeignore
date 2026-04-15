@@ -4,7 +4,7 @@ out/**
 node_modules/**
 src/**
 .gitignore
-.yarnrc
+package-lock.json
 webpack.config.js
 vsc-extension-quickstart.md
 **/tsconfig.json
@@ -12,7 +12,6 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/*.nix
-**/yarn.lock
 testFixture/
 
 search-ui/node_modules/**

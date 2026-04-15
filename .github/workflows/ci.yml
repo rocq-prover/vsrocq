@@ -21,7 +21,7 @@ jobs:
         node-version: 16.x
     - run: |
         cd client
-        yarn run package
+        npm run package
 
   nix-dev-build:
     strategy:
@@ -63,14 +63,14 @@ jobs:
       if: ${{matrix.coq != 9}}
     - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
       if: ${{matrix.coq == 9}}
-    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && yarn run install:all && yarn run build:all && yarn run compile"
+    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && npm install && npm run build --workspaces"
     - name: Test xvfb
       uses: Wandalen/wretry.action@v3
       with:
         attempt_limit: 5
         attempt_delay: 5000
         command: |
-            xvfb-run nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && yarn test"
+            xvfb-run nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && npm test"
       if: runner.os == 'Linux'
     - name: Test
       uses: Wandalen/wretry.action@v3
@@ -78,7 +78,7 @@ jobs:
         attempt_limit: 5
         attempt_delay: 5000
         command: |
-            nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && yarn test"
+            nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && npm test"
       if: runner.os != 'Linux'
     - if: ${{ failure() }}
       run: cat /tmp/vsrocq_init_log.*
@@ -117,8 +117,8 @@ jobs:
       with:
         node-version: 16
 
-    - run: cd client && yarn run package
-    - run: eval $(opam env) && cd client && xvfb-run yarn test
+    - run: cd client && npm run package
+    - run: eval $(opam env) && cd client && xvfb-run npm test
       env:
         VSROCQPATH: ${{ env.vsrocqtop }}
         VSROCQARGS: "-bt"
@@ -148,7 +148,7 @@ jobs:
       with:
         node-version: 16
 
-    - run: cd client && yarn run package && yarn test
+    - run: cd client && npm run package && npm test
       env:
         VSROCQPATH: ${{ env.vsrocqtop }}
         VSROCQARGS: "-bt"
@@ -195,8 +195,8 @@ jobs:
         eval $(opam env)
         echo vsrocqlib="$( echo -n "-coqlib "; (rocq -where || coqc -where) 2>/dev/null )" >> $GITHUB_ENV
 
-    - run: cd client && yarn run install:all && yarn run build:all && yarn run compile
-    - run: cd client && xvfb-run yarn test
+    - run: cd client && npm install && npm run build --workspaces
+    - run: cd client && xvfb-run npm test
       env:
         VSROCQARGS: "${{ env.vsrocqlib }}"
 
@@ -243,14 +243,13 @@ jobs:
     - name: Pre publish phase
       run: |
         cd client
-        yarn run package
+        npm run package
     - name: Publish to Open VSX Registry
       uses: HaaLeo/publish-vscode-extension@v1.6.2
       id: publishToOpenVSX
       with:
         pat: 'stub'
         packagePath: ./client/
-        yarn: true
         preRelease: false
         dryRun: true
     - name: Publish to Visual Studio Marketplace
@@ -260,6 +259,5 @@ jobs:
         packagePath: ./client/
         registryUrl: https://marketplace.visualstudio.com
         extensionFile: ${{ steps.publishToOpenVSX.outputs.vsixPath }}
-        yarn: true
         preRelease: false
         dryRun: true

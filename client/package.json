@@ -13,6 +13,7 @@
   "engines": {
     "vscode": "^1.74.0"
   },
+  "workspaces": ["goal-view-ui", "pp-display", "search-ui"],
   "dependencies": {
     "compare-versions": "^6.0.0-rc.1",
     "vscode-languageclient": "^9.0.1",
@@ -972,20 +973,12 @@
     ]
   },
   "scripts": {
-    "install:all": "yarn install && cd pp-display && yarn install && cd ../goal-view-ui && yarn install && cd ../search-ui && yarn install",
-    "build:all": "cd pp-display && yarn run build && cd ../goal-view-ui && yarn run build && cd ../search-ui && yarn run build && cd .. && yarn compile",
-    "start:goal-view-ui": "cd goal-view-ui && yarn run start",
-    "build:goal-view-ui": "cd goal-view-ui && yarn run build",
-    "build:dev:goal-view-ui": "cd goal-view-ui && yarn run build:dev",
-    "start:search-ui": "cd search-ui && yarn run start",
-    "build:search-ui": "cd search-ui && yarn run build",
-    "build:dev:search-ui": "cd search-ui && yarn run build:dev",
-    "compile": "webpack",
+    "build": "webpack",
     "watch": "webpack --watch",
-    "package": "yarn run install:all && yarn run build:all && webpack --mode production --devtool hidden-source-map",
+    "package": "npm install && npm run build --workspaces && webpack --mode production --devtool hidden-source-map",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
+    "pretest": "npm run compile-tests && npm run build && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
   },
