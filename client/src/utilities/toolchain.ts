@@ -110,48 +110,39 @@ export default class VsRocqToolchainManager implements Disposable {
         const pre240cmd = [this._vsrocqtopPath].concat(pre240options).join(' ');
 
         return new Promise((resolve, reject: ((reason: ToolchainError) => void)) => {
-            exec(cmd, {cwd: workspace.rootPath}, (error, stdout, _stderr) => {
 
+            const onSuccess = (stdout: string) => {
+                this._rocqPath = stdout;
+                this.rocqVersion().then(
+                    () => resolve(),
+                    (err) => reject({
+                        status: ToolChainErrorCode.launchError,
+                        message: `${this._vsrocqtopPath} crashed with the following message: ${err}.
+                        This could be due to a bad Rocq installation or an incompatible Rocq version`
+                    })
+                );
+            };
+
+            const onError = (stderr: string) => {
+                reject({
+                    status: ToolChainErrorCode.launchError,
+                    message: `${this._vsrocqtopPath} crashed with the following message: ${stderr}
+                    This could be due to a bad Rocq installation or an incompatible Rocq version.`
+                });
+            };
+
+            exec(cmd, {cwd: workspace.rootPath}, (error, stdout, stderr1) => {
                 if(error) {
-                    exec(pre240cmd, {cwd: workspace.rootPath}, (error, stdout, stderr) => {
+                    exec(pre240cmd, {cwd: workspace.rootPath}, (error, stdout, stderr2) => {
                         if(error) {
-
-                            reject({
-                                status: ToolChainErrorCode.launchError, 
-                                message: `${this._vsrocqtopPath} crashed with the following message: ${stderr}
-                                This could be due to a bad Rocq installation or an incompatible Rocq version.`
-                            }); }
-                    else {
-                        this._rocqPath = stdout;
-                        this.rocqVersion().then(
-                            () => {
-                                resolve();
-                            },
-                            (err) => {
-                                reject({
-                                    status: ToolChainErrorCode.launchError,
-                                    message: `${this._vsrocqtopPath} crashed with the following message: ${err}.
-                                    This could be due to a bad Rocq installation or an incompatible Rocq version`
-                                });
-                            }
-                        );
-                    }});
-                } else {
-                    this._rocqPath = stdout;
-                    this.rocqVersion().then(
-                        () => {
-                            resolve();
-                        },
-                        (err) => {
-                            reject({
-                                status: ToolChainErrorCode.launchError,
-                                message: `${this._vsrocqtopPath} crashed with the following message: ${err}.
-                                This could be due to a bad Rocq installation or an incompatible Rocq version`
-                            });
+                            onError(`${cmd}\n${stderr1}\n\n${pre240cmd}\n${stderr2}\n`);
+                        } else {
+                            onSuccess(stdout);
                         }
-                    );
+                    });
+                } else {
+                    onSuccess(stdout);
                 }
-                
             });
         });
     };
