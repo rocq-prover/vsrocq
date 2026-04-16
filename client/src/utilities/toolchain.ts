@@ -105,16 +105,37 @@ export default class VsRocqToolchainManager implements Disposable {
         const config = workspace.getConfiguration('vsrocq').get('args') as string[];
         const options = ["-without-project-file", "-where"].concat(config);
         const cmd = [this._vsrocqtopPath].concat(options).join(' ');
+        // fallback for < 2.4.0
+        const pre240options = ["-where"].concat(config);
+        const pre240cmd = [this._vsrocqtopPath].concat(pre240options).join(' ');
 
         return new Promise((resolve, reject: ((reason: ToolchainError) => void)) => {
-            exec(cmd, {cwd: workspace.rootPath}, (error, stdout, stderr) => {
+            exec(cmd, {cwd: workspace.rootPath}, (error, stdout, _stderr) => {
 
                 if(error) {
-                    reject({
-                        status: ToolChainErrorCode.launchError, 
-                        message: `${this._vsrocqtopPath} crashed with the following message: ${stderr}
-                        This could be due to a bad Rocq installation or an incompatible Rocq version.`
-                    });
+                    exec(pre240cmd, {cwd: workspace.rootPath}, (error, stdout, stderr) => {
+                        if(error) {
+
+                            reject({
+                                status: ToolChainErrorCode.launchError, 
+                                message: `${this._vsrocqtopPath} crashed with the following message: ${stderr}
+                                This could be due to a bad Rocq installation or an incompatible Rocq version.`
+                            }); }
+                    else {
+                        this._rocqPath = stdout;
+                        this.rocqVersion().then(
+                            () => {
+                                resolve();
+                            },
+                            (err) => {
+                                reject({
+                                    status: ToolChainErrorCode.launchError,
+                                    message: `${this._vsrocqtopPath} crashed with the following message: ${err}.
+                                    This could be due to a bad Rocq installation or an incompatible Rocq version`
+                                });
+                            }
+                        );
+                    }});
                 } else {
                     this._rocqPath = stdout;
                     this.rocqVersion().then(
