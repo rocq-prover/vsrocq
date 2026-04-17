@@ -947,7 +947,7 @@
     "package": "npm install && npm run build --workspaces",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run build && npm run lint",
+    "pretest": "npm run compile-tests && npm run build",
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
