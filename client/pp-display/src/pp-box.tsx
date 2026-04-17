@@ -1,4 +1,4 @@
-import React, {FunctionComponent, useState,} from 'react';
+import {FunctionComponent, useState,} from 'react';
 import {Box, DisplayType, BreakInfo, HideStates } from './types';
 import PpBreak from './pp-break';
 import classes from './Pp.module.css';

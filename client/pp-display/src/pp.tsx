@@ -1,6 +1,5 @@
 import { FunctionComponent, useRef, useState, useEffect, useLayoutEffect} from 'react';
 import useResizeObserver from '@react-hook/resize-observer';
-import {ResizeObserverEntry} from '@juggle/resize-observer';
 import { v4 as uuid } from 'uuid';
 
 import { PpString, PpMode, BoxDisplay, Term, Break, Box, DisplayType, BreakInfo, HideStates, Token, TokenType } from './types';
