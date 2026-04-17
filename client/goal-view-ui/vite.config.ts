@@ -6,7 +6,7 @@ export default defineConfig(({mode}) => ({
   plugins: [react()],
   build: {
     outDir: "build",
-    sourcemap: mode === "development" ? "inline" : false,
+    sourcemap: mode === "development",
     rolldownOptions: {
       output: {
         entryFileNames: `assets/[name].js`,

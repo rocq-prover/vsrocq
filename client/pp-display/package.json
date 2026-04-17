@@ -10,10 +10,8 @@
   "description": "A react library to format and display Rocq Pp types.",
   "private": true,
   "scripts": {
-    "start": "vite",
     "build": "tsc && vite build",
-    "build:dev": "tsc && vite build --mode development",
-    "preview": "vite preview"
+    "build:dev": "tsc && vite build --mode development"
   },
   "author": "rtetley",
   "license": "MIT",
