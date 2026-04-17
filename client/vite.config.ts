@@ -2,6 +2,10 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig(({ mode }) => ({
+    resolve: {
+        mainFields: ["module", "main"],
+        conditions: ["node"],
+    },
     build: {
         target: "node22",
         outDir: "dist",
@@ -15,7 +19,13 @@ export default defineConfig(({ mode }) => ({
             external: [
                 "vscode",
                 /^node:.*/,
-                "path", // the `which` package does not use the `node:` prefix
+                "path",
+                "fs",
+                "child_process",
+                "net",
+                "crypto",
+                "os",
+                "util",
             ],
             output: {
                 sourcemapExcludeSources: true,
