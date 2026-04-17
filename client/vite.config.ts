@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => ({
     build: {
         target: "node22",
         outDir: "dist",
-        sourcemap: mode === "production" ? false : "inline",
+        sourcemap: mode === "development",
         lib: {
             entry: resolve(import.meta.dirname, "src/extension.ts"),
             formats: ["cjs"],

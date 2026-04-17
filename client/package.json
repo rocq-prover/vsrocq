@@ -13,7 +13,7 @@
   "engines": {
     "vscode": "^1.74.0"
   },
-  "workspaces": ["pp-display", "goal-view-ui", "search-ui"],
+  "workspaces": ["pp-display", "goal-view-ui", "search-ui", "."],
   "dependencies": {
     "compare-versions": "^6.0.0-rc.1",
     "vscode-languageclient": "^9.0.1",
@@ -942,8 +942,9 @@
   },
   "scripts": {
     "build": "vite build",
-    "watch": "vite",
-    "package": "npm install && npm run build --workspaces && vite build --mode production",
+    "build:dev": "vite build --mode development",
+    "watch": "vite build --mode development --watch",
+    "package": "npm install && npm run build --workspaces",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run build && npm run lint",
