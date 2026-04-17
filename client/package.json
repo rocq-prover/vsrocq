@@ -945,8 +945,8 @@
     "build:dev": "vite build --mode development",
     "watch": "vite build --mode development --watch",
     "package": "npm install && npm run build --workspaces",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
+    "compile-tests": "tsc --outDir out",
+    "watch-tests": "tsc -w --outDir out",
     "pretest": "npm run compile-tests && npm run build",
     "test": "node ./out/test/runTest.js"
   },

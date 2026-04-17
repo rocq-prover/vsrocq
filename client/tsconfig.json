@@ -7,6 +7,8 @@
 			"ES2020"
 		],
 		"sourceMap": true,
+		"rootDir": "./src",
+		"skipLibCheck": true
 	},
   "exclude": ["node_modules", ".vscode-test", "goal-view-ui", "search-ui", "pp-display"],
 	"include": ["./src"]
