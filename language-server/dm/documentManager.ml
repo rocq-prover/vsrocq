@@ -273,6 +273,24 @@ let get_document_symbols st =
   let outline = List.rev @@ Document.outline st.document in
   get_document_symbols outline [] []
 
+(** Maps the internal entries representation to the LSP folding ranges type.
+    Filters out entries where start = end_ (unclosed segments). *)
+let get_folding_ranges (entries: Document.document_entries list): FoldingRange.t list =
+  let open Document in
+  entries
+  |> List.filter (fun entry -> entry.range.start <> entry.range.end_)
+  |> List.map (fun entry ->
+    let startLine = entry.range.start.line in
+    let startCharacter = entry.range.start.character in
+    let endLine = entry.range.end_.line in
+    let endCharacter = entry.range.end_.character in
+    FoldingRange.create ~startLine ~startCharacter ~endLine ~endCharacter ~kind:(FoldingRangeKind.Region) ())
+
+let get_folding_ranges st =
+  let folding_ranges = Document.folding_ranges st.document in
+  log (fun () -> "Folding ranges: " ^ (string_of_int @@ List.length folding_ranges));
+  get_folding_ranges folding_ranges
+
 let get_next_range st pos =
   match Document.find_sentence_before_pos st.document pos with
   | None -> None

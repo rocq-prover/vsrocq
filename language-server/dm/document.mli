@@ -66,6 +66,26 @@ val raw_document : document -> RawDocument.t
 val outline : document -> outline
 
 val create_document : doc_id:document_id -> Vernacstate.Synterp.t -> string -> document
+
+type entry_type =
+  | ProofKindEntry
+  | GallinaKindEntry
+  | SectionKindEntry
+  | ModuleKindEntry
+  | OtherKindEntry
+
+(* represents the document entries used for othe folding *)
+type document_entries = {
+  name: string;
+  entry_type: entry_type;
+  statement: string;
+  range: Range.t;
+  children: document_entries list;
+}
+
+val folding_ranges : document -> document_entries list
+
+val create_document : Vernacstate.Synterp.t -> string -> document
 (** [create_document init_synterp_state text] creates a fresh document with content defined by
     [text] under [init_synterp_state]. *)
 
