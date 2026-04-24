@@ -258,8 +258,175 @@ let record_outline document {id; ast} outline =
   | Parsed ast -> record_outline document id ast.ast ast.classification outline
 
 let compute_outline ({ sentences_by_end } as document) =
-    LM.fold (fun _ s -> record_outline document (sentence_of_id document s)) sentences_by_end []
+  LM.fold (fun _ s -> record_outline document (sentence_of_id document s)) sentences_by_end []
 
+type entry_type =
+  | ProofKindEntry
+  | GallinaKindEntry
+  | SectionKindEntry
+  | ModuleKindEntry
+  | OtherKindEntry
+
+(* represents the document entries used for othe folding and the outline *)
+type document_entries = {
+  name: string;
+  entry_type: entry_type;
+  statement: string;
+  range: Range.t;
+  (* TODO: do we want this? *)
+  children: document_entries list;
+}
+
+(* When traversing the vernac ast e.g.
+
+Module X.
+// [X(start: known, end: unknown)]
+Definition foo := 3.
+// [X(start: known, end: unknown); foo(start: known, end: known)]
+Theorem bar : 2 + 2 = 4.
+// [X(start: known, end: unknown); foo(start: known, end: known); bar(start: known, end: unknown)]
+  reflexivity.
+// [X(start: known, end: unknown); foo(start: known, end: known); bar(start: known, end: unknown)]
+Qed.
+// [X(start: known, end: unknown); foo(start: known, end: known); bar(start: known, end: known)]
+End X.
+// [X(start: known, end: known); foo(start: known, end: known); bar(start: known, end: known)]
+Section A.
+// [X(start: known, end: known); foo(start: known, end: known); bar(start: known, end: known); A(start: known, end: unknown)]
+End A.
+// [X(start: known, end: known); foo(start: known, end: known); bar(start: known, end: known); A(start: known, end: known)]
+
+Need: a stack of "open" entries
+
+We have different types of entries:
+- One time entry – everything is known
+- Entries starting a proof – end is unknown until we see the Qed-type event
+- Entries ending a proof – find the last proof starting entry with an unknown end and update it with the current end
+- Entries starting a section/module – end is unknown until we see the corresponding end event
+- Entries ending a section/module – find the last section/module starting entry with an unknown and the same name and update it with the current end (if the name is different then it's some kind of error?)
+
+*)
+
+(** Finds the last entry matching a predicate with an unset end (start=end_) and sets its end *)
+let update_last_open (pred: document_entries -> bool) (end_range: Position.t) (acc: document_entries list): document_entries list =
+  let rec aux acc = function
+    | [] -> List.rev acc
+    | e :: l when pred e && e.range.start = e.range.end_ ->
+      let e = {e with range = {e.range with end_ = end_range}} in
+      List.rev_append acc (e :: l)
+    | e :: l -> aux (e :: acc) l
+  in
+  aux [] acc
+
+(** Finds the last entry matching a predicate with an unset end (start=end_) and sets its start *)
+let update_start_last_open (pred: document_entries -> bool) (start_range: Position.t) (acc: document_entries list): document_entries list =
+  let rec aux acc = function
+    | [] -> List.rev acc
+    | e :: l when pred e && e.range.start = e.range.end_ ->
+      let e = {e with range = {e.range with start = start_range}} in
+      List.rev_append acc (e :: l)
+    | e :: l -> aux (e :: acc) l
+  in
+  aux [] acc
+
+(** Finds the last entry matching a predicate and sets its end (no open check) *)
+let update_end_last (pred: document_entries -> bool) (end_range: Position.t) (acc: document_entries list): document_entries list =
+  let rec aux acc = function
+    | [] -> List.rev acc
+    | e :: l when pred e ->
+      let e = {e with range = {e.range with end_ = end_range}} in
+      List.rev_append acc (e :: l)
+    | e :: l -> aux (e :: acc) l
+  in
+  aux [] acc
+
+let insert_end_by_name (name: string) (end_range: Position.t) (acc: document_entries list): document_entries list =
+  update_last_open (fun e -> e.name = name) end_range acc
+
+let close_last_proof (end_range: Position.t) (acc: document_entries list): document_entries list =
+  update_end_last (fun e -> e.entry_type = ProofKindEntry) end_range acc
+
+let begin_last_proof (start_range: Position.t) (acc: document_entries list): document_entries list =
+  update_start_last_open (fun e -> e.entry_type = ProofKindEntry) start_range acc
+
+let string_names_of_names_wdefault = function
+  | [] -> ["default"]
+  | names -> List.map (fun n -> Names.Id.to_string n) names
+
+let open_segment_entry document id (lident: Names.lident) (entry_type: entry_type) (label: string) (acc: document_entries list) =
+  let str_nm = Names.Id.to_string lident.v in
+  log (fun () -> Format.sprintf "FOLDING_RANGES: %s %s in %s" label str_nm (string_of_id document id));
+  let curr_range = range_of_id document id in
+  let range = {curr_range with end_ = curr_range.start} in
+  let entry = {name = str_nm; entry_type; statement = string_of_id document id; range; children = []} in
+  List.cons entry acc
+
+let folding_range_of_proof_start document (id: sentence_id) (names: Names.variable list) (ast: Synterp.vernac_control_entry) =
+  let str_names = string_names_of_names_wdefault names in
+  let range = range_of_id document id in
+  let statement = string_of_id document id in
+  List.concat_map (fun name -> [
+    {name; entry_type = GallinaKindEntry; statement; range; children=[]};
+    {name; entry_type = ProofKindEntry; statement; range = {start = range.end_; end_ = range.end_}; children=[]};
+  ]) str_names
+
+let update_entries_with_ast document (id: sentence_id) (p_ast: parsed_ast) (acc: document_entries list): document_entries list =
+  let classif = p_ast.classification in
+  let ast = p_ast.ast in
+  let open Vernacextend in
+  begin match classif with
+  | VtProofStep _ ->
+    let curr_range = range_of_id document id in
+    begin_last_proof curr_range.start acc
+  | VtQed _ ->
+    log(fun () -> Format.sprintf "FOLDING_RANGES: QED in %s" (string_of_id document id));
+    let curr_range = range_of_id document id in
+    close_last_proof curr_range.end_ acc
+  | VtStartProof (_, names) ->
+    log(fun () -> Format.sprintf "FOLDING_RANGES: START PROOF %s in %s" (string_names_of_names_wdefault names |> String.concat ", ") (string_of_id document id));
+    let current = folding_range_of_proof_start document id names ast in
+    List.append current acc
+  | VtSideff (names, _) ->
+    begin match ast.v.expr with
+    | VernacSynterp (Synterp.EVernacBeginSection lident) ->
+      open_segment_entry document id lident SectionKindEntry "BEGIN SECTION" acc
+    | VernacSynterp (Synterp.EVernacDeclareModuleType (lident, _, _, _, _)) ->
+      open_segment_entry document id lident ModuleKindEntry "BEGIN MODULE TYPE" acc
+    | VernacSynterp (Synterp.EVernacDefineModule (_, lident, _, _, _, _)) ->
+      open_segment_entry document id lident ModuleKindEntry "BEGIN MODULE" acc
+    | VernacSynterp (Synterp.EVernacDeclareModule (_, lident, _, _)) ->
+      open_segment_entry document id lident ModuleKindEntry "DECLARE MODULE" acc
+    | VernacSynterp (Synterp.EVernacEndSegment lident) ->
+      let str_nm = Names.Id.to_string lident.v in
+      let curr_range = range_of_id document id in
+      log (fun () -> Format.sprintf "FOLDING_RANGES: END SEGMENT %s" str_nm);
+      insert_end_by_name str_nm curr_range.end_ acc
+    | VernacSynPure pure ->
+      let is_gallina = match pure with
+        | Vernacexpr.VernacDefinition _ | Vernacexpr.VernacInductive _
+        | Vernacexpr.VernacFixpoint _ | Vernacexpr.VernacCoFixpoint _ -> true
+        | _ -> false
+      in
+      if is_gallina then begin
+        let str_names = string_names_of_names_wdefault names in
+        let range = range_of_id document id in
+        let entries = List.map (fun name ->
+          {name; entry_type = GallinaKindEntry; statement = string_of_id document id; range; children = []}
+        ) str_names in
+        List.append entries acc
+      end else acc
+    | _ -> acc
+    end
+  | _ -> acc
+  end
+
+let folding_ranges ({ sentences_by_end } as document) =
+  LM.fold (fun _ s acc ->
+    let {id; ast} = sentence_of_id document s in
+    match ast with
+    | Error _ -> acc
+    | Parsed ast -> update_entries_with_ast document id ast acc
+  ) sentences_by_end []
 
 let schedule doc = doc.schedule
 
