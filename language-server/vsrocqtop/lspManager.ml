@@ -158,12 +158,14 @@ let do_initialize id params =
   let documentSymbolProvider = `DocumentSymbolOptions (DocumentSymbolOptions.create ~workDoneProgress:true ()) in
   let hoverProvider = `Bool true in
   let definitionProvider = `Bool true in
+  let foldingRangeProvider = `Bool true in
   let capabilities = ServerCapabilities.create
     ~textDocumentSync
     ~completionProvider
     ~hoverProvider
     ~definitionProvider
     ~documentSymbolProvider
+    ~foldingRangeProvider
   ()
   in
   let initialize_result = Lsp.Types.InitializeResult.{
@@ -432,8 +434,20 @@ let textDocumentCompletion id params =
     let items = List.mapi make_CompletionItem (Dm.DocumentManager.get_completions st position) in
     return_completion ~isIncomplete:false ~items, []
 
+let documentFoldingRange id params =
+  let Lsp.Types.FoldingRangeParams.{ textDocument = { uri } } = params in
+  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
+  | None -> log (fun () -> "[documentFoldingRange] ignoring event on non existent document"); Error({message="Document does not exist"; code=None})
+  | Some { st } ->
+    log (fun () -> "[documentFoldingRange] getting folding ranges");
+    if Dm.DocumentManager.is_parsing st then
+      Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} 
+    else
+      let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
+      Ok(Some folding_ranges)
+
 let documentSymbol id params =
-  let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get ssupport for partialResult and workDone*)
+  let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get support for partialResult and workDone*)
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[documentSymbol] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some tab -> log (fun () -> "[documentSymbol] getting symbols");
@@ -552,6 +566,8 @@ let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a,
     textDocumentHover id params, []
   | DocumentSymbol params ->
     documentSymbol id params
+  | TextDocumentFoldingRange params ->
+    documentFoldingRange id params, []
   | UnknownRequest _ | _  -> Error ({message="Received unknown request"; code=None}), []
 
 let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) result * events =
