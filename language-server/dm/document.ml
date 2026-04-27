@@ -361,6 +361,7 @@ let open_segment_entry document id (lident: Names.lident) (entry_type: entry_typ
   let entry = {name = str_nm; entry_type; statement = string_of_id document id; range; children = []} in
   List.cons entry acc
 
+(* TODO: folding for ast here *)
 let folding_range_of_proof_start document (id: sentence_id) (names: Names.variable list) (ast: Synterp.vernac_control_entry) =
   let str_names = string_names_of_names_wdefault names in
   let range = range_of_id document id in
@@ -370,10 +371,177 @@ let folding_range_of_proof_start document (id: sentence_id) (names: Names.variab
     {name; entry_type = ProofKindEntry; statement; range = {start = range.end_; end_ = range.end_}; children=[]};
   ]) str_names
 
+let rec gallina_folding_ranges_of_constr (raw: RawDocument.t) (acc: document_entries list) (e: Constrexpr.constr_expr) : document_entries list =
+  let loc_entry name (loc: Loc.t) acc =
+    let range_start = RawDocument.position_of_loc raw loc.Loc.bp in
+    let range_end = RawDocument.position_of_loc raw loc.Loc.ep in
+    if range_start <> range_end then
+      {name; entry_type = GallinaKindEntry; statement = ""; range = {start = range_start; end_ = range_end}; children = []} :: acc
+    else acc
+  in
+  let open Constrexpr in
+  let acc = match e.v with
+    | CCases (_style, _ret, _scrutinees, branches) ->
+      let acc = begin match e.loc with
+        | None -> acc
+        | Some loc -> loc_entry "match" loc acc
+      end in
+      List.fold_left (fun acc (b : branch_expr) ->
+        match b.loc with
+        | None -> acc
+        | Some loc -> loc_entry "branch" loc acc
+      ) acc branches
+    | CIf _ ->
+      begin match e.loc with
+      | None -> acc
+      | Some loc -> loc_entry "if" loc acc
+      end
+    | CLambdaN (_binders, _body) ->
+      begin match e.loc with
+      | None -> acc
+      | Some loc -> loc_entry "fun" loc acc
+    end
+    | _ -> acc
+  in
+  gallina_folding_ranges_of_constr_children raw acc e
+
+and gallina_folding_ranges_of_constr_children (raw: RawDocument.t) (acc: document_entries list) (e: Constrexpr.constr_expr) : document_entries list =
+  let open Constrexpr in
+  let rec walk acc = function
+    | [] -> acc
+    | e :: rest ->
+      let acc = gallina_folding_ranges_of_constr raw acc e in
+      walk acc rest
+  in
+  let walk_opt acc = function
+    | None -> acc
+    | Some e -> gallina_folding_ranges_of_constr raw acc e
+  in
+  let walk_binders acc binders =
+    List.fold_left (fun acc b -> match b with
+      | CLocalAssum (_, _, _, ty) -> gallina_folding_ranges_of_constr raw acc ty
+      | CLocalDef (_, _, e, e_opt) ->
+        let acc = gallina_folding_ranges_of_constr raw acc e in
+        walk_opt acc e_opt
+      | CLocalPattern _ -> acc
+    ) acc binders
+  in
+  let walk_branches acc branches =
+    List.fold_left (fun acc (b : branch_expr) ->
+      let (_pats, body) = b.v in
+      gallina_folding_ranges_of_constr raw acc body
+    ) acc branches
+  in
+  match e.v with
+  | CRef _ | CHole _ | CPatVar _ | CEvar _ | CSort _ | CPrim _
+  | CGenarg _ | CGenargGlob _ | CNotation _ ->
+    acc
+  | CFix (_, fixes) ->
+    List.fold_left (fun acc (_name, _rel, _order, binders, rtype, body) ->
+      let acc = walk_binders acc binders in
+      let acc = gallina_folding_ranges_of_constr raw acc rtype in
+      gallina_folding_ranges_of_constr raw acc body
+    ) acc fixes
+  | CCoFix (_, cofixes) ->
+    List.fold_left (fun acc (_name, _rel, binders, rtype, body) ->
+      let acc = walk_binders acc binders in
+      let acc = gallina_folding_ranges_of_constr raw acc rtype in
+      gallina_folding_ranges_of_constr raw acc body
+    ) acc cofixes
+  | CProdN (binders, body) | CLambdaN (binders, body) ->
+    let acc = walk_binders acc binders in
+    gallina_folding_ranges_of_constr raw acc body
+  | CLetIn (_, e1, e2_opt, e3) ->
+    let acc = gallina_folding_ranges_of_constr raw acc e1 in
+    let acc = walk_opt acc e2_opt in
+    gallina_folding_ranges_of_constr raw acc e3
+  | CAppExpl (_, args) -> walk acc args
+  | CApp (fn, args) ->
+    let acc = gallina_folding_ranges_of_constr raw acc fn in
+    walk acc (List.map fst args)
+  | CProj (_, _, args, e) ->
+    let acc = walk acc (List.map fst args) in
+    gallina_folding_ranges_of_constr raw acc e
+  | CRecord fields -> walk acc (List.map snd fields)
+  | CCases (_style, ret, scrutinees, branches) ->
+    let acc = walk_opt acc ret in
+    let acc = walk acc (List.map (fun (e, _, _) -> e) scrutinees) in
+    walk_branches acc branches
+  | CLetTuple (_, _, e1, e2) ->
+    let acc = gallina_folding_ranges_of_constr raw acc e1 in
+    gallina_folding_ranges_of_constr raw acc e2
+  | CIf (cond, (_, ret_opt), then_br, else_br) ->
+    let acc = gallina_folding_ranges_of_constr raw acc cond in
+    let acc = walk_opt acc ret_opt in
+    let acc = gallina_folding_ranges_of_constr raw acc then_br in
+    gallina_folding_ranges_of_constr raw acc else_br
+  | CCast (e1, _, e2) ->
+    let acc = gallina_folding_ranges_of_constr raw acc e1 in
+    gallina_folding_ranges_of_constr raw acc e2
+  | CGeneralization (_, e) -> gallina_folding_ranges_of_constr raw acc e
+  | CDelimiters (_, _, e) -> gallina_folding_ranges_of_constr raw acc e
+  | CArray (_, elems, _, default) ->
+    let acc = walk acc (Array.to_list elems) in
+    gallina_folding_ranges_of_constr raw acc default
+
+let gallina_folding_ranges_of_vernac (raw: RawDocument.t) (ast: Synterp.vernac_control_entry) : document_entries list =
+  let open Constrexpr in
+  let walk_constr acc e = gallina_folding_ranges_of_constr raw acc e in
+  let walk_constr_opt acc = function None -> acc | Some e -> walk_constr acc e in
+  let walk_binders acc binders =
+    List.fold_left (fun acc b -> match b with
+      | CLocalAssum (_, _, _, ty) -> walk_constr acc ty
+      | CLocalDef (_, _, e, e_opt) -> walk_constr_opt (walk_constr acc e) e_opt
+      | CLocalPattern _ -> acc
+    ) acc binders
+  in
+  let walk_vernac acc expr =
+    match expr with
+    | Vernacexpr.VernacSynPure pure ->
+      begin match pure with
+      | Vernacexpr.VernacDefinition (_, _, body) ->
+        begin match body with
+        | Vernacexpr.ProveBody (binders, ty) ->
+          walk_constr (walk_binders acc binders) ty
+        | Vernacexpr.DefineBody (binders, _, body, rest) ->
+          let acc = walk_constr (walk_binders acc binders) body in
+          walk_constr_opt acc rest
+        end
+      | Vernacexpr.VernacStartTheoremProof (_, proofs) ->
+        List.fold_left (fun acc (_name_decl, (binders, ty)) ->
+          walk_constr (walk_binders acc binders) ty
+        ) acc proofs
+      | Vernacexpr.VernacFixpoint (_, (_, fixes)) ->
+        List.fold_left (fun acc fix ->
+          let acc = walk_binders acc fix.Vernacexpr.binders in
+          let acc = walk_constr acc fix.Vernacexpr.rtype in
+          walk_constr_opt acc fix.Vernacexpr.body_def
+        ) acc fixes
+      | Vernacexpr.VernacCoFixpoint (_, cofixes) ->
+        List.fold_left (fun acc cofix ->
+          let acc = walk_binders acc cofix.Vernacexpr.binders in
+          let acc = walk_constr acc cofix.Vernacexpr.rtype in
+          walk_constr_opt acc cofix.Vernacexpr.body_def
+        ) acc cofixes
+      | Vernacexpr.VernacInductive (_, inds) ->
+        List.fold_left (fun acc (((_coercion, (_name, _univs)), (params, _extra_params), rtype, _ctors), _notations) ->
+          let acc = walk_binders acc params in
+          walk_constr_opt acc rtype
+        ) acc inds
+      | Vernacexpr.VernacScheme _ | Vernacexpr.VernacSchemeEquality _
+      | Vernacexpr.VernacCombinedScheme _ ->
+        acc
+      | _ -> acc
+      end
+    | _ -> acc
+  in
+  walk_vernac [] ast.v.expr
+
 let update_entries_with_ast document (id: sentence_id) (p_ast: parsed_ast) (acc: document_entries list): document_entries list =
   let classif = p_ast.classification in
   let ast = p_ast.ast in
   let open Vernacextend in
+  let acc = List.append (gallina_folding_ranges_of_vernac document.raw_doc ast) acc in
   begin match classif with
   | VtProofStep _ ->
     let curr_range = range_of_id document id in
@@ -381,7 +549,7 @@ let update_entries_with_ast document (id: sentence_id) (p_ast: parsed_ast) (acc:
   | VtQed _ ->
     log(fun () -> Format.sprintf "FOLDING_RANGES: QED in %s" (string_of_id document id));
     let curr_range = range_of_id document id in
-    close_last_proof curr_range.end_ acc
+    close_last_proof curr_range.start acc
   | VtStartProof (_, names) ->
     log(fun () -> Format.sprintf "FOLDING_RANGES: START PROOF %s in %s" (string_names_of_names_wdefault names |> String.concat ", ") (string_of_id document id));
     let current = folding_range_of_proof_start document id names ast in
