@@ -65,8 +65,6 @@ val raw_document : document -> RawDocument.t
 
 val outline : document -> outline
 
-val create_document : doc_id:document_id -> Vernacstate.Synterp.t -> string -> document
-
 type entry_type =
   | ProofKindEntry
   | GallinaKindEntry
@@ -85,7 +83,7 @@ type document_entries = {
 
 val folding_ranges : document -> document_entries list
 
-val create_document : Vernacstate.Synterp.t -> string -> document
+val create_document : doc_id:document_id -> Vernacstate.Synterp.t -> string -> document
 (** [create_document init_synterp_state text] creates a fresh document with content defined by
     [text] under [init_synterp_state]. *)
 
