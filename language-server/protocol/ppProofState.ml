@@ -65,7 +65,6 @@ let goal_name = Libnames.string_of_path
 let mk_goal env sigma g =
   let EvarInfo evi = Evd.find sigma g in
   let env = Evd.evar_filtered_env env evi in
-  let min_env = Environ.reset_context env in
   let id = Evar.repr g in
   let name = Option.map goal_name (Evd.evar_ident g sigma) in
   let concl = match Evd.evar_body evi with
@@ -75,16 +74,14 @@ let mk_goal env sigma g =
   let ccl =
     pr_letype_env ~goal_concl_style:true env sigma concl
   in
-  let mk_hyp d (env,l) =
-    let d' = CompactedDecl.to_named_context d in
-    let env' = List.fold_right EConstr.push_named d' env in
+  let mk_hyp d =
     let Refl = EConstr.Unsafe.eq in
     let hyp = mk_pp_hyp env sigma d in
-    (env', hyp :: l)
+    hyp
   in
-  let (_env, hyps) =
-    Context.Compacted.fold mk_hyp
-      (Termops.compact_named_context sigma (EConstr.named_context env)) ~init:(min_env,[]) in
+  let hyps =
+    List.rev_map mk_hyp
+      (Termops.compact_named_context sigma (EConstr.named_context env)) in
   {
     id;
     name;

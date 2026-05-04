@@ -42,24 +42,21 @@ module Atomics = Set.Make(TypeCompare)
 
 module HypothesisMap = Map.Make (struct type t = Id.t let compare = compare end)
 
-let mk_hyp d (env,l) =
-  let d' = CompactedDecl.to_named_context d in
-  let env' = List.fold_right EConstr.push_named d' env in
+let mk_hyp d l =
   let ids, typ = match d with
   | CompactedDecl.LocalAssum (ids, typ) -> ids, typ
   | CompactedDecl.LocalDef (ids,_,typ) -> ids, typ
   in
   let ids' = List.map (fun id -> id.Context.binder_name) ids in
   let m = List.fold_right (fun id acc -> HypothesisMap.add id typ acc) ids' l in
-  (env', m)
+  m
 
 let get_hyps env sigma goal =
     let EvarInfo evi = Evd.find sigma goal in
     let env = Evd.evar_filtered_env env evi in
-    let min_env = Environ.reset_context env in
-    let (_env, hyps) =
+    let hyps =
       Context.Compacted.fold (mk_hyp)
-        (Termops.compact_named_context sigma (EConstr.named_context env)) ~init:(min_env, HypothesisMap.empty) in
+        (Termops.compact_named_context sigma (EConstr.named_context env)) ~init:HypothesisMap.empty in
     hyps
 
 let type_kind_opt sigma t = try Some (kind_of_type sigma t) with _ -> None 
