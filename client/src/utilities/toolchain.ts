@@ -1,9 +1,9 @@
 import { workspace } from 'vscode';
 import { Disposable } from "vscode-languageclient";
-import { exec } from 'child_process';
+import { exec } from 'node:child_process';
 import { ServerOptions } from 'vscode-languageclient/node';
 import Client from '../client';
-import * as which from 'which';
+import which from 'which';
 
 export enum ToolChainErrorCode {
     notFound = 1, 
