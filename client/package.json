@@ -414,6 +414,12 @@
         "category": "Rocq",
         "icon": "$(expand-all)",
         "enablement": "vsrocq.hasSearchResults"
+      },
+      {
+        "command": "extension.rocq.interrupt",
+        "title": "Interrupt",
+        "category": "Rocq",
+        "icon": "$(stop-circle)"
       }
     ],
     "menus": {
@@ -422,6 +428,11 @@
           "when": "resourceLangId == rocq && config.vsrocq.proof.display-buttons == true",
           "command": "extension.rocq.interpretToPoint",
           "group": "navigation@3"
+        },
+        {
+          "when": "resourceLangId == rocq && config.vsrocq.proof.display-buttons == true",
+          "command": "extension.rocq.interrupt",
+          "group": "navigation@1"
         },
         {
           "when": "resourceLangId == rocq && config.vsrocq.proof.display-buttons == true",

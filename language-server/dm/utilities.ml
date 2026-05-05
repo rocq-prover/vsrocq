@@ -52,20 +52,6 @@ let feedback_pipe_cleanup { rocq_feeder; sel_feedback_queue; sel_cancellation_ha
   Queue.clear sel_feedback_queue;
   Sel.Event.cancel sel_cancellation_handle
 
-let context_of_vernac_state (st : Vernacstate.t) =
-  let st = st.Vernacstate.interp in
-  Vernacstate.Interp.unfreeze_interp_state st;
-  begin match st.lemmas with
-  | None ->
-    let env = Global.env () in
-    let sigma = Evd.from_env env in
-    sigma, env
-  | Some lemmas ->
-    let open Declare in
-    let open Vernacstate in
-    lemmas |> LemmaStack.with_top ~f:Proof.get_current_context
-  end
-
 (** Returns the vernac state after the sentence *)
 let get_vernac_state (checked : sentence_checking_result option) =
   match checked with
@@ -75,10 +61,8 @@ let get_vernac_state (checked : sentence_checking_result option) =
   | Some (Success (Some st))
   | Some (Failure (_,_, Some st)) -> Some st
 
-
-let get_proof_context (checked : sentence_checking_result option) =
-  match checked with
-  | None -> log (fun () -> "Cannot find state for get_proof_context"); None
-  | Some (Failure _) -> log (fun () -> "Context requested in error state"); None
-  | Some (Success None) -> log (fun () -> "Context requested in a remotely checked state"); None
-  | Some (Success (Some st)) -> Some (context_of_vernac_state st)
+[%%if rocq ="8.18" || rocq ="8.19"]
+let vernacstate_synterp_parsing x = x.Vernacstate.synterp.Vernacstate.Synterp.parsing
+[%%else]
+let vernacstate_synterp_parsing x = Vernacstate.(Synterp.parsing x.synterp)
+[%%endif]

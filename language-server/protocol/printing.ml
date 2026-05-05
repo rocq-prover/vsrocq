@@ -78,7 +78,7 @@ let rec pp_of_rocqpp t = match Pp.repr t with
 let rec pp_of_rocqpp t = match Pp.repr t with
   | Pp.Ppcmd_empty -> Ppcmd_empty
   | Pp.Ppcmd_string s -> Ppcmd_string s
-  | Pp.Ppcmd_sized_string (l, (s: string)) -> Ppcmd_string s (*TODO: Add support for sized strings ???*)
+  | Pp.Ppcmd_sized_string (_l, (s: string)) -> Ppcmd_string s (*TODO: Add support for sized strings ???*)
   | Pp.Ppcmd_glue l -> (* We are working around a Coq hack here *)
     let l = regroup_tags l in
     Ppcmd_glue (List.map pp_of_rocqpp l)

@@ -116,7 +116,7 @@ By default, we display the processed lines in the VSCode gutter.
 
 ## Goal view 
 
-For the goal view we provide a request verb `vscoq/updateProofView` and its corresponding response. 
+For the goal view we provide a request verb `prover/updateProofView` and its corresponding response. 
 
 We now make use of PpStrings to display the goals with syntactic coloration.
 
@@ -162,13 +162,13 @@ enum MessageSeverity {
     warning = "Warning", 
     info = "Information"
 }
-type CoqMessage = [MessageSeverity, PpString];
+type RocqMessage = [MessageSeverity, PpString];
 
 
 // The proof view notification is sent from the server to the client
 interface ProofViewNotification {
     proof: Nullable<ProofViewGoals>;
-    messages: CoqMessage[];
+    messages: RocqMessage[];
 }
 
 // Sent from the server to the client after a stepForward or stepBack
@@ -186,7 +186,7 @@ For the query panel we provide a request verb `prover/search` and its correspond
 
 ``` typescript
 
-interface SearchCoqRequest {
+interface SearchRocqRequest {
     // This should be a uuid provided by the client
     id: string;
     // a document uri as given through the vscode api
@@ -197,12 +197,12 @@ interface SearchCoqRequest {
     position: Position;
 }
 
-interface SearchCoqHandshake {
+interface SearchRocqHandshake {
     //Returns the provided uuid
     id: string;
 }
 
-interface SearchCoqResult {
+interface SearchRocqResult {
     //The uuid of the search associated to this result
     id: string;
     // The name of the relevant search result (theorem or lemma or etc... in coq)
@@ -212,42 +212,47 @@ interface SearchCoqResult {
 }
 ```
 
-By default the Rocq Search command is asynchronous. Therefore, the language server first sends a handshake either with an OK code, or with an error. It then sends each result one by one through the SearchCoqResult notification. The id corresponds to a uuid given to each search request. 
+By default the Rocq Search command is asynchronous. Therefore, the language server first sends a handshake either with an OK code, or with an error. It then sends each result one by one through the SearchRocqResult notification. The id corresponds to a uuid given to each search request. 
 
 We also provide the requests for the `prover/check`, `prover/about`, `prover/locate` and `prover/print` queries, with plans to support more in the future.
 These queries are synchronous and do not require a separate verb for their responses.
 
 ```typescript
 
-interface AboutCoqRequest {
+interface AboutRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
     pattern: string; 
     position: Position;
 }
 
-type AboutCoqResponse = PpString;
+type AboutRocqResponse = PpString;
 
-interface CheckCoqRequest {
+interface CheckRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
     pattern: string; 
     position: Position;
 };
 
-type CheckCoqResponse = PpString; 
+type CheckRocqResponse = PpString; 
 
-interface LocateCoqRequest {
+interface LocateRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
     pattern: string; 
     position: Position;
 };
 
-type LocateCoqResponse = PpString; 
+type LocateRocqResponse = PpString; 
 
-interface PrintCoqRequest {
+interface PrintRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
     pattern: string; 
     position: Position;
 };
 
-type PrintCoqResponse = PpString; 
+type PrintRocqResponse = PpString; 
 ```
+
+## Interruption
+
+The verb `prover/interrupt` forces the interruption of Rocq interpreter. It
+takes an argument `textDocument` of type `VersionedTextDocumentIdentifier`.

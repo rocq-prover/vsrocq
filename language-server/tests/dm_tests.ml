@@ -176,7 +176,7 @@ let%test_unit "step_forward.proof_view" =
   let todo = Sel.Todo.(add todo events) in
   let st = handle_dm_events todo st in
   [%test_pred: sentence_id option] (Option.equal Stateid.equal (Some s2.id)) (DocumentManager.Internal.observe_id st);
-  let data = DocumentManager.get_proof st None in
+  let data = DocumentManager.Internal.get_proof st None in
   [%test_eq: bool] (Option.is_some data) true
   (* 
   let doc = DocumentManager.Internal.document st in
