@@ -326,13 +326,19 @@ let purge_invisible_tabs () =
     end)
   states
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
+let invalidate_cache = Vernacstate.Interp.invalidate_cache
+[%%else]
+let invalidate_cache () = ()
+[%%endif]
+
 let consider_purge_invisible_tabs () =
   let usage = current_memory_usage () in
   if usage > !max_memory_usage (* 4G *) then begin
     purge_invisible_tabs ();
     let vst = get_init_state () in
     Vernacstate.unfreeze_full_state vst;
-    Vernacstate.Interp.invalidate_cache ();
+    invalidate_cache ();
     Gc.compact ();
     let new_usage = current_memory_usage () in
     log (fun () -> Printf.sprintf  "memory footprint %d -> %d" usage new_usage);
