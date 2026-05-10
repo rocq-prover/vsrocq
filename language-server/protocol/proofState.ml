@@ -75,7 +75,7 @@ let mk_goal env sigma g =
   {
     id;
     name;
-    hypotheses = List.rev_map pp_of_rocqpp hyps;
+    hypotheses = List.map pp_of_rocqpp hyps;
     goal = pp_of_rocqpp ccl;
   }
 
