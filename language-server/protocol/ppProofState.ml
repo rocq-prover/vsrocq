@@ -85,7 +85,7 @@ let mk_goal env sigma g =
   {
     id;
     name;
-    hypotheses = List.rev hyps;
+    hypotheses = hyps;
     goal = Pp.string_of_ppcmds ccl;
   }
 
