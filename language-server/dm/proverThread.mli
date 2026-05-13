@@ -22,6 +22,7 @@
 
 val eventually_run :
   doc_id:Types.document_id ->
+  name:string ->
   (unit -> 'a) ->
   'a Types.interruptible_result Sel.Promise.t
 (** [eventually_run ~doc_id thunk] puts the [thunk] in the and promises to execute
@@ -29,6 +30,7 @@ val eventually_run :
 
 val run :
   doc_id:Types.document_id ->
+  name:string ->
   timeout:float ->
   (unit -> 'a) ->
   'a Types.interruptible_result

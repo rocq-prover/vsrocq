@@ -218,7 +218,7 @@ let add_using proof proof_using _ =
 [%%endif]
 
 let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
-  ProverThread.run ~doc_id ~timeout:1.0 (fun () ->
+  ProverThread.run ~doc_id ~name:"interp_qed_delayed" ~timeout:1.0 (fun () ->
   let lemmas = Option.get @@ st.Vernacstate.interp.lemmas in
   let f proof =
     let proof = add_using proof proof_using lemmas in
@@ -408,7 +408,7 @@ type execution_result =
 let interrupt_execution { feedback_pipe = { doc_id } } = ProverThread.interrupt ~doc_id
 
 let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
-  let promise = ProverThread.eventually_run ~doc_id (fun () -> 
+  let promise = ProverThread.eventually_run ~doc_id ~name:"promise_execution" (fun () -> 
     interp_ast ~doc_id ~state_id ~st ~error_recovery ast) in
   let promise_to_result p =
     match p with
@@ -429,7 +429,7 @@ let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
   WillDo(promise,promise_to_result)
 
 let complete_proof ~doc_id vernac_st assign =
-  ProverThread.run ~doc_id ~timeout:1.0 (fun () ->
+  ProverThread.run ~doc_id ~name:"complete_proof" ~timeout:1.0 (fun () ->
     Vernacstate.LemmaStack.with_top (Option.get @@ vernac_st.Vernacstate.interp.lemmas) ~f:(fun proof ->
       log (fun () -> "Resolved future");
       Declare.Proof.return_proof proof))
