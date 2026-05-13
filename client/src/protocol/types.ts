@@ -1,5 +1,9 @@
-import { integer, TextDocumentIdentifier, VersionedTextDocumentIdentifier } from "vscode-languageclient";
 import { Position, Range, Uri } from "vscode";
+import {
+    integer,
+    TextDocumentIdentifier,
+    VersionedTextDocumentIdentifier,
+} from "vscode-languageclient";
 
 type Nullable<T> = T | null;
 
@@ -9,24 +13,24 @@ export enum PpMode {
     horizontal = "Pp_hbox",
     vertical = "Pp_vbox",
     hvBox = "Pp_hvbox",
-    hovBox = "Pp_hovbox"
+    hovBox = "Pp_hovbox",
 }
 
 export type BlockType =
-  | [PpMode.horizontal]
-  | [PpMode.vertical, integer]
-  | [PpMode.hvBox, integer]
-  | [PpMode.hovBox, integer];
+    | [PpMode.horizontal]
+    | [PpMode.vertical, integer]
+    | [PpMode.hvBox, integer]
+    | [PpMode.hovBox, integer];
 
 export type PpString =
-  | ["Ppcmd_empty"]
-  | ["Ppcmd_string", string]
-  | ["Ppcmd_glue", PpString[]]
-  | ["Ppcmd_box", BlockType, PpString]
-  | ["Ppcmd_tag", PpTag, PpString]
-  | ["Ppcmd_print_break", integer, integer]
-  | ["Ppcmd_force_newline"]
-  | ["Ppcmd_comment", string[]];
+    | ["Ppcmd_empty"]
+    | ["Ppcmd_string", string]
+    | ["Ppcmd_glue", PpString[]]
+    | ["Ppcmd_box", BlockType, PpString]
+    | ["Ppcmd_tag", PpTag, PpString]
+    | ["Ppcmd_print_break", integer, integer]
+    | ["Ppcmd_force_newline"]
+    | ["Ppcmd_comment", string[]];
 
 export interface Goal {
     id: integer;
@@ -44,8 +48,8 @@ export interface ProofViewGoals {
 
 export enum MessageSeverity {
     error = "Error",
-    warning = "Warning", 
-    info = "Information"
+    warning = "Warning",
+    info = "Information",
 }
 
 export type RocqMessage = [MessageSeverity, PpString];
@@ -67,8 +71,8 @@ export interface UpdateHighlightsNotification {
 }
 
 export interface MoveCursorNotification {
-    uri: Uri; 
-    range: Range; 
+    uri: Uri;
+    range: Range;
 }
 
 export interface ErrorAlertNotification {
@@ -79,7 +83,7 @@ export interface ErrorAlertNotification {
 export interface SearchRocqRequest {
     id: string;
     textDocument: VersionedTextDocumentIdentifier;
-    pattern: string; 
+    pattern: string;
     position: Position;
 }
 
@@ -88,19 +92,19 @@ export interface SearchRocqHandshake {
 }
 
 export interface QueryError {
-    code: integer; 
-    message: string; 
+    code: integer;
+    message: string;
 }
 
 export interface SearchRocqResult {
     id: string;
-    name: PpString; 
+    name: PpString;
     statement: PpString;
 }
 
 export interface AboutRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
-    pattern: string; 
+    pattern: string;
     position: Position;
     goalIndex?: number;
 }
@@ -109,28 +113,28 @@ export type AboutRocqResponse = PpString;
 
 export interface CheckRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
-    pattern: string; 
+    pattern: string;
     position: Position;
     goalIndex?: number;
-};
+}
 
-export type CheckRocqResponse = PpString; 
+export type CheckRocqResponse = PpString;
 
 export interface LocateRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
-    pattern: string; 
+    pattern: string;
     position: Position;
-};
+}
 
-export type LocateRocqResponse = PpString; 
+export type LocateRocqResponse = PpString;
 
 export interface PrintRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
-    pattern: string; 
+    pattern: string;
     position: Position;
-};
+}
 
-export type PrintRocqResponse = PpString; 
+export type PrintRocqResponse = PpString;
 
 export interface DocumentStateRequest {
     textDocument: TextDocumentIdentifier;
@@ -144,7 +148,7 @@ export interface ResetRocqRequest {
     textDocument: TextDocumentIdentifier;
 }
 
-export interface ResetRocqResponse {};
+export interface ResetRocqResponse {}
 
 export interface DocumentProofsRequest {
     textDocument: TextDocumentIdentifier;
@@ -153,7 +157,7 @@ export interface DocumentProofsRequest {
 type ProofStatement = {
     range: Range;
     statement: string;
-}
+};
 
 type ProofStep = {
     range: Range;

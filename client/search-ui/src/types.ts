@@ -5,11 +5,11 @@ import { PpString } from "pp-display";
 type Nullable<T> = T | null;
 
 export enum QueryType {
-    search = "search", 
-    about = "about", 
+    search = "search",
+    about = "about",
     check = "check",
-    locate = "locate", 
-    print = "print"
+    locate = "locate",
+    print = "print",
 }
 export interface QueryResultBase {
     statement: Nullable<PpString>;
@@ -22,11 +22,11 @@ export interface CollapsibleSearchResult extends SearchResult {
 }
 export interface SearchResultType {
     type: QueryType.search;
-    data : CollapsibleSearchResult[]
-};
+    data: CollapsibleSearchResult[];
+}
 export interface SearchNotification extends SearchResult {
-    id: string; 
-};
+    id: string;
+}
 export interface QueryNotification extends QueryResultBase {
     id: string;
 }
@@ -43,34 +43,34 @@ export interface PrintResultType extends QueryResultBase {
     type: QueryType.print;
 }
 export interface QueryError {
-    code: integer; 
+    code: integer;
     message: string;
 }
-export type QueryResultType = 
-    SearchResultType
+export type QueryResultType =
+    | SearchResultType
     | CheckResultType
     | AboutResultType
     | LocateResultType
     | PrintResultType;
 export interface Query {
-    pattern: string; 
-    type: QueryType; 
-};
+    pattern: string;
+    type: QueryType;
+}
 export interface QueryTab {
-    id: string, 
-    title: string, 
-    pattern: string, 
-    type: QueryType, 
-    result: QueryResultType,
-    error?: QueryError,
-    expanded?: boolean
-};
+    id: string;
+    title: string;
+    pattern: string;
+    type: QueryType;
+    result: QueryResultType;
+    error?: QueryError;
+    expanded?: boolean;
+}
 export type QueryPanelState = {
     currentTab: number;
     tabs: QueryTab[];
 };
 export type VsCodeState = {
-    state?: QueryPanelState,
-    history?: string[],
-    historyIndex?: number, 
+    state?: QueryPanelState;
+    history?: string[];
+    historyIndex?: number;
 };

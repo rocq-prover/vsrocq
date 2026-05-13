@@ -1,18 +1,17 @@
-import { integer } from "vscode-languageclient";
 import { PpString } from "pp-display";
 type Nullable<T> = T | null;
 
 export interface Goal {
-    id: string,
-    name?: Nullable<string>,
-    goal: PpString, 
-    hypotheses: PpString[],
-};
+    id: string;
+    name?: Nullable<string>;
+    goal: PpString;
+    hypotheses: PpString[];
+}
 
-export interface CollapsibleGoal extends Goal  {
+export interface CollapsibleGoal extends Goal {
     isOpen: boolean;
     isContextHidden: boolean;
-};
+}
 
 export type ProofViewGoalsType = {
     main: CollapsibleGoal[];
@@ -22,17 +21,17 @@ export type ProofViewGoalsType = {
 };
 
 export enum ProofViewGoalsKey {
-    main = "main", 
-    shelved = "shelved", 
+    main = "main",
+    shelved = "shelved",
     givenUp = "givenUp",
-    unfocused = "unfocused"
+    unfocused = "unfocused",
 }
 
 export enum MessageSeverity {
-    error = 1, 
+    error = 1,
     warning,
     information,
-    hint
+    hint,
 }
 
 export type ProofViewMessage = [MessageSeverity, PpString];

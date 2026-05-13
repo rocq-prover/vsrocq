@@ -5,44 +5,44 @@
 }
 .constr-notation {
     color: var(--vscode-rocq-termNotation);
-  }
-  .constr-keyword {
+}
+.constr-keyword {
     color: var(--vscode-rocq-termKeyword);
-  }
-  .constr-evar {
+}
+.constr-evar {
     color: var(--vscode-rocq-termEvar);
-  }
-  .constr-path {
+}
+.constr-path {
     color: var(--vscode-rocq-termPath);
-  }
-  .constr-reference {
+}
+.constr-reference {
     color: var(--vscode-rocq-termReference);
-  }
-  .constr-type {
+}
+.constr-type {
     color: var(--vscode-rocq-termType);
-  }
-  .constr-variable {
+}
+.constr-variable {
     color: var(--vscode-rocq-termVariable);
-  }
-  .message-debug {
+}
+.message-debug {
     color: var(--vscode-rocq-debugMessage);
-  }
-  .message-error {
+}
+.message-error {
     color: var(--vscode-rocq-errorMessage);
     text-decoration: underline;
-  }
-  .message-warning {
+}
+.message-warning {
     color: var(--vscode-rocq-warningMessage);
-  }
-  .module-keyword {
+}
+.module-keyword {
     color: var(--vscode-rocq-moduleKeyword);
-  }
-  .tactic-keyword {
+}
+.tactic-keyword {
     color: var(--vscode-rocq-tacticKeyword);
-  }
-  .tactic-primitive {
+}
+.tactic-primitive {
     color: var(--vscode-rocq-tacticPrimitive);
-  }
-  .tactic-string {
+}
+.tactic-string {
     color: var(--vscode-rocq-tacticString);
-  }
+}

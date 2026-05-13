@@ -1,6 +1,6 @@
-import PpDisplay from './pp';
-import {PpString, PpMode, PpTag} from './types';
-import {stringOfPpString} from './utilities';
+import PpDisplay from "./pp";
+import { PpMode, PpString, PpTag } from "./types";
+import { stringOfPpString } from "./utilities";
 
-export {PpDisplay, stringOfPpString};
-export type {PpString, PpMode, PpTag};
+export { PpDisplay, stringOfPpString };
+export type { PpMode, PpString, PpTag };

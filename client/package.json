@@ -980,7 +980,8 @@
     "compile-tests": "tsc --outDir out",
     "watch-tests": "tsc -w --outDir out",
     "pretest": "npm run compile-tests && npm run build",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@types/mocha": "^10.0.1",

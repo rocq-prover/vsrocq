@@ -1,40 +1,39 @@
-import React, {FunctionComponent, KeyboardEventHandler} from 'react';
+import { FunctionComponent, KeyboardEventHandler } from "react";
 
-import { QueryTab } from '../../types';
+import { QueryTab } from "../../types";
 
-import QueryBar from '../molecules/QueryBar';
-import ResultSection from './ResultSection';
-import Error from '../atoms/Error';
+import Error from "../atoms/Error";
+import QueryBar from "../molecules/QueryBar";
+import ResultSection from "./ResultSection";
 
 type ResultPageProps = {
     tab: QueryTab;
     queryTypeSelectHandler: (e: any) => void;
     onTextInput: (e: any) => void; //FormEventHandler<HTMLInputElement>
-    searchFieldKeyPressHandler: KeyboardEventHandler<HTMLInputElement>,
+    searchFieldKeyPressHandler: KeyboardEventHandler<HTMLInputElement>;
     toggleCollapsedHandler: (index: number) => void;
     deleteSearchResultHandler: (index: number) => void;
     copyNameHandler: (name: string) => void;
 };
 
 const page: FunctionComponent<ResultPageProps> = (props) => {
-
     const {
         tab,
-        queryTypeSelectHandler, 
-        onTextInput, 
+        queryTypeSelectHandler,
+        onTextInput,
         searchFieldKeyPressHandler,
         toggleCollapsedHandler,
         deleteSearchResultHandler,
-        copyNameHandler
+        copyNameHandler,
     } = props;
 
-    const {pattern, error, result, type} = tab;
+    const { pattern, error, result, type } = tab;
 
     const errorSection = error ? <Error error={error} /> : null;
 
     return (
         <div>
-            <QueryBar 
+            <QueryBar
                 tabInput={{
                     pattern,
                     type,
@@ -44,7 +43,7 @@ const page: FunctionComponent<ResultPageProps> = (props) => {
                 searchFieldKeyPressHandler={searchFieldKeyPressHandler}
             />
             {errorSection}
-            <ResultSection 
+            <ResultSection
                 result={result}
                 toggleCollapsedHandler={toggleCollapsedHandler}
                 deleteSearchResultHandler={deleteSearchResultHandler}
