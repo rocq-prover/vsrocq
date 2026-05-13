@@ -72,17 +72,17 @@ let _runner =
         log (fun () -> "runner: job begins");
         match task token with
         | Interrupted when !retry ->
-            log (fun () -> "runner: postponing running job");
             Mutex.lock jobs_mutex;
+            log (fun () -> "runner: postponing running job");
             jobs.running <- None;
             Queue.enqueue (Job (doc_id ,task, resolver, Memprof_limits.Token.create (), ref false)) jobs.queue;
             Condition.signal jobs_condition;
             Mutex.unlock jobs_mutex
 
         | x ->
+            Mutex.lock jobs_mutex;
             log (fun () -> "runner: job ends");
             Sel.Promise.fulfill resolver x;
-            Mutex.lock jobs_mutex;
             jobs.running <- None;
             Condition.signal jobs_condition;
             Mutex.unlock jobs_mutex
@@ -91,6 +91,7 @@ let _runner =
     ()
 
 let interrupt_job_if ~doc_id (Job(id,_,_,token,_)) = if id = doc_id then Memprof_limits.Token.set token
+
 let postpone_job (Job(_,_,_,token,retry)) =
   log (fun () -> "main: postponing running job");
   retry := true;
