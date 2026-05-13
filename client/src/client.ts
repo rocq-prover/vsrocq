@@ -1,34 +1,46 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 import {
-  LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
-} from 'vscode-languageclient/node';
+    LanguageClient,
+    LanguageClientOptions,
+    ServerOptions,
+} from "vscode-languageclient/node";
 
-import {decorationsManual, decorationsContinuous, decorationsErrorAnimation} from './Decorations';
+import {
+    decorationsContinuous,
+    decorationsErrorAnimation,
+    decorationsManual,
+} from "./Decorations";
 
 export default class Client extends LanguageClient {
+    private static _channel: any = vscode.window.createOutputChannel("VsRocq");
+    private static _rocqLog: any =
+        vscode.window.createOutputChannel("Rocq Log");
+    private _decorationsPrepared: Map<String, vscode.Range[]> = new Map<
+        String,
+        vscode.Range[]
+    >();
+    private _decorationsProcessed: Map<String, vscode.Range[]> = new Map<
+        String,
+        vscode.Range[]
+    >();
+    private _decorationsProcessing: Map<String, vscode.Range[]> = new Map<
+        String,
+        vscode.Range[]
+    >();
 
-	private static _channel: any = vscode.window.createOutputChannel('VsRocq');
-    private static _rocqLog: any = vscode.window.createOutputChannel('Rocq Log');
-    private _decorationsPrepared: Map<String, vscode.Range[]> = new Map<String, vscode.Range[]>();
-    private _decorationsProcessed: Map<String, vscode.Range[]> = new Map<String, vscode.Range[]>();
-    private _decorationsProcessing: Map<String, vscode.Range[]> = new Map<String, vscode.Range[]>();
-
-	constructor(
+    constructor(
         serverOptions: ServerOptions,
         clientOptions: LanguageClientOptions,
-	) {
+    ) {
         super(
-		    'vsrocq-language-server',
-		    'Rocq Language Server',
-		    serverOptions,
-		    clientOptions
+            "vsrocq-language-server",
+            "Rocq Language Server",
+            serverOptions,
+            clientOptions,
         );
-		Client._channel.appendLine("VsRocq initialised");
-	}
-
+        Client._channel.appendLine("VsRocq initialised");
+    }
 
     public static writeToVsrocqChannel(message: string) {
         Client._channel.appendLine(message);
@@ -40,28 +52,33 @@ export default class Client extends LanguageClient {
 
     public static showLog() {
         Client._channel.show(true);
-    };
+    }
 
-    public saveHighlights(uri: String, preparedRange: vscode.Range[], processingRange: vscode.Range[], processedRange: vscode.Range[]) {
+    public saveHighlights(
+        uri: String,
+        preparedRange: vscode.Range[],
+        processingRange: vscode.Range[],
+        processedRange: vscode.Range[],
+    ) {
         this._decorationsPrepared.set(uri, preparedRange);
         this._decorationsProcessing.set(uri, processingRange);
         this._decorationsProcessed.set(uri, processedRange);
     }
 
     public updateHightlights() {
-        for(let entry of this._decorationsPrepared.entries()) {
+        for (let entry of this._decorationsPrepared.entries()) {
             this.updateDocumentEditors(entry[0], entry[1], "prepared");
         }
-        for(let entry of this._decorationsProcessing.entries()) {
+        for (let entry of this._decorationsProcessing.entries()) {
             this.updateDocumentEditors(entry[0], entry[1], "processing");
         }
-        for(let entry of this._decorationsProcessed.entries()) {
+        for (let entry of this._decorationsProcessed.entries()) {
             this.updateDocumentEditors(entry[0], entry[1]);
         }
-    };
+    }
 
     public resetHighlights() {
-        for(let entry of this._decorationsProcessed.entries()) {
+        for (let entry of this._decorationsProcessed.entries()) {
             this.resetDocumentEditors(entry[0]);
         }
     }
@@ -71,7 +88,7 @@ export default class Client extends LanguageClient {
         const editors = this.getDocumentEditors(uri);
         //Create a flash animation by gradually increasing opacities
         //Then decreasing them and then removing them completely
-        editors.map(editor => {
+        editors.map((editor) => {
             decorationsErrorAnimation.map((decoration, i) => {
                 setTimeout(() => {
                     editor.setDecorations(decoration, ranges);
@@ -87,14 +104,14 @@ export default class Client extends LanguageClient {
     }
 
     private getDocumentEditors(uri: String) {
-        return vscode.window.visibleTextEditors.filter(editor => {
+        return vscode.window.visibleTextEditors.filter((editor) => {
             return editor.document.uri.toString() === uri;
         });
     }
 
     private resetDocumentEditors(uri: String) {
         const editors = this.getDocumentEditors(uri);
-        editors.map(editor => {
+        editors.map((editor) => {
             editor.setDecorations(decorationsManual.prepared, []);
             editor.setDecorations(decorationsContinuous.prepared, []);
             editor.setDecorations(decorationsManual.processing, []);
@@ -104,32 +121,44 @@ export default class Client extends LanguageClient {
         });
     }
 
-    private updateDocumentEditors(uri: String, ranges: vscode.Range[], type: String = "processed") {
-        const config = vscode.workspace.getConfiguration('vsrocq.proof');
+    private updateDocumentEditors(
+        uri: String,
+        ranges: vscode.Range[],
+        type: String = "processed",
+    ) {
+        const config = vscode.workspace.getConfiguration("vsrocq.proof");
         const editors = this.getDocumentEditors(uri);
-        editors.map(editor => {
-            if(config.mode === 0) {
-                if(type === "prepared") {
+        editors.map((editor) => {
+            if (config.mode === 0) {
+                if (type === "prepared") {
                     editor.setDecorations(decorationsManual.prepared, ranges);
                 }
-                if(type === "processing") {
+                if (type === "processing") {
                     editor.setDecorations(decorationsManual.processing, ranges);
                 }
                 if (type === "processed") {
                     editor.setDecorations(decorationsManual.processed, ranges);
                 }
             } else {
-                if(type === "prepared") {
-                    editor.setDecorations(decorationsContinuous.prepared, ranges);
+                if (type === "prepared") {
+                    editor.setDecorations(
+                        decorationsContinuous.prepared,
+                        ranges,
+                    );
                 }
-                if(type === "processing") {
-                    editor.setDecorations(decorationsContinuous.processing, ranges);
+                if (type === "processing") {
+                    editor.setDecorations(
+                        decorationsContinuous.processing,
+                        ranges,
+                    );
                 }
                 if (type === "processed") {
-                    editor.setDecorations(decorationsContinuous.processed, ranges);
+                    editor.setDecorations(
+                        decorationsContinuous.processed,
+                        ranges,
+                    );
                 }
             }
         });
     }
-
 }

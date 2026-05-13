@@ -1,23 +1,27 @@
-import React, {FunctionComponent} from 'react'; 
+import { FunctionComponent } from "react";
 
-import { 
-    VSCodeBadge, 
-    VSCodePanels, 
-    VSCodePanelTab, 
+import {
+    VSCodeBadge,
+    VSCodeButton,
+    VSCodePanels,
+    VSCodePanelTab,
     VSCodePanelView,
-    VSCodeButton
-} from '@vscode/webview-ui-toolkit/react';
+} from "@vscode/webview-ui-toolkit/react";
 
-import { VscGear } from 'react-icons/vsc';
+import { VscGear } from "react-icons/vsc";
 
-import GoalSection from '../organisms/GoalSection';
-import EmptyState from '../atoms/EmptyState';
-import Accordion from '../atoms/Accordion';
-import Message from '../atoms/Message';
-import { ProofViewGoals, ProofViewGoalsKey, ProofViewMessage } from '../../types';
+import {
+    ProofViewGoals,
+    ProofViewGoalsKey,
+    ProofViewMessage,
+} from "../../types";
+import Accordion from "../atoms/Accordion";
+import EmptyState from "../atoms/EmptyState";
+import Message from "../atoms/Message";
+import GoalSection from "../organisms/GoalSection";
 
-import classes from './GoalPage.module.css';
-import { VscPass, VscWarning } from 'react-icons/vsc';
+import { VscPass, VscWarning } from "react-icons/vsc";
+import classes from "./GoalPage.module.css";
 
 type ProofViewPageProps = {
     goals: ProofViewGoals;
@@ -32,12 +36,17 @@ type ProofViewPageProps = {
 };
 
 const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
-
-    const {goals, messages, displaySetting, 
-            collapseGoalHandler, maxDepth, settingsClickHandler, 
-            helpMessage, helpMessageHandler,
-            toggleContextHandler,
-        } = props;
+    const {
+        goals,
+        messages,
+        displaySetting,
+        collapseGoalHandler,
+        maxDepth,
+        settingsClickHandler,
+        helpMessage,
+        helpMessageHandler,
+        toggleContextHandler,
+    } = props;
 
     const renderGoals = () => {
         const goalBadge = <VSCodeBadge>{goals!.main.length}</VSCodeBadge>;
@@ -47,55 +56,85 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
         const tabs = [
             <VSCodePanelTab>Main {goalBadge}</VSCodePanelTab>,
             <VSCodePanelTab>Shelved {shelvedBadge}</VSCodePanelTab>,
-            <VSCodePanelTab>Given up {givenUpBadge}</VSCodePanelTab>
+            <VSCodePanelTab>Given up {givenUpBadge}</VSCodePanelTab>,
         ];
 
         const views = [
-            <VSCodePanelView className={classes.View}> 
-                <GoalSection 
+            <VSCodePanelView className={classes.View}>
+                <GoalSection
                     key={"goals"}
                     goals={goals!.main}
                     unfocusedGoals={goals!.unfocused}
-                    collapseGoalHandler={(id) => collapseGoalHandler(id, goals!.main.length ? ProofViewGoalsKey.main : ProofViewGoalsKey.unfocused)}
-                    toggleContextHandler={(id) => toggleContextHandler(id, goals!.main.length ? ProofViewGoalsKey.main : ProofViewGoalsKey.unfocused)}
+                    collapseGoalHandler={(id) =>
+                        collapseGoalHandler(
+                            id,
+                            goals!.main.length
+                                ? ProofViewGoalsKey.main
+                                : ProofViewGoalsKey.unfocused,
+                        )
+                    }
+                    toggleContextHandler={(id) =>
+                        toggleContextHandler(
+                            id,
+                            goals!.main.length
+                                ? ProofViewGoalsKey.main
+                                : ProofViewGoalsKey.unfocused,
+                        )
+                    }
                     displaySetting={displaySetting}
                     emptyMessage={
-                        goals!.shelved.length ? "There are shelved goals. Try using `Unshelve.`" :
-                        goals!.givenUp.length ? "There are some goals you gave up. Go back and solve them, or use `Admitted.`" :
-                        goals!.unfocused.length ? "The subproof is complete." :
-                        "There are no more subgoals"
+                        goals!.shelved.length
+                            ? "There are shelved goals. Try using `Unshelve.`"
+                            : goals!.givenUp.length
+                              ? "There are some goals you gave up. Go back and solve them, or use `Admitted.`"
+                              : goals!.unfocused.length
+                                ? "The subproof is complete."
+                                : "There are no more subgoals"
                     }
                     emptyIcon={
-                        goals!.shelved.length === 0 && goals!.givenUp.length === 0 ? <VscPass /> : <VscWarning />
+                        goals!.shelved.length === 0 &&
+                        goals!.givenUp.length === 0 ? (
+                            <VscPass />
+                        ) : (
+                            <VscWarning />
+                        )
                     }
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
-                /> 
+                />
             </VSCodePanelView>,
-            <VSCodePanelView className={classes.View}> 
-                <GoalSection 
+            <VSCodePanelView className={classes.View}>
+                <GoalSection
                     key="shelved"
                     goals={goals!.shelved}
-                    collapseGoalHandler={(id) => collapseGoalHandler(id, ProofViewGoalsKey.shelved)}
-                    toggleContextHandler={(id) => toggleContextHandler(id, ProofViewGoalsKey.shelved)}
+                    collapseGoalHandler={(id) =>
+                        collapseGoalHandler(id, ProofViewGoalsKey.shelved)
+                    }
+                    toggleContextHandler={(id) =>
+                        toggleContextHandler(id, ProofViewGoalsKey.shelved)
+                    }
                     displaySetting={displaySetting}
-                    emptyMessage='There are no shelved goals'
+                    emptyMessage="There are no shelved goals"
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
-                /> 
+                />
             </VSCodePanelView>,
-            <VSCodePanelView className={classes.View}> 
+            <VSCodePanelView className={classes.View}>
                 <GoalSection
                     key="givenup"
                     goals={goals!.givenUp}
-                    collapseGoalHandler={(id) => collapseGoalHandler(id, ProofViewGoalsKey.givenUp)}
-                    toggleContextHandler={(id) => toggleContextHandler(id, ProofViewGoalsKey.givenUp)}
+                    collapseGoalHandler={(id) =>
+                        collapseGoalHandler(id, ProofViewGoalsKey.givenUp)
+                    }
+                    toggleContextHandler={(id) =>
+                        toggleContextHandler(id, ProofViewGoalsKey.givenUp)
+                    }
                     displaySetting={displaySetting}
-                    emptyMessage='There are no given up goals'
+                    emptyMessage="There are no given up goals"
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
-                /> 
-            </VSCodePanelView>
+                />
+            </VSCodePanelView>,
         ];
 
         return (
@@ -106,22 +145,23 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
         );
     };
 
-    const displayMessages = messages.map(m => {
-        return (
-            <Message message={m[1]} severity={m[0]} maxDepth={maxDepth}/>
-        );
+    const displayMessages = messages.map((m) => {
+        return <Message message={m[1]} severity={m[0]} maxDepth={maxDepth} />;
     });
-    
-    const collapsibleGoalsDisplay = (goals === null) 
-        ? <EmptyState message="Not in proof mode" />
-        : renderGoals(); 
-    
+
+    const collapsibleGoalsDisplay =
+        goals === null ? (
+            <EmptyState message="Not in proof mode" />
+        ) : (
+            renderGoals()
+        );
+
     return (
         <div className={classes.Page}>
             <div className={classes.ButtonContainer}>
                 <div className={classes.HelpMessage}>{helpMessage}</div>
-                <VSCodeButton 
-                    appearance={'icon'} 
+                <VSCodeButton
+                    appearance={"icon"}
                     onClick={settingsClickHandler}
                     onMouseOver={() => {
                         helpMessageHandler("Open proof view panel settings.");
@@ -129,18 +169,16 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                     onMouseOut={() => {
                         helpMessageHandler("");
                     }}
-                    aria-label='Settings'
+                    aria-label="Settings"
                 >
-                    <VscGear/>
+                    <VscGear />
                 </VSCodeButton>
             </div>
-            <Accordion title={'Proof'} collapsed={false}>
+            <Accordion title={"Proof"} collapsed={false}>
                 {collapsibleGoalsDisplay}
             </Accordion>
-            <Accordion title='Messages' collapsed={false}>
-                <div className={classes.Panel}>
-                    {displayMessages}
-                </div>
+            <Accordion title="Messages" collapsed={false}>
+                <div className={classes.Panel}>{displayMessages}</div>
             </Accordion>
         </div>
     );

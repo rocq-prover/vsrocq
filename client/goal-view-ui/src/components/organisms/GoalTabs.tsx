@@ -1,14 +1,14 @@
-import React, {FunctionComponent, useRef, useLayoutEffect} from 'react';
 import {
     VSCodePanels,
     VSCodePanelTab,
-    VSCodePanelView 
-} from '@vscode/webview-ui-toolkit/react';
+    VSCodePanelView,
+} from "@vscode/webview-ui-toolkit/react";
+import { FunctionComponent, useLayoutEffect, useRef } from "react";
 
-import GoalBlock from '../molecules/GoalBlock';
-import { Goal } from '../../types';
+import { Goal } from "../../types";
+import GoalBlock from "../molecules/GoalBlock";
 
-import classes from './GoalTabs.module.css';
+import classes from "./GoalTabs.module.css";
 
 type GoalSectionProps = {
     goals: Goal[];
@@ -17,42 +17,56 @@ type GoalSectionProps = {
 };
 
 const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
-    
-    const {goals, maxDepth, helpMessageHandler} = props;
+    const { goals, maxDepth, helpMessageHandler } = props;
     const goalRefs = useRef<Array<HTMLDivElement | null>>([]);
     useLayoutEffect(() => {
         goalRefs.current = goalRefs.current.slice(0, goals.length);
         setTimeout(() => scrollToBottomOfGoal(0), 200);
     }, [goals]);
 
-    const scrollToBottomOfGoal = (i : number) => {
-        if(goalRefs.current) {
-            if(goalRefs.current[i]) {
+    const scrollToBottomOfGoal = (i: number) => {
+        if (goalRefs.current) {
+            if (goalRefs.current[i]) {
                 goalRefs.current[i]!.scrollIntoView({
                     behavior: "smooth",
                     block: "end",
-                    inline: "nearest"
+                    inline: "nearest",
                 });
             }
         }
     };
 
     const goalPanelTabs = goals.map((goal, index) => {
-        const tabName = "Goal " + (index + 1) + (goal.name ? `: ${goal.name}` : "");
+        const tabName =
+            "Goal " + (index + 1) + (goal.name ? `: ${goal.name}` : "");
         const tabId = "tab-" + index;
         return (
-            <VSCodePanelTab id={tabId} key={tabId} onClick={() => scrollToBottomOfGoal(index)}>
+            <VSCodePanelTab
+                id={tabId}
+                key={tabId}
+                onClick={() => scrollToBottomOfGoal(index)}
+            >
                 {tabName}
-            </VSCodePanelTab>);
-        });
+            </VSCodePanelTab>
+        );
+    });
 
     const goalPanelViews = goals.map((goal, index) => {
-        
         const viewId = "view-" + index;
         return (
             <VSCodePanelView id={viewId} key={viewId}>
-                <GoalBlock goal={goal} goalIndicator={index + 1 + " / " + goals.length} maxDepth={maxDepth} helpMessageHandler={helpMessageHandler} displayHyps={true}/>
-                <div ref={el => {goalRefs.current[index] = el}}/>
+                <GoalBlock
+                    goal={goal}
+                    goalIndicator={index + 1 + " / " + goals.length}
+                    maxDepth={maxDepth}
+                    helpMessageHandler={helpMessageHandler}
+                    displayHyps={true}
+                />
+                <div
+                    ref={(el) => {
+                        goalRefs.current[index] = el;
+                    }}
+                />
             </VSCodePanelView>
         );
     });

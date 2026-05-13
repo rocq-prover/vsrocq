@@ -1,13 +1,13 @@
 main {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  height: 100%;
-  width: calc(100vw - 4 * var(--vscode-scrollbar-verticalScrollbarSize));
-  scrollbar-gutter: stable;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    height: 100%;
+    width: calc(100vw - 4 * var(--vscode-scrollbar-verticalScrollbarSize));
+    scrollbar-gutter: stable;
 }
 
 main > * {
-  margin: 1rem 0;
+    margin: 1rem 0;
 }

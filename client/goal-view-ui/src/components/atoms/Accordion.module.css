@@ -10,13 +10,13 @@
 }
 
 .Panel {
-    width: 100%; 
+    width: 100%;
     transition: height 500ms;
     margin-bottom: 18px;
 }
 
 .Panel.Closed {
-    height: 0; 
+    height: 0;
     display: none;
 }
 
