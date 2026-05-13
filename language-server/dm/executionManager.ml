@@ -160,8 +160,15 @@ let interp_error_recovery strategy st : Vernacstate.t =
         | Error(_,_) ->
           st
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
+let ensure_not_parsing () = Flags.in_synterp_phase := false
+[%%else]
+let ensure_not_parsing () = ()
+[%%endif]
+
 (* just a wrapper around vernac interp *)
 let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
+    ensure_not_parsing ();
     Feedback.set_id_for_feedback doc_id state_id;
     ParTactic.set_id_for_feedback doc_id state_id;
     let result =
