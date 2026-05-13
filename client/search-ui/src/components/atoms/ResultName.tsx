@@ -1,19 +1,17 @@
-import React, {FunctionComponent} from 'react';
+import { FunctionComponent } from "react";
 
-import { PpString, PpDisplay } from 'pp-display';
+import { PpDisplay, PpString } from "pp-display";
 
-import classes from './ResultName.module.css';
+import classes from "./ResultName.module.css";
 
 type ResultNameProps = {
-    name: PpString; 
+    name: PpString;
 };
 
 const resultName: FunctionComponent<ResultNameProps> = (props) => {
-    
-    const {name} = props;
-    
-    return <PpDisplay pp={name} rocqCss={classes} maxDepth={17}/>;
-    
+    const { name } = props;
+
+    return <PpDisplay pp={name} rocqCss={classes} maxDepth={17} />;
 };
 
 export default resultName;

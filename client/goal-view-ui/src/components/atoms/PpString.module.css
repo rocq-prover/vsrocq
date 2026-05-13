@@ -29,7 +29,7 @@
     width: 100%;
     margin-top: 6px;
 }
-  
+
 .Hypothesis {
     list-style: none;
     font-family: var(--vscode-editor-font-family);
@@ -59,64 +59,64 @@
 }
 
 .constr-notation {
-  color: var(--vscode-rocq-termNotation);
+    color: var(--vscode-rocq-termNotation);
 }
 .constr-keyword {
-  color: var(--vscode-rocq-termKeyword);
+    color: var(--vscode-rocq-termKeyword);
 }
 .constr-evar {
-  color: var(--vscode-rocq-termEvar);
-  font-style: italic;
+    color: var(--vscode-rocq-termEvar);
+    font-style: italic;
 }
 .constr-path {
-  color: var(--vscode-rocq-termPath);
+    color: var(--vscode-rocq-termPath);
 }
 .constr-reference {
-  color: var(--vscode-rocq-termReference);
+    color: var(--vscode-rocq-termReference);
 }
 .constr-type {
-  color: var(--vscode-rocq-termType);
+    color: var(--vscode-rocq-termType);
 }
 .constr-variable {
-  color: var(--vscode-rocq-termVariable);
+    color: var(--vscode-rocq-termVariable);
 }
 .message-debug {
-  color: var(--vscode-rocq-debugMessage);
+    color: var(--vscode-rocq-debugMessage);
 }
 .message-error {
-  color: var(--vscode-rocq-errorMessage);
-  text-decoration: underline;
+    color: var(--vscode-rocq-errorMessage);
+    text-decoration: underline;
 }
 .message-warning {
-  color: var(--vscode-rocq-warningMessage);
+    color: var(--vscode-rocq-warningMessage);
 }
 .module-keyword {
-  color: var(--vscode-rocq-moduleKeyword);
+    color: var(--vscode-rocq-moduleKeyword);
 }
 .tactic-keyword {
-  color: var(--vscode-rocq-tacticKeyword);
+    color: var(--vscode-rocq-tacticKeyword);
 }
 .tactic-primitive {
-  color: var(--vscode-rocq-tacticPrimitive);
+    color: var(--vscode-rocq-tacticPrimitive);
 }
 .tactic-string {
-  color: var(--vscode-rocq-tacticString);
+    color: var(--vscode-rocq-tacticString);
 }
 
 .diff-added {
-  background-color: var(--vscode-rocq-addedCharacter);
-  text-decoration: underline;
+    background-color: var(--vscode-rocq-addedCharacter);
+    text-decoration: underline;
 }
 
 .diff-added-bg {
-  background-color: var(--vscode-rocq-addedCharacterBackground);
+    background-color: var(--vscode-rocq-addedCharacterBackground);
 }
 
 .diff-removed {
-  background-color: var(--vscode-rocq-removedCharacter);
-  text-decoration: line-through;
+    background-color: var(--vscode-rocq-removedCharacter);
+    text-decoration: line-through;
 }
 
 .diff-removed-bg {
-  background-color: var(--vscode-rocq-removedCharacterBackground);
+    background-color: var(--vscode-rocq-removedCharacterBackground);
 }

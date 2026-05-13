@@ -14,7 +14,7 @@
 
 .HelpMessage {
     font-style: italic;
-    opacity: .4;
+    opacity: 0.4;
     font-size: 12px;
     text-overflow: ellipsis;
     flex-basis: auto;
@@ -28,7 +28,6 @@
     width: 100%;
     overflow: auto;
 }
-
 
 .View {
     width: 100%;

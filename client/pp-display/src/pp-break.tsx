@@ -1,22 +1,21 @@
-import {FunctionComponent} from 'react';
-import {PpMode} from './types';
+import { FunctionComponent } from "react";
+import { PpMode } from "./types";
 
 type PpBreakProps = {
-    id: string,
-    offset: number,
-    mode: PpMode,
-    horizontalIndent: number,
-    lineBreak: boolean,
+    id: string;
+    offset: number;
+    mode: PpMode;
+    horizontalIndent: number;
+    lineBreak: boolean;
 };
 
 const ppBreak: FunctionComponent<PpBreakProps> = (props) => {
-    
-    const {mode, lineBreak, horizontalIndent, id, offset} = props;
+    const { mode, lineBreak, horizontalIndent, id, offset } = props;
     const style = {
-        marginLeft: offset
+        marginLeft: offset,
     };
 
-    switch(mode) {
+    switch (mode) {
         case PpMode.horizontal:
             return <span id={id}>{" ".repeat(horizontalIndent)}</span>;
         //in the case of PpMode.vertical we always detect the line break in the scan part of the algo
@@ -24,12 +23,11 @@ const ppBreak: FunctionComponent<PpBreakProps> = (props) => {
         case PpMode.vertical:
         case PpMode.hvBox:
         case PpMode.hovBox:
-            if(lineBreak) {
+            if (lineBreak) {
                 return (
                     <span id={id}>
-                        <br/>
-                        <span style={style}>
-                        </span>
+                        <br />
+                        <span style={style}></span>
                     </span>
                 );
             }
