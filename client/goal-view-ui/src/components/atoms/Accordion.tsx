@@ -9,7 +9,8 @@ type AccordionProps = {
     title: string;
     collapseHandler?: (params: any) => void;
     seconaryActionHandler?: (params: any) => void;
-    seconaryActionIcon?: JSX.Element;
+    seconaryActionIcon?: React.ReactNode;
+    children: React.ReactNode;
 };
 
 const accordion: FunctionComponent<AccordionProps> = (props) => {

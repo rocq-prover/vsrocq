@@ -5,37 +5,27 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/pp-display.es.js",
-  "types": "./dist/main.d.ts",
+  "main": "./dist/pp-display.js",
+  "types": "./dist/src/main.d.ts",
   "description": "A react library to format and display Rocq Pp types.",
   "private": true,
   "scripts": {
-    "start": "vite",
     "build": "tsc && vite build",
-    "build:dev": "tsc && vite build -m development",
-    "preview": "vite preview"
+    "build:dev": "tsc && vite build --mode development"
   },
   "author": "rtetley",
   "license": "MIT",
   "dependencies": {
-    "@react-hook/resize-observer": "^1.2.6",
-    "@vscode/codicons": "^0.0.32",
-    "@vscode/webview-ui-toolkit": "^1.2.1",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-hook": "^0.0.1",
-    "react-icons": "^4.7.1",
-    "uuidv4": "^6.2.13"
+    "@react-hook/resize-observer": "^2.0.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@types/react": "^17.0.33",
-    "@types/react-dom": "^17.0.10",
-    "@types/vscode-webview": "^1.57.0",
-    "@vitejs/plugin-react": "^1.0.7",
-    "typescript": "^4.4.4",
-    "vite": "^2.9.18",
-    "vite-plugin-dts": "^4.0.1",
-    "vite-plugin-externalize-deps": "^0.8.0",
-    "vite-plugin-lib-inject-css": "^2.1.1"
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "unplugin-dts": "^1.0.0-beta.6",
+    "vscode-languageclient": "^9.0.1"
   }
 }

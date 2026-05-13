@@ -9,6 +9,7 @@ type TabProps = {
     noClose?: boolean;
     closeTabHandler: () => void;
     onClick: () => void;
+    children: React.ReactNode;
 };
 
 const tab: FunctionComponent<TabProps> = (props) => {

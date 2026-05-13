@@ -4,7 +4,7 @@ import classes from './EmptyState.module.css';
 
 type EmptyStateProps = {
     message: string, 
-    icon?: JSX.Element,
+    icon?: React.ReactNode,
 };
 
 const emptyState : FunctionComponent<EmptyStateProps> = (props) => {

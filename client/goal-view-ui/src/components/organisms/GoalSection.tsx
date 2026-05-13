@@ -13,7 +13,7 @@ type GoalSectionProps = {
     toggleContextHandler: (id: string) => void,
     displaySetting: string;
     emptyMessage: string;
-    emptyIcon?: JSX.Element;
+    emptyIcon?: React.ReactNode;
     unfocusedGoals?: CollapsibleGoal[],
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
