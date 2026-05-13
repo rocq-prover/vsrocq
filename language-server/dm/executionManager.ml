@@ -161,7 +161,7 @@ let interp_error_recovery strategy st : Vernacstate.t =
           st
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
-let ensure_not_parsing () = Flags.in_synterp_phase := Some false
+let ensure_not_parsing () = Flags.in_synterp_phase := false
 [%%else]
 let ensure_not_parsing () = ()
 [%%endif]
