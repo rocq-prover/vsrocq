@@ -389,8 +389,7 @@ let interpret_to document st id check_mode =
   match check_mode with
   | Settings.Mode.Manual ->
       let event = mk_observe_event id in
-      let pv_event = mk_proof_view_event id in
-      (st, [ event ] @ [ pv_event ])
+      (st, [ event ])
   | Settings.Mode.Continuous -> (
       match Document.get_sentence document id with
       | Some { checked = Some (Success (Some _) | Failure (_, _, Some _)) } ->
@@ -483,7 +482,8 @@ let execution_finished st id started =
   (* We update the state to trigger a publication of diagnostics *)
   let update_view = true in
   let state = Some st in
-  { state; events = []; update_view; notification = None }
+  let pv_event = mk_proof_view_event id in
+  { state; events = [ pv_event ]; update_view; notification = None }
 
 let post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error = 
   let st, tasks, block_events =
