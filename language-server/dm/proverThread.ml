@@ -37,7 +37,8 @@ end
 (* We run Rocq in a thread so that we can interrupt it *)
 type rocq_job =
   | Job :
-      document_id 
+      document_id
+      * string
       * (Memprof_limits.Token.t -> 'a interruptible_result)
       * 'a interruptible_result Sel.Promise.handler
       * Memprof_limits.Token.t
@@ -56,7 +57,7 @@ let _runner =
     (fun () ->
       while true do
         (* get a job *)
-        let Job (doc_id ,task, resolver, token, retry) =
+        let Job (doc_id , name, task, resolver, token, retry) =
           Mutex.lock jobs_mutex;
           while Queue.is_empty jobs.queue do
             Condition.wait jobs_condition jobs_mutex
@@ -69,19 +70,19 @@ let _runner =
         in
 
         (* run the job *)
-        log (fun () -> "runner: job begins");
+        log (fun () -> Printf.sprintf "runner: job begins: %s" name);
         match task token with
         | Interrupted when !retry ->
             Mutex.lock jobs_mutex;
-            log (fun () -> "runner: postponing running job");
+            log (fun () -> Printf.sprintf "runner: postponing running job: %s" name);
             jobs.running <- None;
-            Queue.enqueue (Job (doc_id ,task, resolver, Memprof_limits.Token.create (), ref false)) jobs.queue;
+            Queue.enqueue (Job (doc_id , name, task, resolver, Memprof_limits.Token.create (), ref false)) jobs.queue;
             Condition.signal jobs_condition;
             Mutex.unlock jobs_mutex
 
         | x ->
             Mutex.lock jobs_mutex;
-            log (fun () -> "runner: job ends");
+            log (fun () -> Printf.sprintf "runner: job ends: %s" name);
             Sel.Promise.fulfill resolver x;
             jobs.running <- None;
             Condition.signal jobs_condition;
@@ -90,10 +91,10 @@ let _runner =
       done)
     ()
 
-let interrupt_job_if ~doc_id (Job(id,_,_,token,_)) = if id = doc_id then Memprof_limits.Token.set token
+let interrupt_job_if ~doc_id (Job(id,_,_,_,token,_)) = if id = doc_id then Memprof_limits.Token.set token
 
-let postpone_job (Job(_,_,_,token,retry)) =
-  log (fun () -> "main: postponing running job");
+let postpone_job (Job(_,name,_,_,token,retry)) =
+  log (fun () -> Printf.sprintf "main: postponing running job: %s" name);
   retry := true;
   Memprof_limits.Token.set token
 
@@ -125,23 +126,23 @@ let busy_wait timeout p token =
   with Failure _ -> Aborted (Pp.str "Rocq times out")
 
 
-let run ~doc_id ~timeout f =
+let run ~doc_id ~name ~timeout f =
   log (fun () -> "main: run");
   let token = Memprof_limits.Token.create () in
   let promise, r = Sel.Promise.make () in
   Mutex.lock jobs_mutex;
   Option.iter postpone_job jobs.running;
-  Queue.add_head (Job (doc_id, limit f, r, token, ref false)) jobs.queue;
+  Queue.add_head (Job (doc_id, name, limit f, r, token, ref false)) jobs.queue;
   Condition.signal jobs_condition;
   Mutex.unlock jobs_mutex;
   busy_wait timeout promise token
 
-let eventually_run ~doc_id f =
+let eventually_run ~doc_id ~name f =
   log (fun () -> "main: eventually_run");
   let token = Memprof_limits.Token.create () in
   let promise, r = Sel.Promise.make () in
   Mutex.lock jobs_mutex;
-  Queue.enqueue (Job (doc_id, limit f, r, token, ref false)) jobs.queue;
+  Queue.enqueue (Job (doc_id, name, limit f, r, token, ref false)) jobs.queue;
   Condition.signal jobs_condition;
   Mutex.unlock jobs_mutex;
   promise

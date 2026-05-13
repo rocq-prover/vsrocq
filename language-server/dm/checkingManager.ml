@@ -607,7 +607,7 @@ let handle_event ~uri document st ev =
       ([], make_handled_event ~state ~update_view:true ~events ())
   | SendProofView (Some id) when Document.has_sentence document id ->
       let proof, pp_proof =
-        ProverThread.run ~doc_id:st.doc_id ~timeout:1.0 (fun () ->
+        ProverThread.run ~doc_id:st.doc_id ~name:"SendProofView" ~timeout:1.0 (fun () ->
           match pp_mode with
           | Pp -> (get_proof document st (Some id), None)
           | String -> (None, get_string_proof document st (Some id)))

@@ -776,7 +776,7 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
   end
 and create_parse_event ~doc_id parse_state =
   let priority = Some PriorityManager.parsing in
-  Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id (fun () -> parse_more parse_state)) (fun x -> Parse x)
+  Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id ~name:"create_parse_event" (fun () -> parse_more parse_state)) (fun x -> Parse x)
 
 
 let rec unchanged_id id = function
