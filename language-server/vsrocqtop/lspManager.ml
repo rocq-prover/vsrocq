@@ -128,6 +128,7 @@ let do_configuration settings =
     point_interp_mode = settings.proof.pointInterpretationMode;
     pp_mode = Option.default Settings.Goals.PrettyPrint.Pp settings.goals.ppmode;
     diff_mode = Settings.Goals.Diff.Mode.Off;
+    threaded_mode = false;
     (* Diff mode is broken, cfr #1163 #1164 *)
     (* diff_mode := settings.goals.diff.mode; *)
   }
