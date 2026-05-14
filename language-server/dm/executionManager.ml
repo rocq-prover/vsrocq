@@ -218,7 +218,7 @@ let add_using proof proof_using _ =
 [%%endif]
 
 let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
-  ProverThread.run ~doc_id ~name:"interp_qed_delayed" ~timeout:1.0 (fun () ->
+  ProverThread.run ~doc_id ~name:"interp_qed_delayed" (fun () ->
   let lemmas = Option.get @@ st.Vernacstate.interp.lemmas in
   let f proof =
     let proof = add_using proof proof_using lemmas in
@@ -235,7 +235,7 @@ let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
   (*log fun () -> "interp_qed_delayed done";*)
   let st = { st with interp } in
   st, success st, assign) 
-  |> get_interruptible_result
+  |> Result.fold ~ok:(fun x -> x) ~error:(fun x -> CErrors.user_err x)
 
 let id_of_first_task ~default = function
   | [] -> default
@@ -429,14 +429,13 @@ let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
   WillDo(promise,promise_to_result)
 
 let complete_proof ~doc_id vernac_st assign =
-  ProverThread.run ~doc_id ~name:"complete_proof" ~timeout:1.0 (fun () ->
+  ProverThread.run ~doc_id ~name:"complete_proof" (fun () ->
     Vernacstate.LemmaStack.with_top (Option.get @@ vernac_st.Vernacstate.interp.lemmas) ~f:(fun proof ->
       log (fun () -> "Resolved future");
       Declare.Proof.return_proof proof))
   |> (function
-    | Interrupted -> `Exn (CErrors.UserError (Pp.str "error closing proof"), Exninfo.null)
-    | Aborted msg -> `Exn (CErrors.UserError msg, Exninfo.null)
-    | Terminated x -> `Val x)
+    | Error msg -> `Exn (CErrors.UserError msg, Exninfo.null)
+    | Ok x -> `Val x)
   |> assign
           
 

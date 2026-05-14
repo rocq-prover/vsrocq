@@ -188,7 +188,7 @@ let get_info_messages st pos =
 
 
 let get_document_proofs st =
-  ProverThread.run ~doc_id:st.feedback_pipe.doc_id ~name:"get_document_proofs" ~timeout:10.0 (fun () ->
+  ProverThread.try_run ~doc_id:st.feedback_pipe.doc_id ~name:"get_document_proofs" ~timeout:10.0 (fun () ->
   let outline = Document.outline st.document in
   let is_theorem Document.{ type_ } =
     match type_ with
@@ -310,19 +310,19 @@ let dirpath_of_top = Coqinit.dirpath_of_top
 
 [%%if rocq ="8.18" || rocq ="8.19"]
 let start_library ~doc_id uri ~opts init_vs =
-  ProverThread.run ~doc_id ~name:"start_library" ~timeout:1.0 (fun () -> 
+  ProverThread.run ~doc_id ~name:"start_library" (fun () -> 
     Vernacstate.unfreeze_full_state init_vs;
     let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
     Coqinit.start_library ~top opts;
-    Vernacstate.freeze_full_state ()) |> get_interruptible_result
+    Vernacstate.freeze_full_state ()) |> Result.fold ~ok:(fun x -> x) ~error:(fun x -> CErrors.user_err x)
 [%%else]
 let start_library ~doc_id uri ~opts init_vs =
-  ProverThread.run ~doc_id ~name:"start_library" ~timeout:1.0 (fun () -> 
+  ProverThread.run ~doc_id ~name:"start_library" (fun () -> 
     Vernacstate.unfreeze_full_state init_vs;
     let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
     let intern = Vernacinterp.fs_intern in
     Coqinit.start_library ~intern ~top opts;
-    Vernacstate.freeze_full_state ()) |> get_interruptible_result
+    Vernacstate.freeze_full_state ()) |> Result.fold ~ok:(fun x -> x) ~error:(fun x -> CErrors.user_err x)
 [%%endif]
 
 let local_feedback feedback_queue : event Sel.Event.t =
