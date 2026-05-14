@@ -12,6 +12,10 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(** if [~threaded_mode] is [false] interruption wont work and
+    all APIs are blocking *)
+val set_options : threaded_mode:bool -> unit
+
 (**
 
   The thunks passed to the API below must install a Rocq state with

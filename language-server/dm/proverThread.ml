@@ -16,7 +16,13 @@
 
 open Types
 
+let threaded_mode = ref false
+let set_options ~threaded_mode:x =
+  threaded_mode := x
+
 let (Log log) = Log.mk_log "proverThread"
+
+module Threaded_mode = struct
 
 type retry = bool
 module Queue = struct
@@ -162,4 +168,30 @@ let eventually_run ~doc_id ~name f =
     Aborted (Pp.str "Rocq is busy")
   end *)
 
+end
+
+module Sequential_mode = struct
+  let run ~doc_id:_ ~name:_ ~timeout:_ f =
+    try Terminated (f ())
+    with e ->
+      let e, info = Exninfo.capture e in
+      Aborted (CErrors.iprint (e, info))
+  let interrupt ~doc_id:_ = ()
+  let eventually_run ~doc_id ~name f =
+    let promise, r = Sel.Promise.make () in
+    Sel.Promise.fulfill r @@ run ~doc_id ~name ~timeout:0 f;
+    promise
+end
+
+let interrupt ~doc_id =
+  if !threaded_mode then Threaded_mode.interrupt ~doc_id
+  else Sequential_mode.interrupt ~doc_id
+
+let run ~doc_id ~name ~timeout f =
+  if !threaded_mode then Threaded_mode.run ~doc_id ~name ~timeout f
+  else Sequential_mode.run ~doc_id ~name ~timeout f
+
+  let eventually_run ~doc_id ~name f =
+  if !threaded_mode then Threaded_mode.eventually_run ~doc_id ~name f
+  else Sequential_mode.eventually_run ~doc_id ~name f
 

@@ -22,6 +22,7 @@ type settings = {
   diff_mode : Protocol.Settings.Goals.Diff.Mode.t;
   pp_mode : Protocol.Settings.Goals.PrettyPrint.t;
   point_interp_mode:Protocol.Settings.PointInterpretationMode.t;
+  threaded_mode : bool;
 }
 
 val set_options : settings -> unit

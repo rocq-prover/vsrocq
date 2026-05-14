@@ -26,6 +26,7 @@ type settings = {
   diff_mode : Protocol.Settings.Goals.Diff.Mode.t;
   pp_mode : Protocol.Settings.Goals.PrettyPrint.t;
   point_interp_mode:Protocol.Settings.PointInterpretationMode.t;
+  threaded_mode : bool;
 }
 
 let settings : settings ref = ref {
@@ -34,9 +35,12 @@ let settings : settings ref = ref {
   pp_mode = Settings.Goals.PrettyPrint.Pp;
   point_interp_mode = Settings.PointInterpretationMode.Cursor;
   block_on_first_error = true;
+  threaded_mode = false;
 }
 
-let set_options s = settings := s
+let set_options s =
+  settings := s;
+  ProverThread.set_options ~threaded_mode:s.threaded_mode
 
 let (Log log) = Log.mk_log "checkingManager"
 
