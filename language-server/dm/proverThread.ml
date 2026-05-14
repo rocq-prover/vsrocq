@@ -16,6 +16,9 @@
 
 open Types
 
+let preempt = ref false
+let set_options ~preempt:x = preempt := x
+
 let (Log log) = Log.mk_log "proverThread"
 
 type retry = bool
@@ -94,9 +97,12 @@ let _runner =
 let interrupt_job_if ~doc_id (Job(id,_,_,_,token,_)) = if id = doc_id then Memprof_limits.Token.set token
 
 let postpone_job (Job(_,name,_,_,token,retry)) =
-  log (fun () -> Printf.sprintf "main: postponing running job: %s" name);
-  retry := true;
-  Memprof_limits.Token.set token
+  if not !preempt then ()
+  else begin
+    log (fun () -> Printf.sprintf "main: postponing running job: %s" name);
+    retry := true;
+    Memprof_limits.Token.set token
+  end
 
 let interrupt ~doc_id =
   Mutex.lock jobs_mutex;
@@ -126,7 +132,7 @@ let busy_wait timeout p token =
   with Failure _ -> Aborted (Pp.str "Rocq times out")
 
 
-let run ~doc_id ~name ~timeout f =
+let try_run ~doc_id ~name ~timeout f =
   log (fun () -> "main: run");
   let token = Memprof_limits.Token.create () in
   let promise, r = Sel.Promise.make () in
@@ -147,19 +153,19 @@ let eventually_run ~doc_id ~name f =
   Mutex.unlock jobs_mutex;
   promise
 
-(* let try_run ~doc_id ~timeout f =
-  log (fun () -> "main: try_run");
+let run ~doc_id ~name f =
+  log (fun () -> "main: run");
+  let token = Memprof_limits.Token.create () in
+  let promise, r = Sel.Promise.make () in
   Mutex.lock jobs_mutex;
-  if jobs.running = None && Queue.is_empty jobs.queue then begin
-    let token = Memprof_limits.Token.create () in
-    let p, r = Sel.Promise.make () in
-    Queue.add_head (Job (doc_id, limit f, r, token, ref false)) jobs.queue;
-    Condition.signal jobs_condition;
-    Mutex.unlock jobs_mutex;
-    busy_wait timeout p token
-  end else begin
-    Mutex.unlock jobs_mutex;
-    Aborted (Pp.str "Rocq is busy")
-  end *)
+  Option.iter postpone_job jobs.running;
+  Queue.add_head (Job (doc_id, name, limit f, r, token, ref false)) jobs.queue;
+  Condition.signal jobs_condition;
+  Mutex.unlock jobs_mutex;
+  match busy_wait 99999. promise token with
+  | Interrupted -> assert false
+  | Aborted pp -> Result.Error pp
+  | Terminated x -> Result.Ok x
+
 
 

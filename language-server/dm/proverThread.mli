@@ -12,6 +12,10 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(** if [~preempt] is [false] the [run] and [try_run] APIs enqueue the job rather
+    than forcibly interrupting any running job *)
+val set_options : preempt:bool -> unit
+
 (**
 
   The thunks passed to the API below must install a Rocq state with
@@ -25,25 +29,24 @@ val eventually_run :
   name:string ->
   (unit -> 'a) ->
   'a Types.interruptible_result Sel.Promise.t
-(** [eventually_run ~doc_id thunk] puts the [thunk] in the and promises to execute
-    it eventually *)
+(** [eventually_run ~doc_id thunk] puts the [thunk] in the and promises
+    to execute it eventually *)
 
-val run :
+val try_run :
   doc_id:Types.document_id ->
   name:string ->
   timeout:float ->
   (unit -> 'a) ->
   'a Types.interruptible_result
-(** [run ~doc_id ~timeout thunk] interrupts any running thunk, then runs [thunk] with
-    [timeout]. The interrupted thunk, if any, will eventually be re-run *)
+(** [run ~doc_id ~timeout thunk] runs [thunk] and waits
+    [timeout] seconds. *)
 
-(* val try_run :
+val run :
   doc_id:Types.document_id ->
-  timeout:float ->
+  name:string ->
   (unit -> 'a) ->
-  'a Types.interruptible_result
- [try_run ~doc_id ~timeout thunk] runs [thunk] with [timeout] if no other thunk
-    is running. *)
+  ('a,Pp.t) Result.t
+(** [run ~doc_id thunk] runs [thunk] and waits for its completion. *)
 
 val interrupt : doc_id:Types.document_id -> unit
 (** [interrupt ~doc_id] interrupts the runnign thunk only if it runs for [~doc_id] *)

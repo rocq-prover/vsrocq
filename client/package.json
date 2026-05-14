@@ -128,7 +128,7 @@
         }
       },
       {
-        "title": "Memory management",
+        "title": "Rocq system",
         "type": "object",
         "properties": {
           "vsrocq.memory.limit": {
@@ -136,6 +136,12 @@
             "type": "number",
             "default": 4,
             "description": "Sets the memory limit over which we discard the execution state of documents which have been saved (in Gb). "
+          },
+          "vsrocq.interrupt.preempt": {
+            "scope": "workspace",
+            "type": "boolean",
+            "default": false,
+            "description": "Hovering and other queries preempt checking tasks (recommended Rocq >= 9.2). "
           }
         }
       },

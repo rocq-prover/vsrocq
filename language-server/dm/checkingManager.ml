@@ -26,6 +26,7 @@ type settings = {
   diff_mode : Protocol.Settings.Goals.Diff.Mode.t;
   pp_mode : Protocol.Settings.Goals.PrettyPrint.t;
   point_interp_mode:Protocol.Settings.PointInterpretationMode.t;
+  preempt : bool;
 }
 
 let settings : settings ref = ref {
@@ -34,9 +35,12 @@ let settings : settings ref = ref {
   pp_mode = Settings.Goals.PrettyPrint.Pp;
   point_interp_mode = Settings.PointInterpretationMode.Cursor;
   block_on_first_error = true;
+  preempt = false;
 }
 
-let set_options s = settings := s
+let set_options s =
+  settings := s;
+  ProverThread.set_options ~preempt:s.preempt
 
 let (Log log) = Log.mk_log "checkingManager"
 
@@ -607,7 +611,7 @@ let handle_event ~uri document st ev =
       ([], make_handled_event ~state ~update_view:true ~events ())
   | SendProofView (Some id) when Document.has_sentence document id ->
       let proof, pp_proof =
-        ProverThread.run ~doc_id:st.doc_id ~name:"SendProofView" ~timeout:1.0 (fun () ->
+        ProverThread.try_run ~doc_id:st.doc_id ~name:"SendProofView" ~timeout:1.0 (fun () ->
           match pp_mode with
           | Pp -> (get_proof document st (Some id), None)
           | String -> (None, get_string_proof document st (Some id)))
