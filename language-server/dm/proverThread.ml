@@ -191,7 +191,7 @@ let run ~doc_id ~name ~timeout f =
   if !threaded_mode then Threaded_mode.run ~doc_id ~name ~timeout f
   else Sequential_mode.run ~doc_id ~name ~timeout f
 
-  let eventually_run ~doc_id ~name f =
+let eventually_run ~doc_id ~name f =
   if !threaded_mode then Threaded_mode.eventually_run ~doc_id ~name f
   else Sequential_mode.eventually_run ~doc_id ~name f
 

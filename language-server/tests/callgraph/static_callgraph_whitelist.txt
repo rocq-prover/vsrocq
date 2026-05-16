@@ -34,6 +34,8 @@ Protocol\.LspWrapper\.
 Protocol\.Printing\.
 LM\.
 SM\.
+Threaded_mode.interrupt
+Sequential_mode.interrupt
 Dm\.Log\.
 Dm\.RawDocument\.get_character_loc\.loop
 Dm\.RawDocument\.get_character_pos\.loop
