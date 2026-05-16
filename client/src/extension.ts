@@ -43,7 +43,8 @@ import {
     sendInterpretToPoint,
     sendInterpretToEnd,
     sendStepForward,
-    sendStepBackward
+    sendStepBackward,
+    sendInterrupt
 } from './manualChecking';
 import { DocumentStateViewProvider } from './panels/DocumentStateViewProvider';
 import VsRocqToolchainManager, {ToolchainError, ToolChainErrorCode} from './utilities/toolchain';
@@ -207,6 +208,7 @@ export function activate(context: ExtensionContext) {
         registerVsrocqTextCommand('addQueryTab', () => searchProvider.addTab());
         registerVsrocqTextCommand('collapseAllQueries', () => searchProvider.collapseAll());
         registerVsrocqTextCommand('expandAllQueries', () => searchProvider.expandAll());
+        registerVsrocqTextCommand('interrupt', (editor) => sendInterrupt(editor, client));
         registerVsrocqTextCommand('interpretToPoint', (editor) => sendInterpretToPoint(editor, client));
         registerVsrocqTextCommand('interpretToEnd', (editor) => sendInterpretToEnd(editor, client));
         registerVsrocqTextCommand('stepForward', (editor) => sendStepForward(editor, client));

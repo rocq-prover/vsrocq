@@ -63,6 +63,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -105,6 +106,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -147,6 +149,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -189,6 +192,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -231,6 +235,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
@@ -273,6 +278,7 @@
                   ppx_yojson_conv
                   lsp
                   sel
+                  memprof-limits
                 ]);
               propagatedBuildInputs= (with coq.ocamlPackages;
                 [
