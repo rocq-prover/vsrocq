@@ -2,7 +2,7 @@
  (name dm)
  (public_name vsrocq-language-server.dm)
  (modules :standard \ vsrocqtop_proof_worker vsrocqtop_tactic_worker)
- (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
+ (preprocess (pps ppx_blob ppx_optcomp ppx_yojson_conv -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
  (preprocessor_deps vsrocq_config.mlh (glob_files indices/**/*.json))
  (libraries base @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.parsing lsp sel protocol language memprof-limits))
 
