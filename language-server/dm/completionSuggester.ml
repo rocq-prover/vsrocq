@@ -135,10 +135,10 @@ module TypeIntersection = struct
   let best_subtype sigma goal c = 
     c |> split_types sigma |> List.map (fun a -> (a, a)) |> List.stable_sort (compare_atomics goal) |> List.hd |> fst
 
-  let rank (goal : Evd.econstr) sigma _ (lemmas : CompletionItems.completion_item list) : CompletionItems.completion_item list =
+  let rank (goal : Evd.econstr) sigma _ (lemmas : CompletionItems.completion_item_lib list) : CompletionItems.completion_item_lib list =
     (*Split type intersection: Split the lemmas by implications, compare the suffix to the goal, pick best match*)
     let goal = atomic_types sigma goal in
-    let lemmaTypes = List.map (fun (l : CompletionItems.completion_item) -> 
+    let lemmaTypes = List.map (fun (l : CompletionItems.completion_item_lib) ->
       let best = best_subtype sigma goal (of_constr l.typ) in
       (best, l)
     ) lemmas in
@@ -242,15 +242,15 @@ module Structured = struct
 
   (* A Lower score is better as we are sorting in ascending order *)
 
-  let rank (options: Settings.Completion.t) (goal, goal_evar) sigma env lemmas : CompletionItems.completion_item list =
+  let rank (options: Settings.Completion.t) (goal, goal_evar) sigma env lemmas : CompletionItems.completion_item_lib list =
     let size_impact = options.sizeFactor in
     let atomic_factor = options.atomicFactor in
     let finalScore score size = Float.sub size (Float.mul score size_impact) in
     let hyps = get_hyps env sigma goal_evar in
     match (unifier_kind sigma hyps goal, unifier_kind sigma HypothesisMap.empty goal) with
     | None, _ | _, None -> lemmas
-    | Some goalUnf, Some goalUnfNoHypothesisSub -> 
-      let lemmaUnfs = List.map (fun (l : CompletionItems.completion_item) -> 
+    | Some goalUnf, Some goalUnfNoHypothesisSub ->
+      let lemmaUnfs = List.map (fun (l : CompletionItems.completion_item_lib) ->
         match (unifier_kind sigma HypothesisMap.empty (of_constr l.typ)) with
         | None -> ((Float.min_float), l)
         | Some unf -> 
@@ -266,12 +266,12 @@ module Structured = struct
       List.map snd sorted
 end
 module SelectiveUnification = struct
-  let rankByUnifiability (goal : Evd.econstr) sigma env (lemmas : CompletionItems.completion_item list) : CompletionItems.completion_item list =
+  let rankByUnifiability (goal : Evd.econstr) sigma env (lemmas : CompletionItems.completion_item_lib list) : CompletionItems.completion_item_lib list =
     let goal_size = type_size sigma goal in
     let worst_value = 1000 in (* the worst value we expect to assign. This value is mostly arbitrary*)
-    let make_sortable (lemma : CompletionItems.completion_item) =
+    let make_sortable (lemma : CompletionItems.completion_item_lib) =
       let flags = Evarconv.default_flags_of TransparentState.full in
-      let rec aux (iterations: int) (typ : types) : (CompletionItems.completion_item * int)=
+      let rec aux (iterations: int) (typ : types) : (CompletionItems.completion_item_lib * int)=
         if type_size sigma typ + goal_size > 500 then (lemma, worst_value) (*The number 500 is an arbitrary limit on how big lemmas we are willing to look at*)
         else
         let res = Evarconv.evar_conv_x flags env sigma Conversion.CONV goal typ in
@@ -295,7 +295,7 @@ module SelectiveUnification = struct
     |> List.stable_sort (fun a b -> compare (snd a) (snd b))
     |> List.map fst
 
-  let selectiveRank (options: Settings.Completion.t) (goal : Evd.econstr) sigma env (lemmas : CompletionItems.completion_item list) : CompletionItems.completion_item list =
+  let selectiveRank (options: Settings.Completion.t) (goal : Evd.econstr) sigma env (lemmas : CompletionItems.completion_item_lib list) : CompletionItems.completion_item_lib list =
     try 
       let take, skip = takeSkip options.unificationLimit lemmas in
       List.append (rankByUnifiability goal sigma env take) skip
@@ -320,7 +320,7 @@ let get_goal_type_opt env Proof.{ goals; sigma; _ } =
     Evd.evar_concl evi, sigma, env, goal
     )
 
-let get_completion_items env proof lemmas options =
+let get_completion_lib_items env proof lemmas options =
   try 
     match get_goal_type_opt env proof with
     | None -> lemmas
@@ -339,7 +339,7 @@ let get_lemmas sigma env =
   let open CompletionItems in
   let results = ref [] in
   let display ref _kind env sigma c =
-    results := mk_completion_item sigma ref env c :: results.contents;
+    results := mk_completion_item_lib sigma ref env c :: results.contents;
   in
   generic_search env sigma display;
   results.contents
@@ -353,4 +353,5 @@ let get_completions options st =
     let env = Global.env () in
     let sigma = proof.sigma in
     let lemmas = get_lemmas sigma env in
-    Some (get_completion_items env proof lemmas options)
+    let lib_items = List.map (fun item -> CompletionItems.Library item) (get_completion_lib_items env proof lemmas options) in
+    Some lib_items
