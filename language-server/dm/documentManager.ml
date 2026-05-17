@@ -425,14 +425,10 @@ let get_context st pos =
     context_of_sentence st (Document.find_sentence_before_pos st.document pos)
 
 let get_completions st pos =
-  match Document.find_sentence_before_pos st.document pos with
-  | None -> 
-      log (fun () -> "Can't get completions, no sentence found before the cursor");
-      []
-  | Some { checked } ->
-    let ost = Utilities.get_vernac_state checked in
-    let settings = ExecutionManager.get_options () in
-    CompletionSuggester.get_completions settings.completion_options ost
+  let sentence = Document.find_sentence_before_pos st.document pos in
+  let ost = Utilities.get_vernac_state (Option.bind sentence (fun { checked } -> checked)) in
+  let settings = ExecutionManager.get_options () in
+  CompletionSuggester.get_completions settings.completion_options ost
 
 [%%if rocq ="8.18" || rocq ="8.19"]
 [%%elif rocq ="8.20"]
