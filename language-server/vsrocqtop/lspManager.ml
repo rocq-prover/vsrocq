@@ -405,12 +405,12 @@ let rocqtopStepForward params =
   let make_CompletionItem i item : CompletionItem.t =
     match item with
     | Dm.CompletionItems.Library item ->
-      let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item_lib item in
+      let (label, insertText, typ, path, debug_info) = Dm.CompletionItems.pp_completion_item_lib item in
       CompletionItem.create
         ~label
+        ~labelDetails:(CompletionItemLabelDetails.create ~detail:(" " ^ typ) ~description:path ())
         ~insertText
-        ~detail:typ
-        ~documentation:(`String ("Path: " ^ path))
+        ~documentation:(`String debug_info)
         ~sortText:(Printf.sprintf "%5d" i)
         ?filterText:(if label == insertText then None else Some (insertText))
         ()
@@ -421,7 +421,7 @@ let rocqtopStepForward params =
         ~detail:(match item.kind with
                 | Dm.CompletionItems.Command -> "Command")
         ~kind:(match item.kind with
-               | Dm.CompletionItems.Command -> CompletionItemKind.Function)
+               | Dm.CompletionItems.Command -> CompletionItemKind.Property)
         ~documentation:(`MarkupContent {
           (* it is not actually markdown, but using this mode leads to better rendering *)
           kind = MarkupKind.Markdown;
