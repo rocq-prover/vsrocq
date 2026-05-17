@@ -286,6 +286,11 @@ let get_previous_range st pos =
       | None -> Some (Document.range_of_id st.document id)
       | Some { id } -> Some (Document.range_of_id st.document id)
 
+let get_current_line_range st (pos: Position.t) =
+  let doc = Document.raw_document st.document in
+  let start = RawDocument.line_nonwhitespace_start doc pos.line in
+  Range.create ~start:(Option.default pos start) ~end_:pos
+
 let validate_document state (Document.{unchanged_id; invalid_ids; previous_document; parsed_document}) =
   let state = {state with document=parsed_document} in
   (* this should be made in Document *)

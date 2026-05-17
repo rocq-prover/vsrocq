@@ -440,9 +440,8 @@ let textDocumentCompletion id params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[textDocumentCompletion]ignoring event on non existent document"); Error( {message="Document does not exist"; code=None} ), []
   | Some { st } ->
-    (* we take the entire line range *)
-    (* for some completions, we want to replace the entire line *)
-    let line_range = Range.create ~start:(Position.line_start position) ~end_:position in
+    (* for some completions, we want to replace more than just the current word *)
+    let line_range = Dm.DocumentManager.get_current_line_range st position in
     let items = List.mapi (make_CompletionItem line_range) (Dm.DocumentManager.get_completions st position) in
     (* if we have no completions, we mark the list as incomplete to let the client query us again *)
     return_completion ~isIncomplete:(List.length items = 0) ~items, []
