@@ -5,56 +5,16 @@ open Printer
 
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
-type completion_level =
-  Fully
-  | Partially
-  | No_completion
 
-let symbol_prefix (completes: completion_level option) =
-  match completes with
-  | None -> ""
-  | Some level -> match level with
-    | Fully -> "★ "
-    | Partially -> "☆ "
-    | No_completion -> ""
-
-type completion_item = {
-  ref : Names.GlobRef.t;
-  path : full_path;
-  typ : types;
-  env : Environ.env;
-  sigma : Evd.evar_map;
-  completes : completion_level option;
-  mutable debug_info : string;
-}
-
-let mk_completion_item sigma ref env (c : constr) : completion_item =
-  {
-    ref = ref;
-    path = path_of_global ref;
-    typ = c;
-    env = env;
-    sigma = sigma;
-    completes = None;
-    debug_info = "";
-  }
-
-let pp_completion_item (item : completion_item) : (string * string * string * string) =
-  let pr = pr_global item.ref in
-  let name = Pp.string_of_ppcmds pr in
-  let path = string_of_path item.path ^ "\n" ^ item.debug_info in
-  let typ = Pp.string_of_ppcmds (pr_ltype_env item.env item.sigma item.typ) in
-  (Printf.sprintf "%s%s" (symbol_prefix item.completes) name, name, typ, path)
-
-(** Builtin commands, options, and tactics *)
+(** Builtin commands, options, tactics, and attributes *)
 
 (*
   Some vernacular is implemented internally in Rocq and not visible as a normal definition
   that could be added to a completion database through standard scraping. Same goes for
-  Ltac1 tactics.
+  Ltac1 tactics, or attributes.
 
   To remedy this, we scrape the official documentation of Rocq and create indices of all
-  of the built-in tactics, commands, and options. These indices are then loaded into
+  of the built-in tactics, commands, options, and attributes. These indices are then loaded into
   vsrocqtop to serve these completions to the user.
 *)
 
@@ -105,7 +65,7 @@ let rec pp_builtin_syntax (syntax: builtin_syntax) : string =
       let children_str = String.concat " " (List.map pp_builtin_syntax children) in
       Printf.sprintf "(%s)%s%s" children_str (Option.default "" sep) quant
 
-(* folds over a list by gathering a list while keeping track of an accumulator *)
+(* Folds over a list by gathering a list while keeping track of an accumulator *)
 let fold_gather f acc items =
     let (final_acc, mapped) = List.fold_left (fun acc item ->
       let (next_acc, mapped) = f (fst acc) item in
@@ -154,15 +114,21 @@ type builtin_item_raw = {
   documentation: string;
 } [@@deriving of_yojson]
 
+type builtin_item_kind =
+  | Command
 
 (* We extend the raw item with additional computed fields *)
 type builtin_item = {
   raw: builtin_item_raw;
+  (* human-friendly label *)
+  label: string;
+  kind: builtin_item_kind;
   (* snippet syntax *)
   snippet: string;
   (* URL to the documentation page *)
   documentation_url: string;
 }
+
 
 [%%if rocq = "9.2"]
 let doc_version = "V9.2.0"
@@ -173,28 +139,30 @@ let doc_version = ""
 let documentation_url_of_item (item: builtin_item_raw) : string =
   Printf.sprintf "https://rocq-prover.org/doc/%s/refman/%s.html#%s" doc_version item.documentation_path item.documentation_anchor
 
-type builtin_index = (string * builtin_item) list
-
-let load_builtin_index (json_str: string) : builtin_index =
-  let json = Yojson.Safe.from_string json_str in
-  let pairs = Yojson.Safe.Util.to_assoc json in
-  List.map (fun (key, json_value) ->
-    let raw = builtin_item_raw_of_yojson json_value in
-    (key, {
-      raw;
-      snippet = builtin_syntax_list_to_snippet raw.syntax;
-      documentation_url = documentation_url_of_item raw;
-    })
-  ) pairs
+type builtin_index = builtin_item list
 
 module BuiltinIndices = struct
   type t = {
     commands: builtin_index;
   }
 
+  let load_builtin_index (kind: builtin_item_kind) (json_str: string) : builtin_index =
+    let json = Yojson.Safe.from_string json_str in
+    let pairs = Yojson.Safe.Util.to_assoc json in
+    List.map (fun (key, json_value) ->
+      let raw = builtin_item_raw_of_yojson json_value in
+      {
+        raw;
+        label = key;
+        kind;
+        snippet = builtin_syntax_list_to_snippet raw.syntax;
+        documentation_url = documentation_url_of_item raw;
+      }
+    ) pairs
+
   [%%if rocq = "9.2"]
   let v: t = {
-    commands = load_builtin_index [%blob "indices/9.2/cmdindex.json"];
+    commands = load_builtin_index Command [%blob "indices/9.2/cmdindex.json"];
   }
   [%%else]
   let v: t = {
@@ -202,3 +170,55 @@ module BuiltinIndices = struct
   }
   [%%endif]
 end
+
+(** Completion items *)
+(*
+  We define completion items which may either come from the library itself (for
+  example defined by the user or from an external library) or from the builtin
+  index prepared above.
+*)
+
+type completion_level =
+  Fully
+  | Partially
+  | No_completion
+
+let symbol_prefix (completes: completion_level option) =
+  match completes with
+  | None -> ""
+  | Some level -> match level with
+    | Fully -> "★ "
+    | Partially -> "☆ "
+    | No_completion -> ""
+
+type completion_item_lib = {
+  ref : Names.GlobRef.t;
+  path : full_path;
+  typ : types;
+  env : Environ.env;
+  sigma : Evd.evar_map;
+  completes : completion_level option;
+  mutable debug_info : string;
+}
+
+type completion_item =
+  | Library of completion_item_lib
+  | Builtin of builtin_item
+
+let mk_completion_item_lib sigma ref env (c : constr) : completion_item_lib =
+  {
+    ref;
+    path = path_of_global ref;
+    typ = c;
+    env;
+    sigma;
+    completes = None;
+    debug_info = "";
+  }
+
+let pp_completion_item_lib (item : completion_item_lib) : (string * string * string * string) =
+  let pr = pr_global item.ref in
+  let name = Pp.string_of_ppcmds pr in
+  let path = string_of_path item.path ^ "\n" ^ item.debug_info in
+  let typ = Pp.string_of_ppcmds (pr_ltype_env item.env item.sigma item.typ) in
+  (Printf.sprintf "%s%s" (symbol_prefix item.completes) name, name, typ, path)
