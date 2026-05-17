@@ -388,7 +388,7 @@ let rocqtopStepForward params =
   let events = Dm.DocumentManager.interpret_to_next () in
   inject_dm_events (uri,events)
 
-  let make_CompletionItem i item : CompletionItem.t =
+  let make_CompletionItem line_range i item : CompletionItem.t =
     match item with
     | Dm.CompletionItems.Library item ->
       let (label, insertText, typ, path, debug_info) = Dm.CompletionItems.pp_completion_item_lib item in
@@ -403,7 +403,7 @@ let rocqtopStepForward params =
     | Dm.CompletionItems.Builtin item ->
       CompletionItem.create
         ~label:item.label
-        ~insertText:item.snippet
+        ~textEdit:(`TextEdit (TextEdit.create ~newText:item.snippet ~range:line_range))
         ~detail:(match item.kind with
                 | Dm.CompletionItems.Command -> "Command")
         ~kind:(match item.kind with
@@ -424,7 +424,10 @@ let textDocumentCompletion params =
   else
   let Lsp.Types.CompletionParams.{ textDocument = { uri }; position } = params in
   let@ { st } = with_document_request "textDocumentCompletion" uri in
-  let items = List.mapi make_CompletionItem (Dm.DocumentManager.get_completions st position) in
+  (* we take the entire line range *)
+  (* for some completions, we want to replace the entire line *)
+  let line_range = Range.create ~start:(Position.line_start position) ~end_:position in
+  let items = List.mapi (make_CompletionItem line_range) (Dm.DocumentManager.get_completions st position) in
   return_completion ~isIncomplete:false ~items, []
 
 let documentFoldingRange params =
