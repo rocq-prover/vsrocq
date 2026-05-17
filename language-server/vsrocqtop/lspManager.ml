@@ -407,7 +407,7 @@ let rocqtopStepForward params =
       let events = Dm.DocumentManager.interpret_to_next () in
       inject_dm_events (uri,events) 
 
-  let make_CompletionItem i item : CompletionItem.t =
+  let make_CompletionItem line_range i item : CompletionItem.t =
     match item with
     | Dm.CompletionItems.Library item ->
       let (label, insertText, typ, path, debug_info) = Dm.CompletionItems.pp_completion_item_lib item in
@@ -422,7 +422,7 @@ let rocqtopStepForward params =
     | Dm.CompletionItems.Builtin item ->
       CompletionItem.create
         ~label:item.label
-        ~insertText:item.snippet
+        ~textEdit:(`TextEdit (TextEdit.create ~newText:item.snippet ~range:line_range))
         ~detail:(match item.kind with
                 | Dm.CompletionItems.Command -> "Command")
         ~kind:(match item.kind with
@@ -444,8 +444,11 @@ let textDocumentCompletion id params =
   let Lsp.Types.CompletionParams.{ textDocument = { uri }; position } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[textDocumentCompletion]ignoring event on non existent document"); Error( {message="Document does not exist"; code=None} ), []
-  | Some { st } -> 
-    let items = List.mapi make_CompletionItem (Dm.DocumentManager.get_completions st position) in
+  | Some { st } ->
+    (* we take the entire line range *)
+    (* for some completions, we want to replace the entire line *)
+    let line_range = Range.create ~start:(Position.line_start position) ~end_:position in
+    let items = List.mapi (make_CompletionItem line_range) (Dm.DocumentManager.get_completions st position) in
     return_completion ~isIncomplete:false ~items, []
 
 let documentSymbol id params =
