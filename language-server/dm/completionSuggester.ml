@@ -338,14 +338,20 @@ let get_lemmas sigma env =
   generic_search env sigma display;
   results.contents
 
-let get_completions options st =
-  Vernacstate.unfreeze_full_state st;
-  match st.interp.lemmas with
-  | None -> None
-  | Some lemmas ->
-    let proof = Proof.data (lemmas |> Vernacstate.LemmaStack.with_top ~f:Declare.Proof.get) in
-    let env = Global.env () in
-    let sigma = proof.sigma in
-    let lemmas = get_lemmas sigma env in
-    let lib_items = List.map (fun item -> CompletionItems.Library item) (get_completion_lib_items env proof lemmas options) in
-    Some lib_items
+let get_completions options ost =
+  (* in any context, we suggest a vernac command *)
+  let commands = List.map (fun e -> CompletionItems.Builtin e) CompletionItems.BuiltinIndices.v.commands in
+  let lib_items = match ost with
+  | None -> []
+  | Some st ->
+    Vernacstate.unfreeze_full_state st;
+    match st.interp.lemmas with
+      | None -> []
+      | Some lemmas ->
+        let proof = Proof.data (lemmas |> Vernacstate.LemmaStack.with_top ~f:Declare.Proof.get) in
+        let env = Global.env () in
+        let sigma = proof.sigma in
+        let lemmas = get_lemmas sigma env in
+        List.map (fun item -> CompletionItems.Library item) (get_completion_lib_items env proof lemmas options)
+  in
+  commands @ lib_items

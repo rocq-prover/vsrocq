@@ -427,11 +427,7 @@ let get_completions st pos =
   | Some { checked } ->
     let ost = Utilities.get_vernac_state checked in
     let settings = ExecutionManager.get_options () in
-    match Option.bind ost @@ CompletionSuggester.get_completions settings.completion_options with
-    | None -> 
-        log (fun () -> "No completions available");
-        []
-    | Some lemmas -> lemmas
+    CompletionSuggester.get_completions settings.completion_options ost
 
 [%%if rocq ="8.18" || rocq ="8.19"]
 [%%elif rocq ="8.20"]
