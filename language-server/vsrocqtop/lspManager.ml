@@ -402,16 +402,32 @@ let rocqtopStepForward params =
       let events = Dm.DocumentManager.interpret_to_next () in
       inject_dm_events (uri,events) 
 
-  let make_CompletionItem i item : CompletionItem.t = 
-    let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item item in
-    CompletionItem.create
-      ~label
-      ~insertText
-      ~detail:typ
-      ~documentation:(`String ("Path: " ^ path))
-      ~sortText:(Printf.sprintf "%5d" i)
-      ?filterText:(if label == insertText then None else Some (insertText))
-      ()
+  let make_CompletionItem i item : CompletionItem.t =
+    match item with
+    | Dm.CompletionItems.Library item ->
+      let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item_lib item in
+      CompletionItem.create
+        ~label
+        ~insertText
+        ~detail:typ
+        ~documentation:(`String ("Path: " ^ path))
+        ~sortText:(Printf.sprintf "%5d" i)
+        ?filterText:(if label == insertText then None else Some (insertText))
+        ()
+    | Dm.CompletionItems.Builtin item ->
+      CompletionItem.create
+        ~label:item.label
+        ~insertText:item.snippet
+        ~detail:(match item.kind with
+                | Dm.CompletionItems.Command -> "Command")
+        ~kind:(match item.kind with
+               | Dm.CompletionItems.Command -> CompletionItemKind.Function)
+        ~documentation:(`MarkupContent {
+          (* it is not actually markdown, but using this mode leads to better rendering *)
+          kind = MarkupKind.Markdown;
+          value = Printf.sprintf "<%s>\n\n%s" item.documentation_url item.raw.documentation})
+        ~insertTextFormat:InsertTextFormat.Snippet
+        ()
 
 let textDocumentCompletion id params =
   let return_completion ~isIncomplete ~items =
