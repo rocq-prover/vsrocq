@@ -35,6 +35,16 @@ let line_text raw i =
   else
     String.sub raw.text (raw.lines.(i)) (String.length raw.text - raw.lines.(i))
 
+(* first non-whitespace character position in a line *)
+let line_nonwhitespace_start raw i =
+  let line = line_text raw i in
+  let rec loop j =
+    if j >= String.length line then None
+    else if line.[j] = ' ' || line.[j] = '\t' then loop (j+1)
+    else Some j
+  in
+  Option.map (fun col -> Position.create ~line:i ~character:col) (loop 0)
+
 let get_character_pos linestr loc =
   let rec loop d =
     if Uutf.decoder_byte_count d >= loc then
