@@ -52,6 +52,18 @@ let line_span raw i =
   else
    (raw.lines.(i), String.length raw.text - raw.lines.(i))
 
+(* first non-whitespace character position in a line *)
+let line_nonwhitespace_start raw i =
+  let start, end_ = line_span raw i in
+  let length = end_ - start in
+  let rec loop j =
+    if j >= length then None
+    else if raw.text.[start + j] = ' ' || raw.text.[start + j] = '\t' then
+      loop (j + 1)
+    else Some j
+  in
+  Option.map (fun col -> Position.create ~line:i ~character:col) (loop 0)
+
 (* UTF8 byte -> UTF16 code unit position *)
 let code_unit_pos_of_loc raw line_idx loc =
   let line_start, line_len = line_span raw line_idx in
