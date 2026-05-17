@@ -142,7 +142,8 @@ let builtin_syntax_list_to_snippet (syntax_list: builtin_syntax list) : string =
   (* we assume all grammars have an implicit "." at the end *)
   String.concat " " (List.filter (fun s -> s <> "") top) ^ "."
 
-type builtin_item = {
+(* This is what is stored in the JSON index *)
+type builtin_item_raw = {
   (* documentation file where this builtin is documented *)
   documentation_path: string;
   (* page anchor for this builtin in the documentation *)
@@ -153,12 +154,39 @@ type builtin_item = {
   documentation: string;
 } [@@deriving of_yojson]
 
+
+(* We extend the raw item with additional computed fields *)
+type builtin_item = {
+  raw: builtin_item_raw;
+  (* snippet syntax *)
+  snippet: string;
+  (* URL to the documentation page *)
+  documentation_url: string;
+}
+
+[%%if rocq = "9.2"]
+let doc_version = "V9.2.0"
+[%%else]
+let doc_version = ""
+[%%endif]
+
+let documentation_url_of_item (item: builtin_item_raw) : string =
+  Printf.sprintf "https://rocq-prover.org/doc/%s/refman/%s.html#%s" doc_version item.documentation_path item.documentation_anchor
+
 type builtin_index = (string * builtin_item) list
 
 let load_builtin_index (json_str: string) : builtin_index =
   let json = Yojson.Safe.from_string json_str in
   let pairs = Yojson.Safe.Util.to_assoc json in
-  List.map (fun (key, json_value) -> (key, builtin_item_of_yojson json_value)) pairs
+  List.map (fun (key, json_value) ->
+    let raw = builtin_item_raw_of_yojson json_value in
+    (key, {
+      raw;
+      snippet = builtin_syntax_list_to_snippet raw.syntax;
+      documentation_url = documentation_url_of_item raw;
+    })
+  ) pairs
+
 
 [%%if rocq = "9.2"]
 let opt_index = load_builtin_index [%blob "indices/9.2/optindex.json"]
