@@ -444,7 +444,8 @@ let textDocumentCompletion id params =
     (* for some completions, we want to replace the entire line *)
     let line_range = Range.create ~start:(Position.line_start position) ~end_:position in
     let items = List.mapi (make_CompletionItem line_range) (Dm.DocumentManager.get_completions st position) in
-    return_completion ~isIncomplete:false ~items, []
+    (* if we have no completions, we mark the list as incomplete to let the client query us again *)
+    return_completion ~isIncomplete:(List.length items = 0) ~items, []
 
 let documentSymbol id params =
   let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get ssupport for partialResult and workDone*)
