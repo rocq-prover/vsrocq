@@ -216,9 +216,9 @@ let mk_completion_item_lib sigma ref env (c : constr) : completion_item_lib =
     debug_info = "";
   }
 
-let pp_completion_item_lib (item : completion_item_lib) : (string * string * string * string) =
+let pp_completion_item_lib (item : completion_item_lib) : (string * string * string * string * string) =
   let pr = pr_global item.ref in
   let name = Pp.string_of_ppcmds pr in
-  let path = string_of_path item.path ^ "\n" ^ item.debug_info in
+  let path = string_of_path item.path in
   let typ = Pp.string_of_ppcmds (pr_ltype_env item.env item.sigma item.typ) in
-  (Printf.sprintf "%s%s" (symbol_prefix item.completes) name, name, typ, path)
+  (Printf.sprintf "%s%s" (symbol_prefix item.completes) name, name, typ, path, item.debug_info)
