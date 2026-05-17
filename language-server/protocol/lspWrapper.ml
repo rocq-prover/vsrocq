@@ -28,8 +28,6 @@ module Position = struct
     | 0 -> Int.compare pos1.character pos2.character
     | x -> x
 
-  let line_start pos = { pos with character = 0 }
-
   let to_string pos = Format.sprintf "(%i,%i)" pos.line pos.character
 
 end
