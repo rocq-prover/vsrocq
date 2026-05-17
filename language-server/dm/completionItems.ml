@@ -187,13 +187,18 @@ let load_builtin_index (json_str: string) : builtin_index =
     })
   ) pairs
 
+module BuiltinIndices = struct
+  type t = {
+    commands: builtin_index;
+  }
 
-[%%if rocq = "9.2"]
-let opt_index = load_builtin_index [%blob "indices/9.2/optindex.json"]
-let cmd_index = load_builtin_index [%blob "indices/9.2/cmdindex.json"]
-let tac_index = load_builtin_index [%blob "indices/9.2/tacindex.json"]
-[%%else]
-let opt_index = load_builtin_index "{}"
-let cmd_index = load_builtin_index "{}"
-let tac_index = load_builtin_index "{}"
-[%%endif]
+  [%%if rocq = "9.2"]
+  let v: t = {
+    commands = load_builtin_index [%blob "indices/9.2/cmdindex.json"];
+  }
+  [%%else]
+  let v: t = {
+     commands = [];
+  }
+  [%%endif]
+end
