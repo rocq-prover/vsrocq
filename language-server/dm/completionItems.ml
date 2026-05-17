@@ -165,8 +165,12 @@ module BuiltinIndices = struct
     commands = load_builtin_index Command [%blob "indices/9.2/cmdindex.json"];
   }
   [%%else]
+  (* For version for which we do not have JSON indices, we load the v9.2 indices. *)
+  (* This will of course lead to situations where we suggest to the user something *)
+  (* that is potentially non-existent or outdated, but this experience is better *)
+  (* than giving the user nothing. *)
   let v: t = {
-     commands = [];
+    commands = load_builtin_index Command [%blob "indices/9.2/cmdindex.json"];
   }
   [%%endif]
 end
