@@ -133,7 +133,7 @@ type builtin_item = {
 [%%if rocq = "9.2"]
 let doc_version = "V9.2.0"
 [%%else]
-let doc_version = ""
+let doc_version = "V9.2.0"
 [%%endif]
 
 let documentation_url_of_item (item: builtin_item_raw) : string =
