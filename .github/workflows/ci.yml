@@ -87,7 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         ocaml-compiler: [4.14.x]
         coq: [8.18.0, 8.19.0, 8.20.0, 9.0.0, 9.1.1, 9.2.0, dev]
     runs-on: ${{ matrix.os }}
@@ -114,15 +114,19 @@ jobs:
         vsrocqtop -v
 
     - uses: actions/setup-node@v3
+      if: runner.os == 'Linux'
       with:
         node-version: 22
 
     - run: cd client && npm run package
-    - run: eval $(opam env) && cd client && xvfb-run npm test
+      if: runner.os == 'Linux'
+    - run: |
+        eval $(opam env) && cd client && xvfb-run npm test
+      if: runner.os == 'Linux'
       env:
         VSROCQPATH: ${{ env.vsrocqtop }}
         VSROCQARGS: "-bt"
-    - if: ${{ failure() }}
+    - if: runner.os == 'Linux' && failure()
       run: cat /tmp/vsrocq_init_log.*
 
   install-windows:
