@@ -1,0 +1,4494 @@
+{
+  "Extraction Optimize": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:flag.Extraction-Optimize",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Optimize",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Default is on. This *flag* controls all type-preserving\n   optimizations made on the ML terms (mostly reduction of dummy\n   beta/iota redexes, but also simplifications on Cases, etc). Turn\n   this flag off if you want a ML term as close as possible to the\n   Rocq term."
+  },
+  "Extraction Conservative Types": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:flag.Extraction-Conservative-Types",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Conservative",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Types",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Default is off. This *flag* controls the non-type-preserving\n   optimizations made on ML terms (which try to avoid function\n   abstraction of dummy types). Turn this flag on to make sure that\n   \"e:t\" implies that \"e':t'\" where \"e'\" and \"t'\" are the extracted\n   code of \"e\" and \"t\" respectively."
+  },
+  "Extraction KeepSingleton": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:flag.Extraction-KeepSingleton",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "KeepSingleton",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Default is off. Normally, when the extraction of an inductive type\n   produces a singleton type (i.e. a type with only one constructor,\n   and only one argument to this constructor), the inductive structure\n   is removed and this type is seen as an alias to the inner type. The\n   typical example is \"sig\". This *flag* allows disabling this\n   optimization when one wishes to preserve the inductive structure of\n   types."
+  },
+  "Extraction AutoInline": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:flag.Extraction-AutoInline",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "AutoInline",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Default is off. When enabled, the extraction mechanism inlines the\n   *bodies* of some defined *constants*, according to some heuristics\n   like size of bodies, uselessness of some arguments, etc.\n\n   Even when this flag is off, recursors (\"_rect\" and \"_rec\" schemes,\n   such as \"nat_rect\"), projections, and a few specific constants such\n   as \"andb\" and \"orb\" (for the lazy behaviour) and well founded\n   recursion combinators are still automatically inlined."
+  },
+  "Extraction SafeImplicits": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:flag.Extraction-SafeImplicits",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "SafeImplicits",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Default is on. When this *flag* is off, a warning is emitted\n   instead of an error if some implicit arguments still occur in the\n   final code of an extraction. This way, the extracted code may be\n   obtained nonetheless and reviewed manually to locate the source of\n   the issue (in the code, some comments mark the location of these\n   remaining implicit arguments). Note that this extracted code might\n   not compile or run properly, depending of the use of these\n   remaining implicit arguments."
+  },
+  "Extraction AccessOpaque": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:flag.Extraction-AccessOpaque",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "AccessOpaque",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default extraction will treat opaque proofs (concluded with\n   \"Qed\") as though they were transparent. Turning this *flag* off\n   will instead treat them as axioms."
+  },
+  "Extraction TypeExpand": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:flag.Extraction-TypeExpand",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "TypeExpand",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "If this *flag* is set, fully expand Rocq types in ML.  See the Rocq\n   source code to learn more."
+  },
+  "Rewrite Output Constraints": {
+    "documentation_path": "addendum/generalized-rewriting",
+    "documentation_anchor": "rocq:flag.Rewrite-Output-Constraints",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Rewrite",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Output",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Constraints",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Generalized rewriting relies on proof-search to find the congruence\n   lemmas necessary to prove that a rewriting is valid. Oftentimes,\n   one forgets to add a \"Proper\" declaration and is faced with a whole\n   resolution failure involving many constraints. To help with\n   understanding the failed search, one can use the \"Rewrite Output\n   Constraints\" flag. This flag changes the behavior of\n   \"setoid_rewrite\" to produce the set of unsatisfied typeclass\n   constraints when they cannot be resolved automatically, instead of\n   failing with an error."
+  },
+  "Printing Coercions": {
+    "documentation_path": "addendum/implicit-coercions",
+    "documentation_anchor": "rocq:flag.Printing-Coercions",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Coercions",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When on, this *flag* forces all the coercions to be printed. By\n   default, coercions are not printed."
+  },
+  "Info Micromega": {
+    "documentation_path": "addendum/micromega",
+    "documentation_anchor": "rocq:flag.Info-Micromega",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Info",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Micromega",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When set, instructs the tactics \"lia\", \"nia\", \"lra\", \"nra\" and\n   \"psatz\" to print the list of hypotheses needed by the proof. The\n   default is unset."
+  },
+  "Lia Cache": {
+    "documentation_path": "addendum/micromega",
+    "documentation_anchor": "rocq:flag.Lia-Cache",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Lia",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Cache",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (set by default) instructs \"lia\" to cache its results\n   in the file \".lia.cache\""
+  },
+  "Nia Cache": {
+    "documentation_path": "addendum/micromega",
+    "documentation_anchor": "rocq:flag.Nia-Cache",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Nia",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Cache",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (set by default) instructs \"nia\" to cache its results\n   in the file \".nia.cache\""
+  },
+  "Nra Cache": {
+    "documentation_path": "addendum/micromega",
+    "documentation_anchor": "rocq:flag.Nra-Cache",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Nra",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Cache",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (set by default) instructs \"nra\" to cache its results\n   in the file \".nra.cache\""
+  },
+  "Lia Depth": {
+    "documentation_path": "addendum/micromega",
+    "documentation_anchor": "rocq:flag.Lia-Depth",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Lia",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Depth",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": ""
+  },
+  "Program Cases": {
+    "documentation_path": "addendum/program",
+    "documentation_anchor": "rocq:flag.Program-Cases",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Program",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Cases",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls the special treatment of pattern matching\n   generating equalities and disequalities when using **Program** (it\n   is on by default). All pattern-matches and let-patterns are handled\n   using the standard algorithm of Rocq (see Extended pattern\n   matching) when this flag is deactivated."
+  },
+  "Program Generalized Coercion": {
+    "documentation_path": "addendum/program",
+    "documentation_anchor": "rocq:flag.Program-Generalized-Coercion",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Program",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Generalized",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Coercion",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls the coercion of general inductive types when\n   using **Program** (the flag is on by default). Coercion of subset\n   types and pairs is still active in this case."
+  },
+  "Program Mode": {
+    "documentation_path": "addendum/program",
+    "documentation_anchor": "rocq:flag.Program-Mode",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Program",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Mode",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* enables the program mode, in which 1) typechecking\n   allows subset coercions and 2) the elaboration of pattern matching\n   of \"Fixpoint\" and \"Definition\" acts as if the \"program\" attribute\n   has been used, generating obligations if there are unresolved holes\n   after typechecking."
+  },
+  "Transparent Obligations": {
+    "documentation_path": "addendum/program",
+    "documentation_anchor": "rocq:flag.Transparent-Obligations",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Transparent",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Obligations",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls whether all obligations should be declared as\n   transparent (the default), or if the system should infer which\n   obligations can be declared opaque."
+  },
+  "Allow StrictProp": {
+    "documentation_path": "addendum/sprop",
+    "documentation_anchor": "rocq:flag.Allow-StrictProp",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Allow",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "StrictProp",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* enables or disables the use of \\SProp.  It is enabled\n   by default. The command-line flag \"-disallow-sprop\" disables \\SProp\n   at startup.\n\n   Error SProp is disallowed because the \"Allow StrictProp\" flag is off."
+  },
+  "Definitional UIP": {
+    "documentation_path": "addendum/sprop",
+    "documentation_anchor": "rocq:flag.Definitional-UIP",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Definitional",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "UIP",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag*, off by default, allows the declaration of non-squashed\n   inductive types in \\SProp with 1 constructor which takes no non-\n   parameter arguments. Since this includes equality types, it\n   provides definitional uniqueness of identity proofs.\n\n   Because squashing is a universe restriction, unsetting \"Universe\n   Checking\" is stronger than setting \"Definitional UIP\"."
+  },
+  "Printing Relevance Marks": {
+    "documentation_path": "addendum/sprop",
+    "documentation_anchor": "rocq:flag.Printing-Relevance-Marks",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Relevance",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Marks",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* enables debug printing of relevance marks. It is off by\n   default. Note that \"Printing All\" does not affect printing of\n   relevance marks.\n\n      Set Printing Relevance Marks.\n\n\n      Check fun x : nat => x.\n\n          fun x : (* Relevant *) nat => x\n               : nat -> nat\n\n      Check fun (P:SProp) (p:P) => p.\n          fun (P : (* Relevant *) SProp) (p : (* Irrelevant *) P) => p\n               : forall P : (* Relevant *) SProp, P -> P"
+  },
+  "Typeclasses Dependency Order": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:flag.Typeclasses-Dependency-Order",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Dependency",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Order",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (off by default) respects the dependency order between\n   subgoals, meaning that subgoals on which other subgoals depend come\n   first, while the non-dependent subgoals were put before the\n   dependent ones previously (Coq 8.5 and below). This can result in\n   quite different performance behaviors of proof search."
+  },
+  "Typeclasses Limit Intros": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:flag.Typeclasses-Limit-Intros",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Limit",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Intros",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (on by default) controls the ability to apply hints\n   while avoiding (functional) eta-expansions in the generated proof\n   term. It does so by allowing hints that conclude in a product to\n   apply to a goal with a matching product directly, avoiding an\n   introduction.\n\n   Warning:\n\n     This can be expensive as it requires rebuilding hint clauses\n     dynamically, and does not benefit from the invertibility status\n     of the product introduction rule, resulting in potentially more\n     expensive proof search (i.e. more useless backtracking)."
+  },
+  "Typeclass Resolution For Conversion": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:flag.Typeclass-Resolution-For-Conversion",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclass",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Resolution",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "For",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Conversion",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (on by default) controls the use of typeclass\n   resolution when a unification problem cannot be solved during\n   elaboration/type inference. With this flag on, when a unification\n   fails, typeclass resolution is tried before launching unification\n   once again."
+  },
+  "Typeclasses Strict Resolution": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:flag.Typeclasses-Strict-Resolution",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Strict",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Resolution",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Typeclass declarations introduced when this *flag* is set have a\n   stricter resolution behavior (the flag is off by default). When\n   looking for unifications of a goal with an instance of this\n   typeclass, we \u201cfreeze\u201d all the existentials appearing in the goals,\n   meaning that they are considered rigid during unification and\n   cannot be instantiated."
+  },
+  "Typeclasses Unique Solutions": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:flag.Typeclasses-Unique-Solutions",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Unique",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Solutions",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When a typeclass resolution is launched we ensure that it has a\n   single solution or fail. This *flag* ensures that the resolution is\n   canonical, but can make proof search much more expensive."
+  },
+  "Typeclasses Unique Instances": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:flag.Typeclasses-Unique-Instances",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Unique",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Instances",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Typeclass declarations introduced when this *flag* is set have a\n   more efficient resolution behavior (the flag is off by default).\n   When a solution to the typeclass goal of this typeclass is found,\n   we never backtrack on it, assuming that it is canonical."
+  },
+  "Typeclasses Iterative Deepening": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:flag.Typeclasses-Iterative-Deepening",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Iterative",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Deepening",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is set, the proof search strategy is breadth-first\n   search. Otherwise, the search strategy is depth-first search.  The\n   default is off. \"Typeclasses eauto\" is another way to set this\n   flag."
+  },
+  "Typeclasses Debug": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:flag.Typeclasses-Debug",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Debug",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Controls whether typeclass resolution steps are shown during\n   search.  Setting this *flag* also sets \"Typeclasses Debug\n   Verbosity\" to 1.  \"Typeclasses eauto\" is another way to set this\n   flag."
+  },
+  "Universe Polymorphism": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Universe-Polymorphism",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Universe",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Polymorphism",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* is off by default.  When it is on, new declarations are\n   polymorphic unless the \"universes(polymorphic=no)\" attribute is\n   used to override the default."
+  },
+  "Polymorphic Inductive Cumulativity": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Polymorphic-Inductive-Cumulativity",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Polymorphic",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Inductive",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Cumulativity",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is on (it is off by default), it makes all\n   subsequent *polymorphic* inductive definitions cumulative, unless\n   the \"universes(cumulative=no)\" attribute is used to override the\n   default.  It has no effect on *monomorphic* inductive definitions."
+  },
+  "Cumulativity Weak Constraints": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Cumulativity-Weak-Constraints",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Cumulativity",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Weak",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Constraints",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When set, which is the default, this *flag* causes \"weak\"\n   constraints to be produced when comparing universes in an\n   irrelevant position. Processing weak constraints is delayed until\n   minimization time. A weak constraint between \"u\" and \"v\" when\n   neither is smaller than the other and one is flexible causes them\n   to be unified. Otherwise the constraint is silently discarded.\n\n   This heuristic is experimental and may change in future versions.\n   Disabling weak constraints is more predictable but may produce\n   arbitrary numbers of universes."
+  },
+  "Universe Minimization ToSet": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Universe-Minimization-ToSet",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Universe",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Minimization",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "ToSet",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Turning this *flag* off (it is on by default) disallows\n   minimization to the sort \"Set\" and only collapses floating\n   universes between themselves."
+  },
+  "Printing Universes": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Printing-Universes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Universes",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Turn this *flag* on to activate the display of the actual level of\n   each occurrence of \"Type\". See Sorts for details. This wizard flag,\n   in combination with \"Printing All\" can help to diagnose failures to\n   unify terms apparently identical but internally different in the\n   Calculus of Inductive Constructions."
+  },
+  "Strict Universe Declaration": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Strict-Universe-Declaration",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Strict",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Universe",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Declaration",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Turning this *flag* off allows one to freely use identifiers for\n   universes without declaring them first, with the semantics that the\n   first use declares it. This is meant mainly for debugging purposes."
+  },
+  "Private Polymorphic Universes": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Private-Polymorphic-Universes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Private",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Polymorphic",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Universes",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag*, on by default, removes universes which appear only in\n   the *body* of an opaque polymorphic definition from the\n   definition's universe arguments. As such, no value needs to be\n   provided for these universes when instantiating the definition.\n   Universe constraints are automatically adjusted.\n\n   Consider the following definition:\n\n      Lemma foo@{i} : Type@{i}.\n\n      Proof. exact Type. Qed.\n\n      Print foo.\n          foo@{i} =\n          Type@{Top.162}\n               : Type@{i}\n          (* Public universes:\n          i |= Set < i\n          Private universes:\n          {Top.162} |= Top.162 < i *)\n\n   The universe \"Top.xxx\" for the \"Type\" in the *body* cannot be\n   accessed, we only care that one exists for any instantiation of the\n   universes appearing in the type of \"foo\". This is guaranteed when\n   the transitive constraint \"Set <= Top.xxx < i\" is verified. Then\n   when using the *constant* we don't need to put a value for the\n   inner universe:\n\n      Check foo@{_}.\n          foo@{Top.163}\n               : Type@{Top.163}\n          (* {Top.163} |= Set < Top.163 *)\n\n   and when not looking at the *body* we don't mention the private\n   universe:\n\n      About foo.\n          foo@{i} : Type@{i}\n          (* i |= Set < i *)\n          \n          foo is universe polymorphic\n          foo is opaque\n          Expands to: Constant Top.foo\n          Declared in toplevel input, characters 4612-4615\n\n   To recover the same behavior with regard to universes as \"Defined\",\n   the \"Private Polymorphic Universes\" flag may be unset:\n\n      Unset Private Polymorphic Universes.\n\n\n      Lemma bar : Type. Proof. exact Type. Qed.\n\n      About bar.\n\n          bar@{u u0} : Type@{u}\n          (* u u0 |= u0 < u *)\n          \n          bar is universe polymorphic\n          bar is opaque\n          Expands to: Constant Top.bar\n          Declared in toplevel input, characters 4736-4739\n\n      Fail Check bar@{_}.\n\n          The command has indeed failed with message:\n          Universe instance length for bar is 1 but should be 2.\n\n      Check bar@{_ _}.\n          bar@{Top.167\n          Top.168}\n               : Type@{Top.167}\n          (* {Top.168 Top.167} |= Top.168 < Top.167 *)\n\n   Note that named universes are always public.\n\n      Set Private Polymorphic Universes.\n\n      Unset Strict Universe Declaration.\n\n\n      Lemma baz : Type@{outer}. Proof. exact Type@{inner}. Qed.\n\n      About baz.\n          baz@{outer inner} : Type@{outer}\n          (* outer inner |= inner < outer *)\n          \n          baz is universe polymorphic\n          baz is opaque\n          Expands to: Constant Top.baz\n          Declared in toplevel input, characters 4896-4899"
+  },
+  "Collapse Sorts ToType": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Collapse-Sorts-ToType",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Collapse",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Sorts",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "ToType",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When set, unbound sort variables are collapsed to \"Type\" during\n   minimization of universes. Unsetting this flag will preserve sort\n   variables during implicit elaboration of sort-polymorphic terms, if\n   \"Universe Polymorphism\" is set. The flag is set by default.\n\n   For instance, defining the \"list\" type, without explicit sorts,\n   should elaborate two implicit ones: One for the type of parameter\n   \"A\", and one for the \"list\" type itself.\n\n      Unset Collapse Sorts ToType.\n\n\n      Inductive list (A : Type) : Type :=\n      | nil : list A\n      | cons : A -> list A -> list A.\n\n          list is defined\n          list_rect is defined\n          list_ind is defined\n          list_rec is defined\n          list_sind is defined\n\n\n      Set Printing Universes.\n\n      About list.\n\n          list : Type@{list.u0} -> Type@{max(Set,list.u0)}\n          \n          list is template universe polymorphic on list.u0 (cannot be instantiated to Prop)\n          Arguments list A%_type_scope\n          Expands to: Inductive Top.list\n          Declared in toplevel input, characters 5427-5431\n\n\n      Set Collapse Sorts ToType."
+  },
+  "Printing Sort Qualities": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Printing-Sort-Qualities",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Sort",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Qualities",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default when \"Printing Universes\" is on, sorts at floating sort\n   qualities will print their quality. Turning this *flag* off will\n   instead print them as though the quality was \"Type\" (which it will\n   become at the end of the definition unless it is unified with\n   another rigid quality)."
+  },
+  "Auto Template Polymorphism": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:flag.Auto-Template-Polymorphism",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Auto",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Template",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Polymorphism",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag*, enabled by default, makes every inductive type\n   declared at level \"Type\" (without an explicit universe instance or\n   hiding it behind a definition) template polymorphic if possible.\n\n   This can be prevented using the \"universes(template=no)\" attribute.\n\n   Template polymorphism and full universe polymorphism (see Chapter\n   Polymorphic Universes) are incompatible, so if the latter is\n   enabled (through the \"Universe Polymorphism\" flag or the\n   \"universes(polymorphic)\" attribute) it will prevail over automatic\n   template polymorphism."
+  },
+  "Dependent Proposition Eliminators": {
+    "documentation_path": "language/core/inductive",
+    "documentation_anchor": "rocq:flag.Dependent-Proposition-Eliminators",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Dependent",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Proposition",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Eliminators",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "The inductive principles express dependent elimination when the\n   inductive type allows it (always true when not using \"Primitive\n   Projections\"), except by default when the inductive is explicitly\n   declared in \"Prop\".\n\n   The dependent elimination corresponds to the \"Induction\"\n   \"scheme_type\", and non-dependent elimination to \"Minimality\".\n\n   Explicitly \"Prop\" inductive types declared when this flag is\n   enabled also automatically declare dependent inductive principles.\n   Name generation may also change when using tactics such as\n   \"destruct\" on such inductives.\n\n   Note that explicit declarations through \"Scheme\" are not affected\n   by this flag."
+  },
+  "Uniform Inductive Parameters": {
+    "documentation_path": "language/core/inductive",
+    "documentation_anchor": "rocq:flag.Uniform-Inductive-Parameters",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Uniform",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Inductive",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Parameters",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is set (it is off by default), inductive\n   definitions are abstracted over their parameters before type\n   checking constructors, allowing to write:\n\n      Set Uniform Inductive Parameters.\n\n      Inductive list3 (A:Set) : Set :=\n      | nil3 : list3\n      | cons3 : A -> list3 -> list3.\n          list3 is defined\n          list3_rect is defined\n          list3_ind is defined\n          list3_rec is defined\n          list3_sind is defined\n\n   This behavior is essentially equivalent to starting a new section\n   and using \"Context\" to give the uniform parameters, like so (cf.\n   Sections):\n\n      Section list3.\n\n      Context (A:Set).\n\n          A is declared\n\n      Inductive list3 : Set :=\n      | nil3 : list3\n      | cons3 : A -> list3 -> list3.\n\n          list3 is defined\n          list3_rect is defined\n          list3_ind is defined\n          list3_rec is defined\n          list3_sind is defined\n\n      End list3.\n\n   For finer control, you can use a \"|\" between the uniform and the\n   non-uniform parameters:\n\n      Inductive Acc {A:Type} (R:A->A->Prop) | (x:A) : Prop\n        := Acc_in : (forall y, R y x -> Acc y) -> Acc x.\n\n   The flag can then be seen as deciding whether the \"|\" is at the\n   beginning (when the flag is unset) or at the end (when it is set)\n   of the parameters when not explicitly given."
+  },
+  "Short Module Printing": {
+    "documentation_path": "language/core/modules",
+    "documentation_anchor": "rocq:flag.Short-Module-Printing",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Short",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Module",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (off by default) disables the printing of the types of\n   fields, leaving only their names, for the commands \"Print Module\"\n   and \"Print Module Type\"."
+  },
+  "Printing Float": {
+    "documentation_path": "language/core/primitive",
+    "documentation_anchor": "rocq:flag.Printing-Float",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Float",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When off, primitive floats use a low level hexadecimal\n   representation.\n\n   On by default."
+  },
+  "Printing Records": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:flag.Printing-Records",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Records",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is on (this is the default), use the record syntax\n   (shown above) as the default display format."
+  },
+  "Printing Projections": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:flag.Printing-Projections",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Projections",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Activates the projection form (dot notation) for printing\n   projections (off by default).\n\n   Example:\n\n      Check top half.  (* off: application form *)\n\n          top half\n               : nat\n\n      Set Printing Projections.\n\n      Check top half.  (* on:  projection form *)\n          half.(top)\n               : nat"
+  },
+  "Primitive Projections": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:flag.Primitive-Projections",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Primitive",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Projections",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* turns on the use of primitive projections when defining\n   subsequent records (even through the \"Inductive\" and \"CoInductive\"\n   commands). Primitive projections extend the Calculus of Inductive\n   Constructions with a new binary term constructor \"r.(p)\"\n   representing a primitive projection \"p\" applied to a record object\n   \"r\" (i.e., primitive projections are always applied). Even if the\n   record type has parameters, these do not appear in the internal\n   representation of applications of the projection, considerably\n   reducing the sizes of terms when manipulating parameterized records\n   and type checking time. On the user level, primitive projections\n   can be used as a replacement for the usual defined ones, although\n   there are a few notable differences."
+  },
+  "Printing Primitive Projection Parameters": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:flag.Printing-Primitive-Projection-Parameters",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Primitive",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Projection",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Parameters",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This compatibility *flag* (off by default) reconstructs internally\n   omitted parameters at printing time (even though they are absent in\n   the actual AST manipulated by the kernel)."
+  },
+  "Printing Unfolded Projection As Match": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:flag.Printing-Unfolded-Projection-As-Match",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Unfolded",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Projection",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "As",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Match",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default this flag is off and unfolded primitive projections are\n   printed the same as folded primitive projections. By setting this\n   flag, unfolded primitive projections are instead printed as let-\n   style matches in the form \"let '{| p := p |} := c in p\"."
+  },
+  "Printing Existential Instances": {
+    "documentation_path": "language/extensions/evars",
+    "documentation_anchor": "rocq:flag.Printing-Existential-Instances",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Existential",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Instances",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Activates the full display of how the context of an existential\n   variable is instantiated at each of the occurrences of the\n   existential variable.  Off by default."
+  },
+  "Implicit Arguments": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Implicit-Arguments",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Arguments",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (off by default) allows to systematically declare\n   implicit the arguments detectable as such. Auto-detection of\n   implicit arguments is governed by flags controlling whether strict\n   and contextual implicit arguments have to be considered or not."
+  },
+  "Strict Implicit": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Strict-Implicit",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Strict",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When the mode for automatic declaration of implicit arguments is\n   on, the default is to automatically set implicit only the strict\n   implicit arguments plus, for historical reasons, a small subset of\n   the non-strict implicit arguments. To relax this constraint and to\n   set implicit all non-strict implicit arguments by default, you can\n   turn this *flag* off."
+  },
+  "Strongly Strict Implicit": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Strongly-Strict-Implicit",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Strongly",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Strict",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Use this *flag* (off by default) to capture exactly the strict\n   implicit arguments and no more than the strict implicit arguments."
+  },
+  "Contextual Implicit": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Contextual-Implicit",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Contextual",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default, Rocq does not automatically set implicit the contextual\n   implicit arguments. You can turn this *flag* on to tell Rocq to\n   also infer contextual implicit argument."
+  },
+  "Reversible Pattern Implicit": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Reversible-Pattern-Implicit",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Reversible",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Pattern",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default, Rocq does not automatically set implicit the\n   reversible-pattern implicit arguments. You can turn this *flag* on\n   to tell Rocq to also infer reversible-pattern implicit argument."
+  },
+  "Maximal Implicit Insertion": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Maximal-Implicit-Insertion",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Maximal",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Insertion",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Assuming the implicit argument mode is on, this *flag* (off by\n   default) declares implicit arguments to be automatically inserted\n   when a function is partially applied and the next argument of the\n   function is an implicit one."
+  },
+  "Printing Implicit": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Printing-Implicit",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default, the basic pretty-printing rules hide the inferable\n   implicit arguments of an application. Turn this *flag* on to force\n   printing all implicit arguments."
+  },
+  "Printing Implicit Defensive": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Printing-Implicit-Defensive",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Defensive",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default, the basic pretty-printing rules display implicit\n   arguments that are not detected as strict implicit arguments. This\n   \u201cdefensive\u201d mode can quickly make the display cumbersome so this\n   can be deactivated by turning this *flag* off."
+  },
+  "Parsing Explicit": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Parsing-Explicit",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Parsing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Explicit",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Turning this *flag* on (it is off by default) deactivates the use\n   of implicit arguments.\n\n   In this case, all arguments of *constants*, inductive types,\n   constructors, etc, including the arguments declared as implicit,\n   have to be given as if no arguments were implicit. By symmetry,\n   this also affects printing."
+  },
+  "Printing Use Implicit Types": {
+    "documentation_path": "language/extensions/implicit-arguments",
+    "documentation_anchor": "rocq:flag.Printing-Use-Implicit-Types",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Use",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Implicit",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Types",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default, the type of bound variables is not printed when the\n   variable name is associated with an implicit type which matches the\n   actual type of the variable. This feature can be deactivated by\n   turning this *flag* off."
+  },
+  "Printing Matching": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:flag.Printing-Matching",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Matching",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "The Calculus of Inductive Constructions knows pattern matching only\n   over simple patterns. It is however convenient to re-factorize\n   nested pattern matching into a single pattern matching over a\n   nested pattern.\n\n   When this *flag* is on (default), Coq\u2019s printer tries to do such\n   limited re-factorization. Turning it off tells Rocq to print only\n   simple pattern matching problems in the same way as the Rocq kernel\n   handles them."
+  },
+  "Printing Factorizable Match Patterns": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:flag.Printing-Factorizable-Match-Patterns",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Factorizable",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Match",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Patterns",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When several patterns share the same right-hand side, it is\n   additionally possible to share the clauses using disjunctive\n   patterns. Assuming that the \"Printing Matching\" mode is on, this\n   *flag* (on by default) tells Rocq's printer to try to do this kind\n   of factorization."
+  },
+  "Printing Allow Match Default Clause": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:flag.Printing-Allow-Match-Default-Clause",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Allow",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Match",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Default",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Clause",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When several patterns share the same right-hand side which do not\n   depend on the arguments of the patterns, yet an extra factorization\n   is possible: the disjunction of patterns can be replaced with a \"_\"\n   default clause. Assuming that the printing matching mode and the\n   factorization mode are on, this *flag* (on by default) tells Rocq's\n   printer to use a default clause when relevant."
+  },
+  "Printing Wildcard": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:flag.Printing-Wildcard",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Wildcard",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Some variables in a pattern may not occur in the right-hand side of\n   the pattern matching clause. When this *flag* is on (default), the\n   variables having no occurrences in the right-hand side of the\n   pattern matching clause are just printed using the wildcard symbol\n   \u201c_\u201d."
+  },
+  "Printing Synth": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:flag.Printing-Synth",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Synth",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "In most of the cases, the type of the result of a matched term is\n   mechanically synthesizable. Especially, if the result type does not\n   depend of the matched term. When this *flag* is on (default), the\n   result type is not printed when Rocq knows that it can re-\n   synthesize it."
+  },
+  "Printing Match All Subterms": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:flag.Printing-Match-All-Subterms",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Match",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "All",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Subterms",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "In order to be able to cheaply reconstruct the types of the\n   variables bound by \"in\" and \"as\", \"match\" terms contain the\n   polymorphic universe instance and the parameters of the inductive\n   which is being matched. When this *flag* is on (it is off by\n   default), this information is displayed as a *volatile cast* around\n   the match discriminee.\n\n   When the match relies on \"Definitional UIP\", the indices are also\n   subterms of the \"match\" term and are displayed when this flag is\n   on. Otherwise they are not subterms and are displayed as holes\n   (\"_\") when this flag is on.\n\n   Example:\n\n      Polymorphic Inductive eqT@{u} {A:Type@{u}} (a:A) : A -> Type@{u} := reflT : eqT a a.\n\n      Set Definitional UIP.\n\n      Inductive seq {A} (a:A) : A -> SProp := srefl : seq a a.\n\n      Print eqT_rect.\n\n          eqT_rect@{u u0} =\n          fun (A : Type) (a : A) (P : forall a0 : A, eqT a a0 -> Type)\n            (reflT : P a (reflT a)) (a0 : A) (e : eqT a a0) =>\n          match e as e0 in eqT _ a1 return P a1 e0 with\n          | Top.reflT _ => reflT\n          end\n               : forall (A : Type) (a : A) (P : forall a0 : A, eqT a a0 -> Type),\n                 P a (reflT a) -> forall (a0 : A) (e : eqT a a0), P a0 e\n          \n          Arguments eqT_rect A%_type_scope a P%_function_scope reflT a0 e\n\n      Print seq_rect.\n\n          seq_rect =\n          fun (A : Type) (a : A) (P : forall a0 : A, seq a a0 -> Type)\n            (srefl : P a (srefl a)) (a0 : A) (s : seq a a0) =>\n          match s as s0 in seq _ a1 return P a1 s0 with\n          | Top.srefl _ => srefl\n          end\n               : forall (A : Type) (a : A) (P : forall a0 : A, seq a a0 -> Type),\n                 P a (srefl a) -> forall (a0 : A) (s : seq a a0), P a0 s\n          \n          Arguments seq_rect A%_type_scope a P%_function_scope srefl a0 s\n\n\n      Set Printing Match All Subterms.\n\n      Set Printing Universes.\n\n\n      Print eqT_rect.\n\n          eqT_rect@{u u0} =\n          fun (A : Type@{u}) (a : A) (P : forall a0 : A, eqT@{u} a a0 -> Type@{u0})\n            (reflT : P a (reflT@{u} a)) (a0 : A) (e : eqT@{u} a a0) =>\n          match e :> eqT@{u} a _ as e0 in eqT _ a1 return P a1 e0 with\n          | Top.reflT _ => reflT\n          end\n               : forall (A : Type@{u}) (a : A)\n                   (P : forall a0 : A, eqT@{u} a a0 -> Type@{u0}),\n                 P a (reflT@{u} a) -> forall (a0 : A) (e : eqT@{u} a a0), P a0 e\n          (* u u0 |=  *)\n          \n          Arguments eqT_rect A%_type_scope a P%_function_scope reflT a0 e\n\n      Print seq_rect.\n          seq_rect =\n          fun (A : Type@{seq_rect.u1}) (a : A)\n            (P : forall a0 : A, seq a a0 -> Type@{seq_rect.u0}) \n            (srefl : P a (srefl a)) (a0 : A) (s : seq a a0) =>\n          match s :> seq a a0 as s0 in seq _ a1 return P a1 s0 with\n          | Top.srefl _ => srefl\n          end\n               : forall (A : Type@{seq_rect.u1}) (a : A)\n                   (P : forall a0 : A, seq a a0 -> Type@{seq_rect.u0}),\n                 P a (srefl a) -> forall (a0 : A) (s : seq a a0), P a0 s\n          \n          Arguments seq_rect A%_type_scope a P%_function_scope srefl a0 s"
+  },
+  "Printing Regular Matches": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:flag.Printing-Regular-Matches",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Regular",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Matches",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When enabled, this flag makes printing avoid the alternate case\n   analysis syntaxes (with if and let), overriding \"Printing If\" and\n   \"Printing Let\" and disregarding the syntax used to input the case\n   analysis (so e.g. \"let 'tt := tt in tt\" will be printed using\n   \"match\").\n\n   This flag is off by default."
+  },
+  "Asymmetric Patterns": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:flag.Asymmetric-Patterns",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Asymmetric",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Patterns",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* (off by default) removes parameters from constructors\n   in patterns:"
+  },
+  "Rocqtop Exit On Error": {
+    "documentation_path": "practical-tools/coq-commands",
+    "documentation_anchor": "rocq:flag.Rocqtop-Exit-On-Error",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Rocqtop",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Exit",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "On",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Error",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag*, off by default, causes \"rocq top\" to exit with status\n   code \"1\" if a command produces an error instead of recovering from\n   it."
+  },
+  "Ltac Backtrace": {
+    "documentation_path": "proof-engine/ltac",
+    "documentation_anchor": "rocq:flag.Ltac-Backtrace",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Backtrace",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Setting this *flag* displays a backtrace on Ltac failures that can\n   be useful to find out what went wrong. It is disabled by default\n   for performance reasons."
+  },
+  "Ltac Debug": {
+    "documentation_path": "proof-engine/ltac",
+    "documentation_anchor": "rocq:flag.Ltac-Debug",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Debug",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This flag, when set, enables the step-by-step debugger in the\n   \"L\"_tac interpreter. The debugger is supported in \"rocq repl\" and\n   Proof General by printing information on the console and accepting\n   typed commands.  In addition, RocqIDE now supports a visual\n   debugger with additional capabilities."
+  },
+  "Ltac Batch Debug": {
+    "documentation_path": "proof-engine/ltac",
+    "documentation_anchor": "rocq:flag.Ltac-Batch-Debug",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Batch",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Debug",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This flag has the effect of presenting a newline at every prompt,\n   when the debugger is on in \"rocq repl\".  (It has no effect when\n   running the RocqIDE debugger.)  The debug log thus created, which\n   does not require user input to generate when this flag is set, can\n   then be run through external tools such as diff."
+  },
+  "Ltac Profiling": {
+    "documentation_path": "proof-engine/ltac",
+    "documentation_anchor": "rocq:flag.Ltac-Profiling",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Profiling",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* enables and disables the profiler."
+  },
+  "Ltac2 Typed Notations": {
+    "documentation_path": "proof-engine/ltac2",
+    "documentation_anchor": "rocq:flag.Ltac2-Typed-Notations",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac2",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Typed",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Notations",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default Ltac2 notations are typechecked at declaration time.\n   This assigns an expected type to notation arguments.\n\n   When a notation is declared with this flag unset, it is not\n   typechecked at declaration time and its expansion is typechecked\n   when it is used. This may allow slightly more flexible use of the\n   notation arguments at the cost of worse error messages when\n   incorrectly using the notation. It is not believed to be useful in\n   practice, please report any real use cases you find."
+  },
+  "Ltac2 Backtrace": {
+    "documentation_path": "proof-engine/ltac2",
+    "documentation_anchor": "rocq:flag.Ltac2-Backtrace",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac2",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Backtrace",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is set, toplevel failures will be printed with a\n   backtrace."
+  },
+  "Ltac2 Backtrace Compact": {
+    "documentation_path": "proof-engine/ltac2",
+    "documentation_anchor": "rocq:flag.Ltac2-Backtrace-Compact",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac2",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Backtrace",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Compact",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This flag is on by default. When unset, anonymous functions and\n   quotations in the stack trace print their bodies.\n\n   This flag has no effect when \"Ltac2 Backtrace\" is not set."
+  },
+  "Ltac2 In Ltac1 Profiling": {
+    "documentation_path": "proof-engine/ltac2",
+    "documentation_anchor": "rocq:flag.Ltac2-In-Ltac1-Profiling",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac2",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "In",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Ltac1",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Profiling",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* and \"Ltac Profiling\" are set, profiling data is\n   gathered for Ltac2 via the Ltac profiler. It is unset by default."
+  },
+  "SsrHave NoTCResolution": {
+    "documentation_path": "proof-engine/ssreflect-proof-language",
+    "documentation_anchor": "rocq:flag.SsrHave-NoTCResolution",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "SsrHave",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "NoTCResolution",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* restores the behavior of SSReflect 1.4 and below (never\n   resolve typeclasses)."
+  },
+  "SsrOldRewriteGoalsOrder": {
+    "documentation_path": "proof-engine/ssreflect-proof-language",
+    "documentation_anchor": "rocq:flag.SsrOldRewriteGoalsOrder",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "SsrOldRewriteGoalsOrder",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Controls the order in which generated subgoals (side conditions)\n   are added to the proof context.  The *flag* is off by default,\n   which puts subgoals generated by conditional rules first, followed\n   by the main goal.  When it is on, the main goal appears first.  If\n   your proofs are organized to complete proving the main goal before\n   side conditions, turning the flag on will save you from having to\n   add \"last first\" tactics that would be needed to keep the main goal\n   as the currently focused goal."
+  },
+  "SsrRewrite": {
+    "documentation_path": "proof-engine/ssreflect-proof-language",
+    "documentation_anchor": "rocq:flag.SsrRewrite",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "SsrRewrite",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Controls whether the incompatible rewrite syntax is enabled (the\n   default). Disabling the *flag* makes the syntax compatible with\n   other parts of Rocq. Note that this \"rewrite\" syntax, now\n   superseded by \"rw\", is only activated when explicitly requiring the\n   backward compatibility module \"From Corelib Require Import\n   ssreflect.\"."
+  },
+  "Default Clearing Used Hypotheses": {
+    "documentation_path": "proof-engine/tactics",
+    "documentation_anchor": "rocq:flag.Default-Clearing-Used-Hypotheses",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Default",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Clearing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Used",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Hypotheses",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is on (it is off by default), some tactics will\n   automatically clear their hypothesis arguments.\n\n   For instance when \"H\" is an hypothesis, \"apply H\" will clear \"H\"."
+  },
+  "Search Blacklist Locals": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Search-Blacklist-Locals",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Search",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Blacklist",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Locals",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default \"Search\" excludes lemmas declared with \"local\" from its\n   results (except for those from the current module or its parents).\n   Unsetting this *flag* will include such lemmas in the results."
+  },
+  "Search Output Name Only": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Search-Output-Name-Only",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Search",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Output",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Name",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Only",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* restricts the output of search commands to identifier\n   names; turning it on causes invocations of \"Search\",\n   \"SearchPattern\", \"SearchRewrite\" etc. to omit types from their\n   output, printing only identifiers."
+  },
+  "Fast Name Printing": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Fast-Name-Printing",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Fast",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Name",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is turned on, Rocq uses an asymptotically faster\n   algorithm for the generation of unambiguous names of bound\n   variables while printing terms. While faster, it is also less\n   clever and results in a typically less elegant display, e.g. it\n   will generate more names rather than reusing certain names across\n   subterms. This flag is not enabled by default, because as Ltac\n   observes bound names, turning it on can break existing proof\n   scripts."
+  },
+  "Silent": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Silent",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Silent",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls the normal displaying."
+  },
+  "Printing Compact Contexts": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Printing-Compact-Contexts",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Compact",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Contexts",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls the compact display mode for goals contexts.\n   When on, the printer tries to reduce the vertical size of goals\n   contexts by putting several variables (even if of different types)\n   on the same line provided it does not exceed the printing width\n   (see \"Printing Width\"). At the time of writing this documentation,\n   it is off by default."
+  },
+  "Printing Unfocused": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Printing-Unfocused",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Unfocused",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls whether unfocused goals are displayed. Such\n   goals are created by focusing other goals with bullets or curly\n   braces. It is off by default."
+  },
+  "Printing Dependent Evars Line": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Printing-Dependent-Evars-Line",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Dependent",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Evars",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Line",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls the printing of the \u201c(dependent evars: \u2026)\u201d\n   information after each tactic.  The information is used by the\n   Prooftree tool in Proof General.\n   (https://askra.de/software/prooftree)"
+  },
+  "Printing All": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Printing-All",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "All",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Coercions, implicit arguments, the type of pattern matching, but\n   also notations (see Syntax extensions and notation scopes) can\n   obfuscate the behavior of some tactics (typically the tactics\n   applying to occurrences of subterms are sensitive to the implicit\n   arguments). Turning this *flag* on deactivates all high-level\n   printing features such as coercions, implicit arguments, returned\n   type of pattern matching, notations and various syntactic sugar for\n   pattern matching or record projections. Otherwise said, \"Printing\n   All\" includes the effects of the flags \"Printing Implicit\",\n   \"Printing Coercions\", \"Printing Synth\", \"Printing Projections\", and\n   \"Printing Notations\". To reactivate the high-level printing\n   features, use the command \"Unset Printing All\".\n\n   Note:\n\n     In some cases, setting \"Printing All\" may display terms that are\n     so big they become very hard to read.  One technique to work\n     around this is use \"Undelimit Scope\" and/or \"Close Scope\" to turn\n     off the printing of notations bound to particular scope(s).  This\n     can be useful when notations in a given scope are getting in the\n     way of understanding a goal, but turning off all notations with\n     \"Printing All\" would make the goal unreadable."
+  },
+  "Printing Fully Qualified": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Printing-Fully-Qualified",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Fully",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Qualified",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is turned on, all names (global references such as\n   constants, inductives, constructors, and section variables, as well\n   as modules, module types, universes, etc) are printed using their\n   fully qualified paths. This is useful when there are multiple\n   objects with the same short name in different modules, and you want\n   to clearly distinguish them.\n\n   For example, if you have both \"Foo.ax\" and \"Bar.ax\" defined,\n   turning on this flag will ensure they are printed as\n   \"Module.Foo.ax\" and \"Module.Bar.ax\" respectively (where \"Module\" is\n   the top-level module name), rather than potentially ambiguous short\n   names.\n\n   This flag is off by default."
+  },
+  "Guard Checking": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Guard-Checking",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Guard",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Checking",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* can be used to enable/disable the guard checking of\n   fixpoints. Warning: this can break the consistency of the system,\n   use at your own risk. Decreasing argument can still be specified:\n   the decrease is not checked anymore but it still affects the\n   reduction of the term. Unchecked fixpoints are printed by \"Print\n   Assumptions\"."
+  },
+  "Positivity Checking": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Positivity-Checking",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Positivity",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Checking",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* can be used to enable/disable the positivity checking\n   of inductive types and the productivity checking of coinductive\n   types. Warning: this can break the consistency of the system, use\n   at your own risk. Unchecked (co)inductive types are printed by\n   \"Print Assumptions\"."
+  },
+  "Indices Matter": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Indices-Matter",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Indices",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Matter",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is set (it is off by default), the types of\n   indices of inductive types contribute universe constraints, just as\n   the types of constructor arguments do.  This has the same effect as\n   the \"-indices-matter\" command line argument (see Command line\n   options).\n\n   When this flag is set, inductives that rely on indices not\n   mattering (which may exist by being declared when the flag was\n   unset) are printed by \"Print Assumptions\"."
+  },
+  "Universe Checking": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:flag.Universe-Checking",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Universe",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Checking",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* can be used to enable/disable the checking of\n   universes, providing a form of \"type in type\".  Warning: this\n   breaks the consistency of the system, use at your own risk.\n   Constants relying on \"type in type\" are printed by \"Print\n   Assumptions\". It has the same effect as \"-type-in-type\" command\n   line argument (see Command line options)."
+  },
+  "Info Auto": {
+    "documentation_path": "proofs/automatic-tactics/auto",
+    "documentation_anchor": "rocq:flag.Info-Auto",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Info",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Auto",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "These *flags* enable printing of informative or debug information\n   for the \"auto\" and \"trivial\" tactics."
+  },
+  "Debug Auto": {
+    "documentation_path": "proofs/automatic-tactics/auto",
+    "documentation_anchor": "rocq:flag.Debug-Auto",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Debug",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Auto",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "These *flags* enable printing of informative or debug information\n   for the \"auto\" and \"trivial\" tactics."
+  },
+  "Info Trivial": {
+    "documentation_path": "proofs/automatic-tactics/auto",
+    "documentation_anchor": "rocq:flag.Info-Trivial",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Info",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Trivial",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "These *flags* enable printing of informative or debug information\n   for the \"auto\" and \"trivial\" tactics."
+  },
+  "Debug Trivial": {
+    "documentation_path": "proofs/automatic-tactics/auto",
+    "documentation_anchor": "rocq:flag.Debug-Trivial",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Debug",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Trivial",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "These *flags* enable printing of informative or debug information\n   for the \"auto\" and \"trivial\" tactics."
+  },
+  "Info Eauto": {
+    "documentation_path": "proofs/automatic-tactics/auto",
+    "documentation_anchor": "rocq:flag.Info-Eauto",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Info",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Eauto",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": ""
+  },
+  "Debug Eauto": {
+    "documentation_path": "proofs/automatic-tactics/auto",
+    "documentation_anchor": "rocq:flag.Debug-Eauto",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Debug",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Eauto",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": ""
+  },
+  "Intuition Negation Unfolding": {
+    "documentation_path": "proofs/automatic-tactics/logic",
+    "documentation_anchor": "rocq:flag.Intuition-Negation-Unfolding",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Intuition",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Negation",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Unfolding",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls whether \"intuition\" unfolds inner negations\n   which do not need to be unfolded. It is on by default."
+  },
+  "Rtauto Check": {
+    "documentation_path": "proofs/automatic-tactics/logic",
+    "documentation_anchor": "rocq:flag.Rtauto-Check",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Rtauto",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Check",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Turning this *flag* on checks the produced proof term at tactic\n   time instead of just proof closing (\"Qed\") time. Mostly useful for\n   debugging failures at proof closing time. Off by default."
+  },
+  "Rtauto Verbose": {
+    "documentation_path": "proofs/automatic-tactics/logic",
+    "documentation_anchor": "rocq:flag.Rtauto-Verbose",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Rtauto",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Verbose",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Make \"rtauto\" print some debug info while running when on. Off by\n   default."
+  },
+  "Rtauto Pruning": {
+    "documentation_path": "proofs/automatic-tactics/logic",
+    "documentation_anchor": "rocq:flag.Rtauto-Pruning",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Rtauto",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Pruning",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": ""
+  },
+  "Keyed Unification": {
+    "documentation_path": "proofs/writing-proofs/equality",
+    "documentation_anchor": "rocq:flag.Keyed-Unification",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Keyed",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Unification",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* makes higher-order unification used by \"rewrite\" rely\n   on a set of keys to drive unification.  The subterms, considered as\n   rewriting candidates, must start with the same key as the left- or\n   right-hand side of the lemma given to rewrite, and the arguments\n   are then unified up to full reduction."
+  },
+  "Kernel Term Sharing": {
+    "documentation_path": "proofs/writing-proofs/equality",
+    "documentation_anchor": "rocq:flag.Kernel-Term-Sharing",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Kernel",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Term",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Sharing",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Turning this flag off disables the sharing of computations in\n   \"lazy\", making it a call-by-name reduction. This also affects the\n   reduction procedure used by the kernel when typechecking. By\n   default sharing is activated."
+  },
+  "Kernel Conversion Dep Heuristic": {
+    "documentation_path": "proofs/writing-proofs/equality",
+    "documentation_anchor": "rocq:flag.Kernel-Conversion-Dep-Heuristic",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Kernel",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Conversion",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Dep",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Heuristic",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This flag controls a heuristic used during conversion when\n   comparing two constants. When enabled, if the two constants have\n   the same strategy level (see \"Strategy\"), the heuristic prefers\n   unfolding the constant that depends on the other.\n\n   For example, if \"c1\" depends on \"c2\" (i.e., \"c1\"'s definition\n   mentions \"c2\"), then checking \"c1 = c2\" or \"c2 = c1\" will prefer\n   unfolding \"c1\" first. This can significantly speed up conversions\n   in cases where one definition wraps another.\n\n   By default this flag is off, and the conversion algorithm prefers\n   unfolding the right-hand side first when the two constants have the\n   same strategy level."
+  },
+  "SimplIsCbn": {
+    "documentation_path": "proofs/writing-proofs/equality",
+    "documentation_anchor": "rocq:flag.SimplIsCbn",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "SimplIsCbn",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is on, \"simpl\" and \"simpl\" in \"red_expr\" behave as\n   \"cbn\". Off by default."
+  },
+  "NativeCompute Timing": {
+    "documentation_path": "proofs/writing-proofs/equality",
+    "documentation_anchor": "rocq:flag.NativeCompute-Timing",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "NativeCompute",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Timing",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* causes all calls to the native compiler to print timing\n   information for the conversion to native code, compilation,\n   execution, and reification phases of native compilation.  Timing is\n   printed in units of seconds of wall-clock time."
+  },
+  "NativeCompute Profiling": {
+    "documentation_path": "proofs/writing-proofs/equality",
+    "documentation_anchor": "rocq:flag.NativeCompute-Profiling",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "NativeCompute",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Profiling",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "On Linux, if you have the \"perf\" profiler installed, this *flag*\n   makes it possible to profile \"native_compute\" evaluations."
+  },
+  "Suggest Proof Using": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Suggest-Proof-Using",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Suggest",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Proof",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Using",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is on, \"Qed\" suggests a \"using\" annotation if the\n   user did not provide one."
+  },
+  "Keep Admitted Variables": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Keep-Admitted-Variables",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Keep",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Admitted",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Variables",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When on, proofs terminated with \"Admitted\" use the section\n   variables from \"Proof using\" if one was provided (including through\n   \"Default Proof Using\"), otherwise the variables used in the partial\n   proof (including any variables visible from the still open goals).\n\n   When off, only the section variables used in the type are used.\n\n   On by default."
+  },
+  "Generate Goal Names": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Generate-Goal-Names",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Generate",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Goal",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Names",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Enables automatic generation of goal names for the \"induction\",\n   \"destruct\" and \"eapply\" tactics. For \"induction\" and \"destruct\",\n   the subgoal takes the name of the corresponding constructor. For\n   \"eapply\", the subgoal takes the name of the corresponding\n   hypothesis.\n\n   This option makes it possible to write proofs with multiple\n   subgoals that do not depend on the order in which constructors were\n   defined, but instead rely on the constructor names. If you use\n   bullets or numbers, reordering constructors will break the proof.\n\n   For proofs that use nested \"induction\" or case analysis, qualified\n   names such as \"true.false\" are used to disambiguate subgoals (see\n   an example here).\n\n   Example: Automatic generation of goal names: In the following\n   example, names are generated for both the base case and the\n   induction case (in constrast with the example given here in which\n   the user explicitly gives names using \"refine\").\n\n      Set Generate Goal Names.\n\n      Goal forall n, n + 0 = n.\n\n      induction n.\n\n          2 goals (?O)\n            \n            ============================\n            0 + 0 = 0\n          \n          goal 2 (?S) is:\n           S n + 0 = S n\n\n      [O]: { (* O and S are the constructors for nat. *)\n\n          1 goal (?O)\n            \n            ============================\n            0 + 0 = 0\n\n        reflexivity.\n          This subproof is complete, but there are some unfocused goals.\n          Try unfocusing with \"}\".\n          \n          1 goal\n          \n          goal 1 (?S) is:\n           S n + 0 = S n\n\n      }\n\n   If a goal comes from an existential variable that failed to\n   instantiate (e.g. when using \"eapply\" or other \"e*\" tactics), the\n   goal is named after the variable (below, \"R\" and \"Rwf\" are\n   hypotheses of \"well_founded_ind\"):\n\n      Goal forall n : nat, even n \\/ odd n.\n\n      eapply well_founded_ind.\n\n          2 focused goals (shelved: 1) (?Rwf)\n            \n            ============================\n            well_founded ?R\n          \n          goal 2 is:\n           forall x : nat,\n           (forall y : nat, ?R y x -> even y \\/ odd y) -> even x \\/ odd x\n\n      [R]: exact lt.\n          2 goals (?Rwf)\n            \n            ============================\n            well_founded lt\n          \n          goal 2 is:\n           forall x : nat,\n           (forall y : nat, y < x -> even y \\/ odd y) -> even x \\/ odd x\n\n   Example: Qualified goal names: When doing nested case analysis or\n   induction, qualified names are used to disambiguate subgoals.\n   Subgoal names are prefixed by the names of parent goals.\n\n      Set Generate Goal Names.\n\n\n      Goal forall n m : nat, n + m = m + n.\n\n      intros. induction m; simpl.\n\n      [O]: {\n\n        induction n.\n\n        [O.O]: reflexivity.\n\n        [O.S]: { simpl. congruence. }\n      }\n      [S]: {\n\n        induction n.\n\n        [S.O]: { rewrite <- IHm. reflexivity. }\n        [S.S]: { rewrite <- IHm. auto. }\n      }\n      Qed."
+  },
+  "Inline Abstract Subproof": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Inline-Abstract-Subproof",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Inline",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Abstract",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Subproof",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Restore the pre-9.3 behavior of \"abstract\" inside quotations.\n\n   Deprecated since version 9.3."
+  },
+  "Solve Unification Constraints": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Solve-Unification-Constraints",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Solve",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Unification",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Constraints",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default, after each tactic application, postponed typechecking\n   unification problems are resolved using heuristics. Unsetting this\n   *flag* disables this behavior, allowing tactics to leave\n   unification constraints unsolved. Use the \"solve_constraints\"\n   tactic at any point to solve the constraints."
+  },
+  "Mangle Names": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Mangle-Names",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Mangle",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Names",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is set (it is off by default), generated names use\n   the prefix specified in the following option instead of the default\n   prefix."
+  },
+  "Mangle Names Light": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Mangle-Names-Light",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Mangle",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Names",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Light",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is set (it is off by default), the names generated\n   by \"Mangle Names\" only add the \"Mangle Names Prefix\" to the\n   original name."
+  },
+  "Nested Proofs Allowed": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Nested-Proofs-Allowed",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Nested",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Proofs",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Allowed",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When turned on (it is off by default), this *flag* enables support\n   for nested proofs: a new assertion command can be inserted before\n   the current proof is finished, in which case Rocq will temporarily\n   switch to the proof of this *nested lemma*. When the proof of the\n   nested lemma is finished (with \"Qed\" or \"Defined\"), its statement\n   will be made available (as if it had been proved before starting\n   the previous proof) and Rocq will switch back to the proof of the\n   previous assertion."
+  },
+  "Printing Goal Names": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Printing-Goal-Names",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Goal",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Names",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is turned on, the name of the goal is printed in\n   proof mode, which can be useful in cases of cross references\n   between goals."
+  },
+  "Printing Goal Tags": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:flag.Printing-Goal-Tags",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Goal",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Tags",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Internal flag used to implement Proof General's proof-tree mode."
+  },
+  "Structural Injection": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:flag.Structural-Injection",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Structural",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Injection",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is set, \"injection term\" erases the original\n   hypothesis and adds the generated equalities as new hypotheses\n   rather than adding them to the current goal as *premises*, as if\n   giving \"injection term as\" (with an empty list of names). This flag\n   is off by default."
+  },
+  "Keep Proof Equalities": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:flag.Keep-Proof-Equalities",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Keep",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Proof",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Equalities",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "By default, \"injection\" only creates new equalities between \"term\"s\n   whose type is in sort \"Type\" or \"Set\", thus implementing a special\n   behavior for objects that are proofs of a statement in \"Prop\". This\n   *flag* controls this behavior."
+  },
+  "Elimination Schemes": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:flag.Elimination-Schemes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Elimination",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Schemes",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* enables automatic declaration of induction principles\n   when defining a new inductive type.  Defaults to on."
+  },
+  "Nonrecursive Elimination Schemes": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:flag.Nonrecursive-Elimination-Schemes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Nonrecursive",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Elimination",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Schemes",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* enables automatic declaration of induction principles\n   for types declared with the \"Variant\" and \"Record\" commands.\n   Defaults to off."
+  },
+  "Case Analysis Schemes": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:flag.Case-Analysis-Schemes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Case",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Analysis",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Schemes",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* governs the generation of case analysis lemmas for\n   inductive types, i.e. corresponding to the pattern matching term\n   alone and without fixpoint."
+  },
+  "Boolean Equality Schemes": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:flag.Boolean-Equality-Schemes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Boolean",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Equality",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Schemes",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "These *flags* control the automatic declaration of those Boolean\n   equalities (see the second variant of \"Scheme\")."
+  },
+  "Decidable Equality Schemes": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:flag.Decidable-Equality-Schemes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Decidable",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Equality",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Schemes",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "These *flags* control the automatic declaration of those Boolean\n   equalities (see the second variant of \"Scheme\")."
+  },
+  "Rewriting Schemes": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:flag.Rewriting-Schemes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Rewriting",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Schemes",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* governs generation of equality-related schemes such as\n   congruence."
+  },
+  "Printing Notations": {
+    "documentation_path": "user-extensions/syntax-extensions",
+    "documentation_anchor": "rocq:flag.Printing-Notations",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Notations",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls whether to use notations for printing terms\n   wherever possible. Default is on."
+  },
+  "Printing Raw Literals": {
+    "documentation_path": "user-extensions/syntax-extensions",
+    "documentation_anchor": "rocq:flag.Printing-Raw-Literals",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Raw",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Literals",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *flag* controls whether to use string and number notations for\n   printing terms wherever possible (see String notations). Default is\n   off."
+  },
+  "Printing Parentheses": {
+    "documentation_path": "user-extensions/syntax-extensions",
+    "documentation_anchor": "rocq:flag.Printing-Parentheses",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Parentheses",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *flag* is on, parentheses are printed even if implied by\n   associativity and precedence (applications are still printed\n   without parentheses, i.e. \"(f x) y\" is printed as \"f x y\"\n   regardless of this flag). Default is off."
+  },
+  "Functional Induction Rewrite Dependent": {
+    "documentation_path": "using/libraries/funind",
+    "documentation_anchor": "rocq:flag.Functional-Induction-Rewrite-Dependent",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Functional",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Induction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Rewrite",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Dependent",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Makes FunInd use dependent \"subst\"  instead of \"simple subst\". On\n   by default."
+  },
+  "Function_raw_tcc": {
+    "documentation_path": "using/libraries/funind",
+    "documentation_anchor": "rocq:flag.Function_raw_tcc",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Function",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "_",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "raw",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "_",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "tcc",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When Function is using a well-founded relation, this flag (when\n   set) prevents the post-processing of the tcc (type checking\n   conditions) generated for termination. (The post-processing is\n   basically conjunction splitting + auto.) Off by default."
+  },
+  "Extraction File Comment": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:opt.Extraction-File-Comment",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "File",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Comment",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* provides a comment that is included at the beginning\n   of the output files."
+  },
+  "Extraction Flag": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:opt.Extraction-Flag",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Flag",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* controls which optimizations are used during\n   extraction, providing a finer-grained control than \"Extraction\n   Optimize\".  The bits of \"natural\" are used as a bit mask. Keeping\n   an option off keeps the extracted ML more similar to the Rocq term.\n   Values are:\n\n   +-------+---------+------------------------------------------------------------------+\n   | Bit   | Value   | Optimization (default is on unless noted otherwise)              |\n   +-------+---------+------------------------------------------------------------------+\n   | 0     | 1       | Remove local dummy variables                                     |\n   +-------+---------+------------------------------------------------------------------+\n   | 1     | 2       | Use special treatment for fixpoints                              |\n   +-------+---------+------------------------------------------------------------------+\n   | 2     | 4       | Simplify case with iota-redux                                    |\n   +-------+---------+------------------------------------------------------------------+\n   | 3     | 8       | Factor case branches as functions                                |\n   +-------+---------+------------------------------------------------------------------+\n   | 4     | 16      | (not available, default false)                                   |\n   +-------+---------+------------------------------------------------------------------+\n   | 5     | 32      | Simplify case as function of one argument                        |\n   +-------+---------+------------------------------------------------------------------+\n   | 6     | 64      | Simplify case by swapping case and lambda                        |\n   +-------+---------+------------------------------------------------------------------+\n   | 7     | 128     | Some case optimization                                           |\n   +-------+---------+------------------------------------------------------------------+\n   | 8     | 256     | Push arguments inside a letin                                    |\n   +-------+---------+------------------------------------------------------------------+\n   | 9     | 512     | Use linear let reduction (default false)                         |\n   +-------+---------+------------------------------------------------------------------+\n   | 10    | 1024    | Use linear beta reduction (default false)                        |\n   +-------+---------+------------------------------------------------------------------+"
+  },
+  "Extraction Output Directory": {
+    "documentation_path": "addendum/extraction",
+    "documentation_anchor": "rocq:opt.Extraction-Output-Directory",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Extraction",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Output",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Directory",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Sets the directory where extracted files will be written. If not\n   set, files will be written to the directory specified by the\n   command line option \"-output-directory\", if set (see Command line\n   options) and otherwise, the current directory.  Use \"Pwd\" to\n   display the current directory."
+  },
+  "Dump Arith": {
+    "documentation_path": "addendum/micromega",
+    "documentation_anchor": "rocq:opt.Dump-Arith",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Dump",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Arith",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* (unset by default) may be set to a file path where\n   debug info will be written."
+  },
+  "Typeclasses Default Mode": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:opt.Typeclasses-Default-Mode",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Default",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Mode",
+          "subscript": null
+        }
+      ],
+      [
+        "Alternative",
+        {
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "\"+\"",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "\"-\"",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "\"!\"",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ".",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Sets the default mode declaration associated with a \"Class\" or\n   \"Existing Class\" declaration. It is set by default to \"-\", i.e.\n   doing no mode filtering by default. Each class declaration uses\n   this default mode for *all* its parameters, unless a \"mode\"\n   attribute is used to set the mode explicitly.\n\n   Warning Using inferred default mode: \u201cmode\u201d for \u201cident\u201d\n\n      Indicates that the \"mode\" for a \"Class\" declaration has been\n      assigned automatically using the default mode. This warning is\n      named \"class-declaration-default-mode\". It is disabled by\n      default. Enable it to find (and fix) any typeclasses that don't\n      have explicit mode declarations."
+  },
+  "Typeclasses Depth": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:opt.Typeclasses-Depth",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Depth",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* sets the maximum proof search depth.  The default is\n   unbounded. \"Typeclasses eauto\" is another way to set this option."
+  },
+  "Typeclasses Debug Verbosity": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:opt.Typeclasses-Debug-Verbosity",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Typeclasses",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Debug",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Verbosity",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Determines how much information is shown for typeclass resolution\n   steps during search. 1 is the default level.  2 shows additional\n   information such as tried tactics and shelving of goals.  Setting\n   this *option* to 1 or 2 turns on the \"Typeclasses Debug\" flag;\n   setting this option to 0 turns that flag off.\n\n   Note that the tactics shown when \"natural > 0(after removing\n   tactics that were backtracked) may not always work as a replacement\n   for the proof search tactic. See :ref:here <info_auto_not_exact>\"."
+  },
+  "Inline Level": {
+    "documentation_path": "language/core/modules",
+    "documentation_anchor": "rocq:opt.Inline-Level",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Inline",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Level",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Controls inlining of parameters (declared by e.g. \"Axiom\") in\n   functor application. The default is 100.\n\n   A functor application with \"[inline at level A]\" will inline all\n   parameters declared with \"Inline(B)\" with \"B <= A\".\n\n   \"Parameter\" declaration with \"Inline\" uses the value of this option\n   unless an explicit level is provided (with \"Inline(level)\").\n\n   Functor application implicitly uses \"[inline at level n]\" where \"n\"\n   is the value of this option, unless \"[inline at level]\" or \"[no\n   inline]\" (or the prefix \"!\" which is equivalent to the suffix \"[no\n   inline]\") is explicitly provided."
+  },
+  "Info Level": {
+    "documentation_path": "proof-engine/ltac",
+    "documentation_anchor": "rocq:opt.Info-Level",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Info",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Level",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* is an alternative to the \"Info\" command.\n\n   This will automatically print the same trace as \"Info natural\" at\n   each tactic call. The unfolding level can be overridden by a call\n   to the \"Info\" command."
+  },
+  "Ltac Profiling Cutoff": {
+    "documentation_path": "proof-engine/ltac",
+    "documentation_anchor": "rocq:opt.Ltac-Profiling-Cutoff",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Ltac",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Profiling",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Cutoff",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Reading the string as a floating point number, ltac profiles are\n   printed without entries faster than the cutoff (in seconds).\n\n   \"2.0\" by default."
+  },
+  "Default Goal Selector": {
+    "documentation_path": "proof-engine/tactics",
+    "documentation_anchor": "rocq:opt.Default-Goal-Selector",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Default",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Goal",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Selector",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "\"",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "toplevel_selector",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "\"",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* controls the default selector, used when no selector\n   is specified when applying a tactic. The initial value is 1, hence\n   the tactics are, by default, applied to the first goal.\n\n   Using value \"all\" will make it so that tactics are, by default,\n   applied to every goal simultaneously. Then, to apply a tactic tac\n   to the first goal only, you can write \"1:tac\".\n\n   Using value \"!\" enforces that all tactics are used either on a\n   single focused goal or with a local selector (\u2019\u2019strict focusing\n   mode\u2019\u2019).\n\n   Although other selectors are available, only \"all\", \"!\" or a single\n   natural number are valid default goal selectors."
+  },
+  "Default Timeout": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:opt.Default-Timeout",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Default",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Timeout",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When this *option* is set, each \"sentence\" is treated as if it was\n   prefixed with \"Timeout\" \"natural\", except for \"Timeout\" commands\n   themselves.  If unset, no timeout is applied."
+  },
+  "Warnings": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:opt.Warnings",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Warnings",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "\"",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 1,
+          "max": null,
+          "separator": ",",
+          "children": [
+            [
+              "Repeat",
+              {
+                "min": 0,
+                "max": 1,
+                "separator": null,
+                "children": [
+                  [
+                    "Alternative",
+                    {
+                      "children": [
+                        [
+                          "Literal",
+                          {
+                            "value": "-",
+                            "subscript": null
+                          }
+                        ],
+                        [
+                          "Literal",
+                          {
+                            "value": "+",
+                            "subscript": null
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "Reference",
+              {
+                "value": "ident",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "\"",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* configures the display of warnings. The \"ident\"s are\n   warning or category names. Adding \"-\" in front of a warning or\n   category disables it, adding \"+\" makes it an error.\n\n   Warning name and categories are printed between brackets when the\n   warning is displayed (the warning name appears first). Warnings can\n   belong to multiple categories. The special category \"all\" contains\n   all warnings, and the special category \"default\" contains the\n   warnings enabled by default.\n\n   Rocq defines a set of core warning categories, which may be\n   extended by plugins, so this list is not exhaustive. The core\n   categories are: \"automation\", \"bytecode-compiler\", \"coercions\",\n   \"deprecated\", \"extraction\", \"filesystem\", \"fixpoints\", \"fragile\",\n   \"funind\", \"implicits\", \"ltac\", \"ltac2\", \"native-compiler\",\n   \"numbers\", \"parsing\", \"pedantic\", \"records\", \"rewrite-rules\",\n   \"ssr\", \"syntax\", \"tactics\", \"user-warn\", \"vernacular\".\n\n   The flags are interpreted from left to right, so in case of an\n   overlap, the flags on the right have higher priority, meaning that\n   \"A,-A\" is equivalent to \"-A\".\n\n   See also the \"warnings\" attribute, which can be used to configure\n   the display of warnings for a single command."
+  },
+  "Debug": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:opt.Debug",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Debug",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "\"",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 1,
+          "max": null,
+          "separator": ",",
+          "children": [
+            [
+              "Repeat",
+              {
+                "min": 0,
+                "max": 1,
+                "separator": null,
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "-",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ],
+            [
+              "Reference",
+              {
+                "value": "ident",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "\"",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* configures the display of debug messages. Each\n   \"ident\" enables debug messages for that component, while  \"-ident\"\n   disables messages for the component. \"all\" activates or deactivates\n   all other components.  \"backtrace\" controls printing of error\n   backtraces.\n\n   \"Test\" \"Debug\" displays the list of components and their\n   enabled/disabled state."
+  },
+  "Printing Width": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:opt.Printing-Width",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Width",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* sets which left-aligned part of the width of the\n   screen is used for display. At the time of writing this\n   documentation, the default value is 78."
+  },
+  "Printing Depth": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:opt.Printing-Depth",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Depth",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* controls the nesting depth of the formatter used for\n   pretty- printing. Beyond this depth, display of subterms is\n   replaced by dots. At the time of writing this documentation, the\n   default value is 50."
+  },
+  "Firstorder Solver": {
+    "documentation_path": "proofs/automatic-tactics/logic",
+    "documentation_anchor": "rocq:opt.Firstorder-Solver",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Firstorder",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Solver",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "ltac_expr",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "The default tactic used by \"firstorder\" when no rule applies in\n   \"auto with core\". This command supports the same locality\n   attributes as \"Obligation Tactic\"."
+  },
+  "Firstorder Depth": {
+    "documentation_path": "proofs/automatic-tactics/logic",
+    "documentation_anchor": "rocq:opt.Firstorder-Depth",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Firstorder",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Depth",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* controls the proof search depth bound."
+  },
+  "NativeCompute Profile Filename": {
+    "documentation_path": "proofs/writing-proofs/equality",
+    "documentation_anchor": "rocq:opt.NativeCompute-Profile-Filename",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "NativeCompute",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Profile",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Filename",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* specifies the profile output; the default is\n   \"native_compute_profile.data\". The actual filename used will\n   contain extra characters to avoid overwriting an existing file;\n   that filename is reported to the user. That means you can\n   individually profile multiple uses of \"native_compute\" in a script.\n   From the Linux command line, run \"perf report\" on the profile file\n   to see the results. Consult the \"perf\" documentation for more\n   details."
+  },
+  "Default Proof Using": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:opt.Default-Proof-Using",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Default",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Proof",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Using",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "\"",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "section_var_expr",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "\"",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Set this *option* to use \"section_var_expr\" as the default \"Proof\n   using\" value. E.g. \"Set Default Proof Using \"a b\"\" will complete\n   all \"Proof\" commands not followed by a \"using\" part with \"using a\n   b\".\n\n   Note that \"section_var_expr\" isn't validated immediately.  An\n   invalid value will generate an error on a subsequent \"Proof\" or\n   \"Qed\" command."
+  },
+  "Default Proof Mode": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:opt.Default-Proof-Mode",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Default",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Proof",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Mode",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* selects the proof mode to use when starting a proof.\n   Depending on the proof mode, various syntactic constructs are\n   allowed when writing a proof. All proof modes support commands; the\n   proof mode determines which tactic language and set of tactic\n   definitions are available.  The possible option values are:\n\n   \"\"Classic\"\"\n      Activates the \"L\"_tac language and the tactics with the syntax\n      documented in this manual. Some tactics are not available until\n      the associated plugin is loaded, such as \"SSR\" or \"micromega\".\n      This proof mode is set when the *prelude* is loaded.\n\n   \"\"Noedit\"\"\n      No tactic language is activated at all. This is the default when\n      the *prelude* is not loaded, e.g. through the \"-noinit\" option\n      for \"rocq\".\n\n   \"\"Ltac2\"\"\n      Activates the Ltac2 language and the Ltac2-specific variants of\n      the documented tactics. This value is only available after\n      \"Requiring\" Ltac2. \"Importing\" Ltac2 sets this mode.\n\n   Some external plugins also define their own proof mode, which can\n   be activated with this command."
+  },
+  "Bullet Behavior": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:opt.Bullet-Behavior",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Bullet",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Behavior",
+          "subscript": null
+        }
+      ],
+      [
+        "Alternative",
+        {
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "\"None\"",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "\"Strict",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "Subproofs\"",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ]
+    ],
+    "documentation": "This *option* controls the bullet behavior and can take two\n   possible values:\n\n   * \"None\": this makes bullets inactive.\n\n   * \"Strict Subproofs\": this makes bullets active (this is the\n     default behavior)."
+  },
+  "Diffs": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:opt.Diffs",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Diffs",
+          "subscript": null
+        }
+      ],
+      [
+        "Alternative",
+        {
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "\"on\"",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "\"off\"",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "\"removed\"",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ]
+    ],
+    "documentation": "This *option* is used to enable diffs. The \u201con\u201d setting highlights\n   added tokens in green, while the \u201cremoved\u201d setting additionally\n   reprints items with removed tokens in red.  Unchanged tokens in\n   modified items are shown with pale green or red.  Diffs in error\n   messages use red and green for the compared values; they appear\n   regardless of the setting. (Colors are user-configurable.)"
+  },
+  "Mangle Names Prefix": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:opt.Mangle-Names-Prefix",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Mangle",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Names",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Prefix",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* specifies the prefix to use when generating names."
+  },
+  "Hyps Limit": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:opt.Hyps-Limit",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Hyps",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Limit",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *option* controls the maximum number of hypotheses displayed\n   in goals after the application of a tactic. All the hypotheses\n   remain usable in the proof development. When unset, it goes back to\n   the default mode which is to print all available hypotheses."
+  },
+  "Depth Scheme All": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:opt.Depth-Scheme-All",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Depth",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Scheme",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "All",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "natural",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "The \"All\" predicate for an inductive type is itself an inductive\n   type. Consequently, generating automatically the \"All\" predicate at\n   the definition of an inductive type would create an infinite loop.\n   To prevent this, \"Depth Scheme All\" controls to which depth should\n   the \"All\" predicate be generated. For instance, at depth \"1\", the\n   \"All\" predicate for \"prod\" will be generated, \"prod_all\", but the\n   \"All\" predicate for \"prod_all\" will not be generated. Its default\n   value is \"0\".\n\n   The depth for nested inductive types is \"Depth Scheme All -1\" as if\n   \"X\" is nested with \"Y\", then \"X_all\" is nested with \"Y_all\", and\n   the eliminator for \"X_all\" requires \"Y_all_all\"."
+  },
+  "Printing Coercion": {
+    "documentation_path": "addendum/implicit-coercions",
+    "documentation_anchor": "rocq:table.Printing-Coercion",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Coercion",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *table* specifies a set of qualids for which coercions are\n   always displayed.  Use the \"Add\" and \"Remove\" commands to update\n   the set of qualids."
+  },
+  "Printing Record": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:table.Printing-Record",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Record",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *table* specifies a set of qualids which are displayed as\n   records.  Use the \"Add\" and \"Remove\" commands to update the set of\n   qualids."
+  },
+  "Printing Constructor": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:table.Printing-Constructor",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Constructor",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *table* specifies a set of qualids which are displayed as\n   constructors.  Use the \"Add\" and \"Remove\" commands to update the\n   set of qualids."
+  },
+  "Printing Let": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:table.Printing-Let",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Let",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *table* specifies a set of qualids for which pattern matching\n   is displayed using a let expression. Note that this only applies to\n   pattern matching instances entered with \"match\". It doesn't affect\n   pattern matching explicitly entered with a destructuring \"let\". Use\n   the \"Add\" and \"Remove\" commands to update this set."
+  },
+  "Printing If": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:table.Printing-If",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "If",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *table* specifies a set of qualids for which pattern matching\n   is displayed using \"if\" \u2026 \"then\" \u2026 \"else\" \u2026.  Use the \"Add\" and\n   \"Remove\" commands to update this set."
+  },
+  "Search Blacklist": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:table.Search-Blacklist",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Search",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Blacklist",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *table* specifies a set of strings used to exclude lemmas from\n   the results of \"Search\", \"SearchPattern\" and \"SearchRewrite\"\n   queries.  A lemma whose fully qualified name contains any of the\n   strings will be excluded from the search results.  The default\n   blacklisted substrings are \"_subterm\", \"_subproof\" and \"Private_\".\n\n   Use the \"Add\" and \"Remove\" commands to update the set of\n   blacklisted strings."
+  },
+  "Keep Equalities": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:table.Keep-Equalities",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Keep",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Equalities",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *table* specifies a set of inductive types for which proof\n   equalities are always kept by \"injection\". This overrides the \"Keep\n   Proof Equalities\" flag for those inductive types. Use the \"Add\" and\n   \"Remove\" commands to update this set manually."
+  }
+}

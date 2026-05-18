@@ -286,6 +286,11 @@ let get_previous_range st pos =
       | None -> Some (Document.range_of_id st.document id)
       | Some { id } -> Some (Document.range_of_id st.document id)
 
+let get_current_line_range st (pos: Position.t) =
+  let doc = Document.raw_document st.document in
+  let start = RawDocument.line_nonwhitespace_start doc pos.line in
+  Range.create ~start:(Option.default pos start) ~end_:pos
+
 let validate_document state (Document.{unchanged_id; invalid_ids; previous_document; parsed_document}) =
   let state = {state with document=parsed_document} in
   (* this should be made in Document *)
@@ -420,18 +425,10 @@ let get_context st pos =
     context_of_sentence st (Document.find_sentence_before_pos st.document pos)
 
 let get_completions st pos =
-  match Document.find_sentence_before_pos st.document pos with
-  | None -> 
-      log (fun () -> "Can't get completions, no sentence found before the cursor");
-      []
-  | Some { checked } ->
-    let ost = Utilities.get_vernac_state checked in
-    let settings = ExecutionManager.get_options () in
-    match Option.bind ost @@ CompletionSuggester.get_completions settings.completion_options with
-    | None -> 
-        log (fun () -> "No completions available");
-        []
-    | Some lemmas -> lemmas
+  let sentence = Document.find_sentence_before_pos st.document pos in
+  let ost = Utilities.get_vernac_state (Option.bind sentence (fun { checked } -> checked)) in
+  let settings = ExecutionManager.get_options () in
+  CompletionSuggester.get_completions settings.completion_options ost
 
 [%%if rocq ="8.18" || rocq ="8.19"]
 [%%elif rocq ="8.20"]

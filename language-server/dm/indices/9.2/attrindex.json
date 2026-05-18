@@ -1,0 +1,1431 @@
+{
+  "reversible": {
+    "documentation_path": "addendum/implicit-coercions",
+    "documentation_anchor": "rocq:attr.reversible",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "reversible",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    ],
+    "documentation": "This *attribute* allows the coercion to be used as a *reversible\n   coercion*. By default coercions are not reversible except for\n   \"Record\" fields specified using \":>\"."
+  },
+  "program": {
+    "documentation_path": "addendum/program",
+    "documentation_anchor": "rocq:attr.program",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "program",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* allows using or disabling the Program mode\n   on a specific definition.  An alternative and commonly used syntax\n   is to use the legacy \"Program\" prefix (cf. \"legacy_attr\") as it is\n   elsewhere in this chapter."
+  },
+  "Program": {
+    "documentation_path": "addendum/program",
+    "documentation_anchor": "rocq:attr.Program",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "program",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* allows using or disabling the Program mode\n   on a specific definition.  An alternative and commonly used syntax\n   is to use the legacy \"Program\" prefix (cf. \"legacy_attr\") as it is\n   elsewhere in this chapter."
+  },
+  "mode": {
+    "documentation_path": "addendum/type-classes",
+    "documentation_anchor": "rocq:attr.mode",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "mode",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "=",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Sets the mode of resolution for queries on the class. The syntax to\n   use in the quoted string is explained in \"Hint Mode\"."
+  },
+  "universes(polymorphic)": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:attr.universes(polymorphic)",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "universes(polymorphic",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* can be used to control whether universe\n   polymorphism is enabled in the definition of an inductive type.\n   There is also a legacy syntax using the \"Polymorphic\" prefix (see\n   \"legacy_attr\") which, as shown in the examples, is more commonly\n   used.\n\n   When \"universes(polymorphic=no)\" is used, global universe\n   constraints are produced, even when the \"Universe Polymorphism\"\n   flag is on. There is also a legacy syntax using the \"Monomorphic\"\n   prefix (see \"legacy_attr\")."
+  },
+  "Polymorphic": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:attr.Polymorphic",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "universes(polymorphic",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* can be used to control whether universe\n   polymorphism is enabled in the definition of an inductive type.\n   There is also a legacy syntax using the \"Polymorphic\" prefix (see\n   \"legacy_attr\") which, as shown in the examples, is more commonly\n   used.\n\n   When \"universes(polymorphic=no)\" is used, global universe\n   constraints are produced, even when the \"Universe Polymorphism\"\n   flag is on. There is also a legacy syntax using the \"Monomorphic\"\n   prefix (see \"legacy_attr\")."
+  },
+  "Monomorphic": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:attr.Monomorphic",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "universes(polymorphic",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* can be used to control whether universe\n   polymorphism is enabled in the definition of an inductive type.\n   There is also a legacy syntax using the \"Polymorphic\" prefix (see\n   \"legacy_attr\") which, as shown in the examples, is more commonly\n   used.\n\n   When \"universes(polymorphic=no)\" is used, global universe\n   constraints are produced, even when the \"Universe Polymorphism\"\n   flag is on. There is also a legacy syntax using the \"Monomorphic\"\n   prefix (see \"legacy_attr\")."
+  },
+  "universes(cumulative)": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:attr.universes(cumulative)",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "universes(cumulative",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Polymorphic inductive types, coinductive types, variants and\n   records can be declared cumulative using this *boolean attribute*\n   or the legacy \"Cumulative\" prefix (see \"legacy_attr\") which, as\n   shown in the examples, is more commonly used.\n\n   This means that two instances of the same inductive type (family)\n   are convertible based on the universe variances; they do not need\n   to be equal.\n\n   When the attribtue is off, the inductive type is non-cumulative\n   even if the \"Polymorphic Inductive Cumulativity\" flag is on. There\n   is also a legacy syntax using the \"NonCumulative\" prefix (see\n   \"legacy_attr\").\n\n   This means that two instances of the same inductive type (family)\n   are convertible only if all the universes are equal.\n\n   Error The cumulative attribute can only be used in a polymorphic context.\n\n      Using this attribute requires being in a polymorphic context,\n      i.e. either having the \"Universe Polymorphism\" flag on, or\n      having used the \"universes(polymorphic)\" attribute as well.\n\n   Note:\n\n     \"#[ universes(polymorphic= yes?), universes(cumulative= yes\u200bno?)\n     ]\" can be abbreviated into \"#[ universes(polymorphic= yes?,\n     cumulative= yes\u200bno?) ]\"."
+  },
+  "Cumulative": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:attr.Cumulative",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "universes(cumulative",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Polymorphic inductive types, coinductive types, variants and\n   records can be declared cumulative using this *boolean attribute*\n   or the legacy \"Cumulative\" prefix (see \"legacy_attr\") which, as\n   shown in the examples, is more commonly used.\n\n   This means that two instances of the same inductive type (family)\n   are convertible based on the universe variances; they do not need\n   to be equal.\n\n   When the attribtue is off, the inductive type is non-cumulative\n   even if the \"Polymorphic Inductive Cumulativity\" flag is on. There\n   is also a legacy syntax using the \"NonCumulative\" prefix (see\n   \"legacy_attr\").\n\n   This means that two instances of the same inductive type (family)\n   are convertible only if all the universes are equal.\n\n   Error The cumulative attribute can only be used in a polymorphic context.\n\n      Using this attribute requires being in a polymorphic context,\n      i.e. either having the \"Universe Polymorphism\" flag on, or\n      having used the \"universes(polymorphic)\" attribute as well.\n\n   Note:\n\n     \"#[ universes(polymorphic= yes?), universes(cumulative= yes\u200bno?)\n     ]\" can be abbreviated into \"#[ universes(polymorphic= yes?,\n     cumulative= yes\u200bno?) ]\"."
+  },
+  "NonCumulative": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:attr.NonCumulative",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "universes(cumulative",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Polymorphic inductive types, coinductive types, variants and\n   records can be declared cumulative using this *boolean attribute*\n   or the legacy \"Cumulative\" prefix (see \"legacy_attr\") which, as\n   shown in the examples, is more commonly used.\n\n   This means that two instances of the same inductive type (family)\n   are convertible based on the universe variances; they do not need\n   to be equal.\n\n   When the attribtue is off, the inductive type is non-cumulative\n   even if the \"Polymorphic Inductive Cumulativity\" flag is on. There\n   is also a legacy syntax using the \"NonCumulative\" prefix (see\n   \"legacy_attr\").\n\n   This means that two instances of the same inductive type (family)\n   are convertible only if all the universes are equal.\n\n   Error The cumulative attribute can only be used in a polymorphic context.\n\n      Using this attribute requires being in a polymorphic context,\n      i.e. either having the \"Universe Polymorphism\" flag on, or\n      having used the \"universes(polymorphic)\" attribute as well.\n\n   Note:\n\n     \"#[ universes(polymorphic= yes?), universes(cumulative= yes\u200bno?)\n     ]\" can be abbreviated into \"#[ universes(polymorphic= yes?,\n     cumulative= yes\u200bno?) ]\"."
+  },
+  "universes(template)": {
+    "documentation_path": "addendum/universe-polymorphism",
+    "documentation_anchor": "rocq:attr.universes(template)",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "universes(template",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* can be used to explicitly declare an\n   inductive type as template polymorphic, whether the \"Auto Template\n   Polymorphism\" flag is on or off.\n\n   Error Template-polymorphism and universe polymorphism are not compatible\n\n      This attribute cannot be used in a full universe polymorphic\n      context, i.e. if the \"Universe Polymorphism\" flag is on or if\n      the \"universes(polymorphic)\" attribute is used.\n\n   Warning This inductive type has no template universes\n\n      The attribute was used but the inductive definition does not\n      satisfy the criterion to be template polymorphic.\n\n   When \"universes(template=no)\" is used, it will prevent an inductive\n   type from being template polymorphic, even if the \"Auto Template\n   Polymorphism\" flag is on."
+  },
+  "warnings": {
+    "documentation_path": "language/core/basic",
+    "documentation_anchor": "rocq:attr.warnings",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "warnings",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "=",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Sets the given warning string locally for the command. After the\n   command finishes the warning state is reset to what it was before\n   the command. For instance if the current warning state is \"some-\n   warnings,-other-warning\",\n\n      #[warnings=\"+other-warning\"] Command.\n\n   is equivalent to\n\n      Set Warnings \"+other-warning\".\n      Command.\n      Set Warnings \"some-warnings,-other-warning\".\n\n   and \"other-warning\" is an error while executing the command.\n\n   Consequently, using this attribute around an \"Import\" command will\n   prevent it from changing the warning state.\n\n   See also \"Warnings\" for the concrete syntax to use inside the\n   quoted string."
+  },
+  "warning": {
+    "documentation_path": "language/core/basic",
+    "documentation_anchor": "rocq:attr.warning",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "warning",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "=",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Alias of \"warnings\"."
+  },
+  "refine": {
+    "documentation_path": "language/core/definitions",
+    "documentation_anchor": "rocq:attr.refine",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "refine",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *attribute* can be used to leave holes or not provide all\n   fields in a definition and open the tactic mode to fill them. It\n   works exactly as if no *body* had been given and the \"refine\"\n   tactic has been used first.\n\n   Note that if you finish the proof with \"Qed\" the entire definition\n   will be opaque, including the initial term."
+  },
+  "local": {
+    "documentation_path": "language/core/modules",
+    "documentation_anchor": "rocq:attr.local",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "local",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *attribute* limits the effect of the command to the current\n   scope (section or module).\n\n   The \"Local\" prefix is an alternative syntax for the \"local\"\n   attribute (see \"legacy_attr\").\n\n   Note:\n\n     * For some commands, this is the only locality supported within\n       sections (e.g., for \"Notation\", \"Ltac\" and Hint commands).\n\n     * For some commands, this is the default locality within sections\n       even though other locality attributes are supported as well\n       (e.g., for the \"Arguments\" command).\n\n   Warning:\n\n     **Exception:** when \"local\" is applied to \"Definition\", \"Theorem\"\n     or their variants, its semantics are different: it makes the\n     defined objects available only through their fully qualified\n     names rather than their unqualified names after an \"Import\"."
+  },
+  "export": {
+    "documentation_path": "language/core/modules",
+    "documentation_anchor": "rocq:attr.export",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "export",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *attribute* makes the effect of the command persist when the\n   section is closed and applies the effect when the module containing\n   the command is imported.\n\n   Commands supporting this attribute include \"Set\", \"Unset\" and the\n   Hint commands, although the latter don't support it within\n   sections."
+  },
+  "global": {
+    "documentation_path": "language/core/modules",
+    "documentation_anchor": "rocq:attr.global",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "global",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *attribute* makes the effect of the command persist even when\n   the current section or module is closed.  Loading the file\n   containing the command (possibly transitively) applies the effect\n   of the command.\n\n   The \"Global\" prefix is an alternative syntax for the \"global\"\n   attribute (see \"legacy_attr\").\n\n   Warning:\n\n     **Exception:** for a few commands (like \"Notation\" and \"Ltac\"),\n     this attribute behaves like \"export\".\n\n   Warning:\n\n     We strongly discourage using the \"global\" locality attribute\n     because the transitive nature of file loading gives the user\n     little control. We recommend using the \"export\" locality\n     attribute where it is supported."
+  },
+  "projections(primitive)": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:attr.projections(primitive)",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "projections(primitive",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* can be used to override the value of the\n   \"Primitive Projections\" *flag* for the record type being defined."
+  },
+  "clearbody": {
+    "documentation_path": "language/core/sections",
+    "documentation_anchor": "rocq:attr.clearbody",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "clearbody",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "When used with \"Let\" in a section, clears the body of the\n   definition in the proof context of following proofs. The kernel\n   will still use the body when checking."
+  },
+  "private(matching)": {
+    "documentation_path": "language/core/variants",
+    "documentation_anchor": "rocq:attr.private(matching)",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "private(matching)",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *attribute* can be used to forbid the use of the \"match\"\n   construct on objects of this inductive type outside of the module\n   where it is defined.  There is also a legacy syntax using the\n   \"Private\" prefix (cf. \"legacy_attr\").\n\n   The main use case of private (matching) inductive types is to\n   emulate quotient types / higher-order inductive types in projects\n   such as the HoTT library.\n\n   Reducing definitions from the inductive's module can expose \"match\"\n   constructs to unification, which may result in invalid proof terms.\n   Errors from such terms are delayed until proof completion (i.e. on\n   the \"Qed\"). Use \"Validate Proof\" to identify which tactic produced\n   the problematic term."
+  },
+  "Private": {
+    "documentation_path": "language/core/variants",
+    "documentation_anchor": "rocq:attr.Private",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "private(matching)",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *attribute* can be used to forbid the use of the \"match\"\n   construct on objects of this inductive type outside of the module\n   where it is defined.  There is also a legacy syntax using the\n   \"Private\" prefix (cf. \"legacy_attr\").\n\n   The main use case of private (matching) inductive types is to\n   emulate quotient types / higher-order inductive types in projects\n   such as the HoTT library.\n\n   Reducing definitions from the inductive's module can expose \"match\"\n   constructs to unification, which may result in invalid proof terms.\n   Errors from such terms are delayed until proof completion (i.e. on\n   the \"Qed\"). Use \"Validate Proof\" to identify which tactic produced\n   the problematic term."
+  },
+  "canonical": {
+    "documentation_path": "language/extensions/canonical",
+    "documentation_anchor": "rocq:attr.canonical",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "canonical",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* can decorate a \"Definition\" or \"Let\"\n   command.  It is equivalent to having a \"Canonical Structure\"\n   declaration just after the command.\n\n   To prevent a field from being involved in the inference of\n   canonical instances, its declaration can be annotated with\n   \"canonical=no\" (cf. the syntax of \"record_field\").\n\n   Example: For instance, when declaring the \"Setoid\" structure above,\n   the \"Prf_equiv\" field declaration could be written as follows.\n\n      #[canonical=no] Prf_equiv : equivalence Carrier Equal\n\n   See Hierarchy of structures for a more realistic example."
+  },
+  "abstract": {
+    "documentation_path": "proof-engine/ltac2",
+    "documentation_anchor": "rocq:attr.abstract",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "abstract",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "Types declared with this attribute are made abstract at the end of\n   the current module. This makes it possible to enforce invariants.\n\n   Example:\n\n      Module PositiveInt.\n\n        #[abstract] Ltac2 Type t := int.\n\n\n        Ltac2 make (x:int) : t := if Int.le 0 x then x else Control.throw (Invalid_argument None).\n\n        Ltac2 get (x:t) : int := x.\n\n      End PositiveInt.\n\n      Ltac2 Eval PositiveInt.get (PositiveInt.make 3).\n\n          - : int = 3\n\n      Fail Ltac2 Eval PositiveInt.get (PositiveInt.make -1).\n          The command has indeed failed with message:\n          Uncaught Ltac2 exception: Invalid_argument None"
+  },
+  "bypass_check(guard)": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:attr.bypass_check(guard)",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "bypass",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "_",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "check(guard",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* is similar to the \"Guard Checking\" flag,\n   but on a per-declaration basis. Disable guard checking locally with\n   \"bypass_check(guard)\"."
+  },
+  "bypass_check(positivity)": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:attr.bypass_check(positivity)",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "bypass",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "_",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "check(positivity",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* is similar to the \"Positivity Checking\"\n   flag, but on a per-declaration basis. Disable positivity checking\n   locally with \"bypass_check(positivity)\"."
+  },
+  "bypass_check(universes)": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:attr.bypass_check(universes)",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "bypass",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "_",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "check(universes",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Alternative",
+              {
+                "children": [
+                  [
+                    "Literal",
+                    {
+                      "value": "yes",
+                      "subscript": null
+                    }
+                  ],
+                  [
+                    "Literal",
+                    {
+                      "value": "no",
+                      "subscript": null
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *boolean attribute* is similar to the \"Universe Checking\"\n   flag, but on a per-declaration basis. Disable universe checking\n   locally with \"bypass_check(universes)\"."
+  },
+  "using": {
+    "documentation_path": "proofs/writing-proofs/proof-mode",
+    "documentation_anchor": "rocq:attr.using",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "using",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This *attribute* can be applied to the \"Definition\", \"Example\",\n   \"Fixpoint\" and \"CoFixpoint\" commands as well as to \"Lemma\" and its\n   variants.  It takes a \"section_var_expr\", in quotes, as its value.\n   This is equivalent to specifying the same \"section_var_expr\" in\n   \"Proof using\".\n\n   Example:\n\n      Section Test.\n\n      Variable n : nat.\n\n          n is declared\n\n      Hypothesis Hn : n <> 0.\n\n          Hn is declared\n\n\n      #[using=\"Hn\"]\n      Lemma example : 0 < n.\n          1 goal\n            \n            n : nat\n            Hn : n <> 0\n            ============================\n            0 < n\n\n      Abort.\n\n      End Test."
+  },
+  "schemes": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:attr.schemes",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "schemes",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "=",
+          "subscript": null
+        }
+      ],
+      [
+        "Alternative",
+        {
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "default",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "none",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ]
+    ],
+    "documentation": "When this attribute is not provided or provided with value\n   \"default\", schemes are automatically declared according to the\n   following flags.\n\n   When it is provided with value \"none\", no schemes are automatically\n   declared."
+  },
+  "add_top": {
+    "documentation_path": "user-extensions/syntax-extensions",
+    "documentation_anchor": "rocq:attr.add_top",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "add",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "_",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "top",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "These attributes allow adding additional bindings at the top or\n   bottom of the stack of already declared bindings. In absence of\n   such attributes, any new binding clears the previous ones. This\n   makes it possible to bind multiple scopes to the same\n   \"coercion_class\"."
+  },
+  "add_bottom": {
+    "documentation_path": "user-extensions/syntax-extensions",
+    "documentation_anchor": "rocq:attr.add_bottom",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "add",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "_",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "bottom",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "These attributes allow adding additional bindings at the top or\n   bottom of the stack of already declared bindings. In absence of\n   such attributes, any new binding clears the previous ones. This\n   makes it possible to bind multiple scopes to the same\n   \"coercion_class\"."
+  },
+  "deprecated": {
+    "documentation_path": "using/libraries/writing",
+    "documentation_anchor": "rocq:attr.deprecated",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "deprecated",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "(",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "since",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Reference",
+              {
+                "value": "string",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": ",",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "note",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Reference",
+              {
+                "value": "string",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": ",",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "use",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Reference",
+              {
+                "value": "qualid",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "At least one of \"since\" or \"note\" must be present.  If both are\n   present, either one may appear first and they must be separated by\n   a comma. If they are present, they will be used in the warning\n   message, and \"since\" will also be used in the warning name and\n   categories. Spaces inside \"since\" are changed to hyphens.\n\n   This attribute is supported by the following commands: \"Ltac\",\n   \"Tactic Notation\", \"Notation\", \"Infix\", \"Ltac2\", \"Ltac2 Notation\",\n   \"Ltac2 external\", \"Definition\", \"Theorem\", and similar commands. To\n   attach it to a compiled library file, use \"Attributes\".\n\n   The \"use\" attribute can be used for commands such as \"Definition\",\n   \"Theorem\", and \"Abbreviation\". Its value must refer to an existing\n   constant or abbreviation and is printed as part of the warning\n   message as well as used by LSP based user interfaces as a quick\n   fix.\n\n   It can trigger the following warnings:\n\n   Warning Library File qualid is deprecated since string_since. string_note. Use qualid_use instead.\n   Warning Library File (transitively required) qualid is deprecated since string_since. string_note. Use qualid_use instead.\n   Warning Ltac2 alias qualid is deprecated since string_since. string_note.\n   Warning Ltac2 definition qualid is deprecated since string_since. string_note.\n   Warning Ltac2 notation ltac2_syntax_class+ is deprecated since string_since. string_note.\n   Warning Ltac2 constructor qualid is deprecated since string_since. string_note.\n   Warning Notation string is deprecated since string_since. string_note. Use qualid_use instead.\n   Warning Tactic qualid is deprecated since string_since. string_note.\n   Warning Tactic Notation qualid is deprecated since string_since. string_note.\n\n      \"qualid\" or \"string\" is the notation, \"string_since\" is the\n      version number, \"string_note\" is the note (usually explains the\n      replacement).\n\n      Explicitly \"Require\"ing a file that has been deprecated, using\n      the \"Attributes\" command, triggers a \"Library File\" deprecation\n      warning. Requiring a deprecated file, even indirectly through a\n      chain of \"Require\"s, will produce a \"Library File (transitively\n      required)\" deprecation warning if the \"Warnings\" option\n      \"deprecated-transitive-library-file\" is set (it is \"-deprecated-\n      transitive-library-file\" by default, silencing the warning)."
+  },
+  "warn": {
+    "documentation_path": "using/libraries/writing",
+    "documentation_anchor": "rocq:attr.warn",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "warn",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "(",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "note",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "=",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "string",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ",",
+          "subscript": null
+        }
+      ],
+      [
+        "Repeat",
+        {
+          "min": 0,
+          "max": 1,
+          "separator": null,
+          "children": [
+            [
+              "Literal",
+              {
+                "value": "cats",
+                "subscript": null
+              }
+            ],
+            [
+              "Literal",
+              {
+                "value": "=",
+                "subscript": null
+              }
+            ],
+            [
+              "Reference",
+              {
+                "value": "string",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": ")",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "The \"note\" field will be used as the warning message, and \"cats\" is\n   a comma separated list of categories to be used in the warning name\n   and categories. Leading and trailing spaces in each category are\n   trimmed, whereas internal spaces are changed to hyphens. If both\n   \"note\" and \"cats\" are present, either one may appear first and they\n   must be separated by a comma.\n\n   This attribute is supported by the following commands: \"Notation\",\n   \"Infix\", \"Definition\", \"Theorem\", and similar commands. To attach\n   it to a compiled library file, use \"Attributes\".\n\n   It can trigger the following warning:\n\n   Warning string_note\n\n      \"string_note\" is the note. It's common practice to start it with\n      a capital and end it with a period.\n\n      Explicitly \"Require\"ing a file that has a warn message set using\n      the \"Attributes\" command, triggers a \"warn-library-file\"\n      warning. Requiring such a file, even indirectly through a chain\n      of \"Require\"s, will produce a \"warn-transitive-library-file\"\n      warning if the \"Warnings\" option \"warn-transitive-library-file\"\n      is set (it is \"-warn-transitive-library-file\" by default,\n      silencing the warning)."
+  }
+}
