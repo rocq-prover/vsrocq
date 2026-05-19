@@ -385,7 +385,9 @@ let observe document st ~background id ~block_on_first_error : state * event Sel
               let events = mk_block_on_error_event error_range error_id background in
               (st, events)
         end
-      | [] -> (st, []))
+      | [] ->
+        
+        (st, [ mk_proof_view_event id ]))
 
 let interpret_to document st id check_mode =
   let observe_id = Id id in
