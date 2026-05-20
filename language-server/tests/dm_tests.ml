@@ -85,6 +85,18 @@ let%test_unit "parse.extensions" =
   [%test_eq: int list] start_positions [ 0; 35 ];
   check_no_diag st
 
+let%test_unit "folding.proof_starts_at_first_proof_step" =
+  let st, _init_events = em_init_test_doc ~text:"Lemma foo : True.\nProof.\n  exact I.\n  exact I.\nQed." in
+  let ranges = DocumentManager.get_folding_ranges st in
+  let has_proof_range (range: Lsp.Types.FoldingRange.t) =
+    range.startLine = 1 && range.endLine = 4
+  in
+  let has_late_start_range (range: Lsp.Types.FoldingRange.t) =
+    range.startLine = 3 && range.endLine = 4
+  in
+  [%test_eq: bool] (Stdlib.List.exists has_proof_range ranges) true;
+  [%test_eq: bool] (Stdlib.List.exists has_late_start_range ranges) false
+
 let%test_unit "parse.invalidate_before_module" =
   let st, init_events = em_init_test_doc ~text:"Check nat. Module M := Nat." in
   let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
