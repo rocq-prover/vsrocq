@@ -100,9 +100,12 @@ and fold_constr_children (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'ac
   in
   match e.v with
   | CRef _ | CHole _ | CPatVar _ | CEvar _ | CSort _ | CPrim _
-  | CGenarg _ | CGenargGlob _ | CNotation _ ->
-    (* TODO: traverse constr arguments of notations? *)
+  | CGenarg _ | CGenargGlob _ ->
     acc
+  | CNotation (_, _, (terms, recursive_terms, _, recursive_binders)) ->
+    let acc = walk acc terms in
+    let acc = List.fold_left walk acc recursive_terms in
+    List.fold_left walk_binders acc recursive_binders
   | CFix (_, fixes) ->
     List.fold_left (fun acc (_name, _rel, _order, binders, rtype, body) ->
       let acc = walk_binders acc binders in
