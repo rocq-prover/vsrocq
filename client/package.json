@@ -141,7 +141,7 @@
             "scope": "workspace",
             "type": "boolean",
             "default": false,
-            "description": "Hovering and other queries preempt checking tasks (recommended Rocq >= 9.2). "
+            "description": "Hovering and other queries preempt checking tasks (recommended Rocq >= 9.3). "
           }
         }
       },
