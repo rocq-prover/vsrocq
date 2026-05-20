@@ -3,6 +3,7 @@ import { ProofViewNotification } from '../protocol/types';
 import { getUri } from "../utilities/getUri";
 import { getNonce } from "../utilities/getNonce";
 import Client from "../client";
+import type { VSCodeMessage } from "goal-view-ui/src/types";
 
 // /////////////////////////////////////////////////////////////////////////////
 // GOAL VIEW PANEL CODE
@@ -56,7 +57,7 @@ export default class GoalPanel {
    *
    * @param extensionUri The URI of the directory containing the extension.
    */
-  public static render(editor: TextEditor, extensionUri: Uri, callback?: (panel: GoalPanel) => any) {
+  public static render(editor: TextEditor, extensionUri: Uri) {
 
     //Get the correct view column
     let column = editor && editor.viewColumn ? editor.viewColumn + 1 : ViewColumn.Two;
@@ -88,10 +89,6 @@ export default class GoalPanel {
       );
 
       GoalPanel.currentPanel = new GoalPanel(panel, extensionUri);
-      if(callback) {
-        callback(GoalPanel.currentPanel);
-      }
-
     }
   }
 
@@ -149,31 +146,25 @@ export default class GoalPanel {
   }
 
   // /////////////////////////////////////////////////////////////////////////////
-  // Create the goal panel if it doesn't exit and then 
+  // Create the goal panel if it doesn't exist and then
   // handle a proofview notification
   // /////////////////////////////////////////////////////////////////////////////
   public static proofViewNotification(extensionUri: Uri, editor: TextEditor, pv: ProofViewNotification, autoDisplay: boolean) {
-    
+
     Client.writeToVsrocqChannel("[GoalPanel] Received proofview notification");
+    GoalPanel.currentPv = pv;
 
     if(!GoalPanel.currentPanel) {
         //If autoDisplay is set then render the proofview immediately
         if(autoDisplay) {
-            GoalPanel.render(editor, extensionUri, (goalPanel) => {
-                Client.writeToVsrocqChannel("[GoalPanel] Created new goal panel");
-                goalPanel._handleProofViewResponseOrNotification(pv);
-            });
-        }
-        //Otherwise record the current proofview notification to render on user prompt
-        else {
-            GoalPanel.currentPv = pv;
+            GoalPanel.render(editor, extensionUri);
         }
     }
     else {
         Client.writeToVsrocqChannel("[GoalPanel] Rendered in current panel");
-        GoalPanel.currentPanel._handleProofViewResponseOrNotification(pv);
+        GoalPanel.currentPanel._sendCurrentProofView();
     }
-    
+
   }
 
   public static displayProofView(extensionUri: Uri, editor: TextEditor) {
@@ -186,10 +177,14 @@ export default class GoalPanel {
     this._panel.webview.postMessage({ "command": "reset"});
   };
 
-  private _handleProofViewResponseOrNotification(pv: ProofViewNotification) {
-    this._panel.webview.postMessage({ "command": "renderProofView", "proofView": pv });
+  private _sendCurrentProofView() {
+    if (GoalPanel.currentPv) {
+        this._panel.webview.postMessage({ "command": "renderProofView", "proofView": GoalPanel.currentPv });
+    } else {
+        Client.writeToVsrocqChannel("[GoalPanel] No proof view to send");
+    }
   };
-  
+
   /**
    * Defines and returns the HTML that should be rendered within the webview panel.
    *
@@ -247,15 +242,20 @@ export default class GoalPanel {
    */
   private _setWebviewMessageListener(webview: Webview) {
     webview.onDidReceiveMessage(
-      (message: any) => {
+      (message: VSCodeMessage) => {
         const command = message.command;
-        const text = message.text;
 
         switch (command) {
             case 'openGoalSettings':
                 commands.executeCommand('workbench.action.openSettings', 'vsrocq.goals');
-            // Add more switch case statements here as more webview message commands
-            // are created within the webview context (i.e. inside media/main.js)
+                break;
+            case 'pollGoals':
+                if (GoalPanel.currentPanel) {
+                    GoalPanel.currentPanel._sendCurrentProofView();
+                } else {
+                    Client.writeToVsrocqChannel("[GoalPanel] No panel to send proof view to");
+                }
+                break;
         }
       },
       undefined,
@@ -263,4 +263,3 @@ export default class GoalPanel {
     );
   }
 }
- 

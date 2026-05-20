@@ -42,3 +42,9 @@ export type GoalArray = Goal[];
 export type GoalArrayOrNull = Nullable<Goal[]>;
 
 export type ProofViewGoals = Nullable<ProofViewGoalsType>;
+
+export type VSCodeMessage = {
+    command: "openGoalSettings"
+} | {
+    command: "pollGoals"
+}
