@@ -104,8 +104,7 @@ jobs:
       env:
         OPAMYES: true
       run: |
-        opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
-        if [ "${{ matrix.coq }}" = "dev" ]; then opam install rocq-core.dev; else opam pin add coq-core ${{ matrix.coq }}; fi
+        if [ "${{ matrix.coq }}" = "dev" ]; then opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev; opam install rocq-core.dev; else opam pin add coq-core ${{ matrix.coq }}; fi
         opam pin add vsrocq-language-server ./language-server/ --with-doc --with-test -y
 
     - run: |
