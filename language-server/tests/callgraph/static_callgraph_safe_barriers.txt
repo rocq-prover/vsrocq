@@ -1,8 +1,5 @@
 # Truncate calls that cross well-understood worker boundaries.
 Dm.ProverThread\.run
 Dm.ProverThread\.eventually_run
-Threaded_mode\.run
-Threaded_mode\.eventually_run
-Sequential_mode\.run
-Sequential_mode\.eventually_run
+Dm.ProverThread\.try_run
 ProofWorker\.worker_available
