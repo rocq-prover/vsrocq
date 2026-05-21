@@ -381,6 +381,7 @@ let observe document st ~background id ~block_on_first_error : state * event Sel
               let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
               ({ st with exec_event_cancel_handle }, [ event ])
           | Some (error_id, loc), true ->
+              log (fun () -> "observe " ^ Stateid.to_string id ^" faces error " ^ Stateid.to_string error_id);
               let st, error_range = state_before_error document st error_id loc in
               let events = mk_block_on_error_event error_range error_id background in
               (st, events)
