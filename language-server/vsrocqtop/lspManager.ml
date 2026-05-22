@@ -166,7 +166,7 @@ let do_initialize id params =
     capabilities = capabilities; 
     serverInfo = Some server_info;
   } in
-  log (fun () -> "---------------- initialized --------------");
+  log ~force:true (fun () -> "---------------- initialized --------------");
   let debug_events = Dm.Log.lsp_initialization_done () |> inject_debug_events in
   Ok initialize_result, debug_events@[Sel.now @@ LspManagerEvent (send_configuration_request ())]
 
