@@ -104,8 +104,17 @@ jobs:
       env:
         OPAMYES: true
       run: |
-        opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
-        if [ "${{ matrix.coq }}" = "dev" ]; then opam install rocq-core.dev; else opam pin add coq-core ${{ matrix.coq }}; fi
+        if [ "${{ matrix.coq }}" = "dev" ]; then
+          opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
+          opam install rocq-core.dev
+        else
+          if [ "${{ startsWith(matrix.coq,'8') }}" = "true" ]; then
+            opam pin add coq-core ${{ matrix.coq }}
+            opam pin add coq-stdlib ${{ matrix.coq }}
+          else
+            opam pin add rocq-core ${{ matrix.coq }}  
+          fi
+        fi
         opam pin add vsrocq-language-server ./language-server/ --with-doc --with-test -y
 
     - run: |
@@ -179,6 +188,7 @@ jobs:
       run: |
         opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
         opam install dune
+        opam install rocq-core=dev
         opam install ./language-server/vsrocq-language-server.opam --deps-only --with-doc --with-test --ignore-constraints-on dune
       
     - name: Build vsrocq-language-server

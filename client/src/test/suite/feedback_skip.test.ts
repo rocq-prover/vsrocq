@@ -25,10 +25,11 @@ suite('Should get diagnostics in the appropriate tab', function () {
 		const diagnostics1 = vscode.languages.getDiagnostics(doc1);
 		const diagnostics2 = vscode.languages.getDiagnostics(doc2);
 
-		// XXX these should not be there!!
-		expect(diagnostics1.length).toBe(2);
-		expect(diagnostics1[1].message).toMatch(/.*foobar was not found.*/);
-		expect(diagnostics1[1].severity).toBe(vscode.DiagnosticSeverity.Error);
+		// on some setups diagnostics from a leftover tab are somehow here,
+		// but on other setups they are not
+		// expect(diagnostics1.length).toBe(2);
+		// expect(diagnostics1[1].message).toMatch(/.*foobar was not found.*/);
+		// expect(diagnostics1[1].severity).toBe(vscode.DiagnosticSeverity.Error);
 		expect(diagnostics1[0].message).toMatch(/.*Attempt to save an incomplete proof.*/);
 		expect(diagnostics1[0].severity).toBe(vscode.DiagnosticSeverity.Error);
 

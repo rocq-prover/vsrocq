@@ -128,7 +128,7 @@
         }
       },
       {
-        "title": "Memory management",
+        "title": "Rocq system",
         "type": "object",
         "properties": {
           "vsrocq.memory.limit": {
@@ -136,6 +136,12 @@
             "type": "number",
             "default": 4,
             "description": "Sets the memory limit over which we discard the execution state of documents which have been saved (in Gb). "
+          },
+          "vsrocq.interrupt.preempt": {
+            "scope": "workspace",
+            "type": "boolean",
+            "default": false,
+            "description": "Hovering and other queries preempt checking tasks (recommended Rocq >= 9.3). "
           }
         }
       },
@@ -415,6 +421,12 @@
         "category": "Rocq",
         "icon": "$(expand-all)",
         "enablement": "vsrocq.hasSearchResults"
+      },
+      {
+        "command": "extension.rocq.interrupt",
+        "title": "Interrupt",
+        "category": "Rocq",
+        "icon": "$(stop-circle)"
       }
     ],
     "menus": {
@@ -423,6 +435,11 @@
           "when": "resourceLangId == rocq && config.vsrocq.proof.display-buttons == true",
           "command": "extension.rocq.interpretToPoint",
           "group": "navigation@3"
+        },
+        {
+          "when": "resourceLangId == rocq && config.vsrocq.proof.display-buttons == true",
+          "command": "extension.rocq.interrupt",
+          "group": "navigation@1"
         },
         {
           "when": "resourceLangId == rocq && config.vsrocq.proof.display-buttons == true",

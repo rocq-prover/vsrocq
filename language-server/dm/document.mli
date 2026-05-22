@@ -65,7 +65,7 @@ val raw_document : document -> RawDocument.t
 
 val outline : document -> outline
 
-val create_document : Vernacstate.Synterp.t -> string -> document
+val create_document : doc_id:document_id -> Vernacstate.Synterp.t -> string -> document
 (** [create_document init_synterp_state text] creates a fresh document with content defined by
     [text] under [init_synterp_state]. *)
 
@@ -164,6 +164,9 @@ val find_sentence_after_pos : document -> Position.t -> sentence option
 val find_next_qed : document -> int -> sentence option
 (** [find_next_qed parsed loc] finds the next proof end *)
 
+val find_next_qed_pos : document -> Position.t -> sentence option
+(** [find_next_qed_pos parsed pos] finds the next proof end *)
+
 val get_first_sentence : document  -> sentence option
 (** [get_first_sentence doc] returns the first parsed sentence *)
 
@@ -211,6 +214,7 @@ val set_unchecked : document -> sentence_id -> document
 val is_checked : document -> sentence_id -> bool
 (** [is_checked doc id] tells if id is checked *)
 
+val id : document -> document_id
 
 module Internal : sig
 

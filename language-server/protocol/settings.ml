@@ -76,6 +76,14 @@ module Memory = struct
 
 end
 
+module Interrupt = struct
+
+  type t = {
+    preempt: bool;
+  } [@@deriving yojson]
+
+end
+
 module Proof = struct
 
   type t = {
@@ -190,4 +198,5 @@ type t = {
   completion: Completion.t;
   diagnostics: Diagnostics.t;
   memory: Memory.t;
+  interrupt: Interrupt.t [@default { preempt = false }];
 } [@@deriving yojson] [@@yojson.allow_extra_fields]

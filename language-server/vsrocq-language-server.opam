@@ -14,8 +14,8 @@ build: [
 depends: [
   "ocaml" { >= "4.14" }
   "dune" { >= "3.5" }
-  (("coq-core" { ((>= "8.18" < "8.21") | (= "dev")) }
-    "coq-stdlib" { ((>= "8.18" < "8.21") | (= "dev")) })
+  (("coq-core" { ((>= "8.18" < "8.21")) }
+    "coq-stdlib" { ((>= "8.18" < "8.21")) })
   | "rocq-core" { ((>= "9.0+rc1" < "9.3~") | (= "dev")) } )
   "yojson"
   "jsonrpc" { >= "1.15"}
@@ -28,6 +28,7 @@ depends: [
   "ppx_yojson_conv"
   "ppx_import"
   "ppx_optcomp"
+  "memprof-limits"
   "result" { >= "1.5" }
   "lsp" { >= "1.15"}
   "sel" {>= "0.6.0"}

@@ -1,0 +1,52 @@
+# External libs (including stdlib) ##################
+Uutf\.
+Option\.
+List\.
+Int\.
+Unix\.
+Lsp\.
+Memprof_limits\.Token\.
+Str\.
+Sel\.\(Promise\|Event\|On\)\.
+Sel\.now
+Mutex\.
+Queue\.
+
+# Rocq ######################
+CList\.
+Stateid\.
+Pp\.
+Exninfo\.
+Quickfix\.
+Gramlib\.Stream\.
+Tok\.
+Evd\.from_env
+Feedback\.
+CWarnings\.create
+CErrors\.\(anomaly\|noncritical\|user_err\)
+Names\.Id\.
+Loc\.
+CAst\.make
+Future\.create_delegate
+
+# Ours #######################
+Protocol\.LspWrapper\.
+Protocol\.Printing\.
+LM\.
+SM\.
+Dm\.Log\.
+Dm\.RawDocument\.get_character_loc\.loop
+Dm\.RawDocument\.get_character_pos\.loop
+Dm\.Types\.
+get_document_symbols\.
+Internal\.string_of_state\.string_of_state
+Dm\.CheckingManager\.shift_overview\.shift_loc
+Dm\.CheckingManager\.overview_until_range\.find_final_range
+Dm\.Log\.mk_log -> CErrors\.iprint
+Dm\.ExecutionManager\.build_tasks_for\.build_tasks
+Dm\.ExecutionManager\.complete_proof\.assign
+Dm\.ExecutionManager\.execute\.assign
+ProofWorker\.\(worker_available\|handle_event\)
+Dm\.Document\.invalidate\.
+Dm\.Scheduler\.base_id\.aux
+Dm\.CheckingManager\.mk_execution_promise_event\.k # too spagetti to be understood

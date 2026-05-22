@@ -128,6 +128,7 @@ let do_configuration settings =
     point_interp_mode = settings.proof.pointInterpretationMode;
     pp_mode = Option.default Settings.Goals.PrettyPrint.Pp settings.goals.ppmode;
     diff_mode = Settings.Goals.Diff.Mode.Off;
+    preempt = settings.interrupt.preempt;
     (* Diff mode is broken, cfr #1163 #1164 *)
     (* diff_mode := settings.goals.diff.mode; *)
   }
@@ -165,7 +166,7 @@ let do_initialize id params =
     capabilities = capabilities; 
     serverInfo = Some server_info;
   } in
-  log (fun () -> "---------------- initialized --------------");
+  log ~force:true (fun () -> "---------------- initialized --------------");
   let debug_events = Dm.Log.lsp_initialization_done () |> inject_debug_events in
   Ok initialize_result, debug_events@[Sel.now @@ LspManagerEvent (send_configuration_request ())]
 
@@ -525,6 +526,13 @@ let workspaceDidChangeConfiguration params =
   | Continuous -> run_documents ()
   | Manual -> reset_observe_ids (); ([] : events)
 
+let handle_interrupt params =
+  let Notification.Client.InterruptParams.{ textDocument } = params in
+  let uri = textDocument.uri in
+  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
+  | None -> log (fun () -> "[interrupt] ignoring event on non existent document"); []
+  | Some { st } -> Dm.DocumentManager.interrupt_execution st; []
+
 let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a, error) result * events =
   fun id req ->
   match req with
@@ -580,6 +588,7 @@ let dispatch_notification =
   | InterpretToEnd params -> log (fun () -> "Received notification: prover/interpretToEnd"); rocqtopInterpretToEnd params
   | StepBackward params -> log (fun () -> "Received notification: prover/stepBackward"); rocqtopStepBackward params
   | StepForward params -> log (fun () -> "Received notification: prover/stepForward"); rocqtopStepForward params
+  | Interrupt params -> log (fun () -> "Received notification: prover/interrupt"); handle_interrupt params
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function

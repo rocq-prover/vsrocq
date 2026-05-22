@@ -16,7 +16,6 @@ open Types
 open Lsp.Types
 open Protocol
 open Protocol.LspWrapper
-open Protocol.ExtProtocol
 open Protocol.Printing
 open CompletionItems
 
@@ -81,6 +80,9 @@ val interpret_in_background : state -> (state * events)
 val reset : state -> state * events 
 (** resets Rocq *)
 
+val interrupt_execution : state -> unit
+(** [interrupt_execution st] cancels any ongoing execution on [st] *)
+
 val executed_ranges : state -> exec_overview
 (** [executes_ranges doc] returns the ranges corresponding to the sentences
     that have been executed. [settings.check_mode] allows to send a "cut" range that only goes
@@ -102,8 +104,6 @@ val get_document_proofs : state -> ProofState.proof_block list
 val all_diagnostics : state -> Diagnostic.t list
 (** all_diagnostics [doc] returns the diagnostics corresponding to the sentences
     that have been executed in [doc]. *)
-
-val get_proof : state -> sentence_id option -> ProofState.t option
 
 val get_completions : state -> Position.t -> completion_item list 
 
@@ -138,7 +138,7 @@ module Internal : sig
   val string_of_state : state -> string
   val observe_id : state -> sentence_id option
   val inject_doc_events : Document.event Sel.Event.t list -> event Sel.Event.t list
-
+  val get_proof : state -> sentence_id option -> ProofState.t option
   val validate_document : state -> Document.parsing_end_info -> state
 
 
