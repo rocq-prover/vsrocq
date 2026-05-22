@@ -167,7 +167,6 @@ After installation and activation of the extension:
 
 #### Goal and info view panel
 * `"vsrocq.goals.display": Tabs | List` -- Decide whether to display goals in separate tabs or as a list of collapsibles.
-* `"vsrocq.goals.diff.mode": on | off | removed` -- Toggles diff mode. If set to `removed`, only removed characters are shown (defaults to `off`)
 * `"vsrocq.goals.messages.full": bool` -- A toggle to include warnings and errors in the proof view (defaults to `false`)
 * `"vsrocq.goals.maxDepth": int` -- A setting to determine at which point the goal display starts elliding. Defaults to 17. (since version >= 2.1.7)
 
