@@ -190,6 +190,20 @@ let update_processed id state document =
       log (fun () -> "Trying to get overview with non-existing state id " ^ Stateid.to_string id);
       state
 
+let update_processed_when_checked id state document =
+  let range = Document.range_of_id_with_blank_space document id in
+  match Document.get_sentence document id with
+  | Some { checked } -> begin
+      match checked with
+      | Some s ->
+          let overview = update_processed_as_Done s range state.overview in
+          { state with overview }
+      | None -> state
+    end
+  | None ->
+      log (fun () -> "Trying to get overview with non-existing state id " ^ Stateid.to_string id);
+      state
+
 let update_processing task state document =
   let { processing; prepared } = state.overview in
   match ExecutionManager.view_task task with
@@ -243,7 +257,9 @@ let update_overview task tasks state document =
 let build_processed_overview state document =
   let sentences = Document.sentences document in
   let sentence_ids = List.map (fun (s : Document.sentence) -> s.id) sentences in
-  List.fold_right (fun id st -> update_processed id st document) sentence_ids state
+  let state =
+    List.fold_right (fun id st -> update_processed_when_checked id st document) sentence_ids state in
+  state
 
 let reset_overview st document unchanged_id =
   let overview = { processed = []; prepared = []; processing = [] } in
