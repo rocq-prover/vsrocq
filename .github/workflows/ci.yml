@@ -188,6 +188,7 @@ jobs:
       run: |
         opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
         opam install dune
+        opam install rocq-core=dev
         opam install ./language-server/vsrocq-language-server.opam --deps-only --with-doc --with-test --ignore-constraints-on dune
       
     - name: Build vsrocq-language-server
