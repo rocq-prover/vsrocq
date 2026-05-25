@@ -1,11 +1,11 @@
 main {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    height: 100vh;
 }
 
 main > * {
-  margin: 1rem 0;
+    margin: 1rem 0;
 }

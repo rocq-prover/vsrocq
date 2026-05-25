@@ -1,56 +1,64 @@
-import React, {FunctionComponent, useMemo} from 'react';
+import { FunctionComponent, useMemo } from "react";
 
-import { QueryResultType, QueryType, SearchResultType  } from '../../types';
+import { QueryResultType, QueryType, SearchResultType } from "../../types";
 
-import SearchResult from '../molecules/SearchResult';
-import QueryResult from '../molecules/QueryResult';
+import QueryResult from "../molecules/QueryResult";
+import SearchResult from "../molecules/SearchResult";
 
-import classes from './ResultSection.module.css';
+import classes from "./ResultSection.module.css";
 
 type SearchResultSectionProps = {
-    result: QueryResultType,
+    result: QueryResultType;
     toggleCollapsedHandler: (index: number) => void;
     deleteSearchResultHandler: (index: number) => void;
     copyNameHandler: (name: string) => void;
 };
 
-const searchResultSection: FunctionComponent<SearchResultSectionProps> = (props) => {
-
-    const {result, toggleCollapsedHandler, deleteSearchResultHandler, copyNameHandler} = props;
+const searchResultSection: FunctionComponent<SearchResultSectionProps> = (
+    props,
+) => {
+    const {
+        result,
+        toggleCollapsedHandler,
+        deleteSearchResultHandler,
+        copyNameHandler,
+    } = props;
 
     const renderResult = () => {
-        switch(result.type) {
-            case QueryType.search: 
+        switch (result.type) {
+            case QueryType.search:
                 return (result as SearchResultType).data.map((res, index) => {
-                        return <SearchResult
+                    return (
+                        <SearchResult
                             key={index}
                             result={res}
                             copyNameHandler={copyNameHandler}
-                            toggleCollapsedHandler={() => toggleCollapsedHandler(index)}
-                            deleteResultHandler={() => deleteSearchResultHandler(index)}
-                        />;
-                    });
+                            toggleCollapsedHandler={() =>
+                                toggleCollapsedHandler(index)
+                            }
+                            deleteResultHandler={() =>
+                                deleteSearchResultHandler(index)
+                            }
+                        />
+                    );
+                });
             case QueryType.check:
                 return <QueryResult result={result} />;
 
             case QueryType.about:
                 return <QueryResult result={result} />;
 
-            case QueryType.locate: 
+            case QueryType.locate:
                 return <QueryResult result={result} />;
 
-            case QueryType.print: 
+            case QueryType.print:
                 return <QueryResult result={result} />;
         }
     };
 
     const resultComponent = useMemo(renderResult, [result]);
 
-    return (
-        <div className={classes.ResultSection}>
-            {resultComponent}
-        </div>
-    );
+    return <div className={classes.ResultSection}>{resultComponent}</div>;
 };
 
 export default searchResultSection;

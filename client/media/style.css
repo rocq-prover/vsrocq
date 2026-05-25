@@ -3,30 +3,30 @@ body {
     /* font-size: medium */
     font-family: var(--vscode-editor-font-family);
     /* font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; */
-  }
-  
-  .hname {
+}
+
+.hname {
     color: var(--vscode-editorLineNumber-foreground);
-  }
-  
-  .htype {
+}
+
+.htype {
     color: var(--vscode-editor-foreground);
-  }
-  
-  .numGoal {
+}
+
+.numGoal {
     color: var(--vscode-editorLineNumber-foreground);
-  }
-  
-  .goal {
+}
+
+.goal {
     color: var(--vscode-editor-foreground);
-  }
-  
-  .sep,
-  hr {
+}
+
+.sep,
+hr {
     color: var(--vscode-editorRuler-foreground);
-  }
-  
-  .goalDiv {
+}
+
+.goalDiv {
     margin-left: 0.5ex;
     margin-top: 0.5ex;
-  }
+}

@@ -1,7 +1,7 @@
-import React, {FunctionComponent} from 'react';
+import { FunctionComponent } from "react";
 
-import classes from './PpString.module.css';
-import { PpDisplay, PpString } from 'pp-display';
+import { PpDisplay, PpString } from "pp-display";
+import classes from "./PpString.module.css";
 
 type HypothesisProps = {
     content: PpString;
@@ -9,16 +9,11 @@ type HypothesisProps = {
 };
 
 const hypothesis: FunctionComponent<HypothesisProps> = (props) => {
-    
-    const {content, maxDepth} = props;
+    const { content, maxDepth } = props;
 
     return (
         <div className={classes.Hypothesis}>
-            <PpDisplay 
-                pp={content}
-                rocqCss={classes}
-                maxDepth={maxDepth}
-            />
+            <PpDisplay pp={content} rocqCss={classes} maxDepth={maxDepth} />
         </div>
     );
 };

@@ -1,23 +1,22 @@
-import React, {FunctionComponent} from 'react';
+import { FunctionComponent } from "react";
 
-import Tab from '../atoms/Tab';
+import Tab from "../atoms/Tab";
 
-import classes from './TabBar.module.css';
+import classes from "./TabBar.module.css";
 
 type TabBarProps = {
-    selected: number; 
+    selected: number;
     tabNames: string[];
     tabClickHandler: (i: number) => void;
     closeTabHandler: (i: number) => void;
 };
 
 const tabBar: FunctionComponent<TabBarProps> = (props) => {
-    
-    const {selected, tabNames, tabClickHandler, closeTabHandler} = props;
+    const { selected, tabNames, tabClickHandler, closeTabHandler } = props;
 
     const tabs = tabNames.map((name, index) => {
         return (
-            <Tab 
+            <Tab
                 key={index}
                 isSelected={index === selected}
                 closeTabHandler={() => closeTabHandler(index)}
@@ -29,11 +28,7 @@ const tabBar: FunctionComponent<TabBarProps> = (props) => {
         );
     });
 
-    return (
-        <div className={classes.Bar}>
-            {tabs}
-        </div>
-    );
+    return <div className={classes.Bar}>{tabs}</div>;
 };
 
 export default tabBar;

@@ -1,11 +1,29 @@
-import { FunctionComponent, useRef, useState, useEffect, useLayoutEffect} from 'react';
-import useResizeObserver from '@react-hook/resize-observer';
-import { v4 as uuid } from 'uuid';
+import useResizeObserver from "@react-hook/resize-observer";
+import {
+    FunctionComponent,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from "react";
+import { v4 as uuid } from "uuid";
 
-import { PpString, PpMode, BoxDisplay, Term, Break, Box, DisplayType, BreakInfo, HideStates, Token, TokenType } from './types';
-import PpBox from './pp-box';
+import PpBox from "./pp-box";
+import {
+    Box,
+    BoxDisplay,
+    Break,
+    BreakInfo,
+    DisplayType,
+    HideStates,
+    PpMode,
+    PpString,
+    Term,
+    Token,
+    TokenType,
+} from "./types";
 
-import classes from './Pp.module.css';
+import classes from "./Pp.module.css";
 
 type PpProps = {
     pp: PpString;
@@ -17,26 +35,32 @@ type DisplayState = {
     breakIds: BreakInfo[];
     display: Box | null;
     tokenStream: Token[] | null;
-    context: CanvasRenderingContext2D | null
+    context: CanvasRenderingContext2D | null;
 };
 
-const ppDisplay : FunctionComponent<PpProps> = (props) => {
-    
-    const {pp, rocqCss, maxDepth} = props;
-    const [displayState, setDisplayState] = useState<DisplayState>({breakIds: [], display: null, tokenStream: null, context: null});
-    const [lastEntry, setLastEntry] = useState<ResizeObserverEntry|null>(null);
+const ppDisplay: FunctionComponent<PpProps> = (props) => {
+    const { pp, rocqCss, maxDepth } = props;
+    const [displayState, setDisplayState] = useState<DisplayState>({
+        breakIds: [],
+        display: null,
+        tokenStream: null,
+        context: null,
+    });
+    const [lastEntry, setLastEntry] = useState<ResizeObserverEntry | null>(
+        null,
+    );
     const [hovered, setHovered] = useState<boolean>(false);
     useEffect(() => {
-        window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('keyup', onKeyUp);
+        window.addEventListener("keydown", onKeyDown);
+        window.addEventListener("keyup", onKeyUp);
         return () => {
-            window.removeEventListener('keydown', onKeyDown);
-            window.removeEventListener('keyup', onKeyUp);
+            window.removeEventListener("keydown", onKeyDown);
+            window.removeEventListener("keyup", onKeyUp);
         };
     }, []);
 
-    const onKeyDown = (e : KeyboardEvent) => {
-        if(e.altKey) {
+    const onKeyDown = (e: KeyboardEvent) => {
+        if (e.altKey) {
             setHovered(true);
         }
     };
@@ -45,27 +69,32 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
         setHovered(false);
     };
 
-
     const container = useRef<HTMLDivElement>(null);
     const content = useRef<HTMLSpanElement>(null);
     //this ref prevents a recomputing loop when resizing
     const alreadyComputed = useRef<boolean>(false);
 
     useResizeObserver(container, (entry) => {
-        
-        if(container.current) {
-            if(content.current) {
+        if (container.current) {
+            if (content.current) {
                 //in this case the window has already been resized
-                if(lastEntry) {
+                if (lastEntry) {
                     //don't trigger a recomputation for small resizes
-                    if(Math.abs(entry.contentRect.width - lastEntry.contentRect.width) <= 10) {return;}
+                    if (
+                        Math.abs(
+                            entry.contentRect.width -
+                                lastEntry.contentRect.width,
+                        ) <= 10
+                    ) {
+                        return;
+                    }
                 }
                 //setting the display state triggers the recomputation
                 alreadyComputed.current = false;
-                setDisplayState(ds => {
+                setDisplayState((ds) => {
                     return {
                         ...ds,
-                        breakIds: []
+                        breakIds: [],
                     };
                 });
             }
@@ -79,16 +108,17 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
     }, [pp]);
 
     useLayoutEffect(() => {
-        if(!alreadyComputed.current) {
+        if (!alreadyComputed.current) {
             alreadyComputed.current = true;
             computeNeededBreaks();
         }
     }, [displayState]);
 
     const intializeDisplay = (pp: PpString) => {
-        if(content.current) {
+        if (content.current) {
             const context = getContext();
-            context!.font = getComputedStyle(content.current).font || 'monospace' ;
+            context!.font =
+                getComputedStyle(content.current).font || "monospace";
             const display = boxifyPpString(pp);
             const tokenStream = initTokenStream(display, context!);
             alreadyComputed.current = false;
@@ -96,99 +126,130 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
                 breakIds: [],
                 display: display,
                 tokenStream: tokenStream,
-                context: context
+                context: context,
             });
         }
     };
 
-    const getPpTag  = (pp: PpString, tag: string, indent: number, mode: PpMode, depth: number) => {
+    const getPpTag = (
+        pp: PpString,
+        tag: string,
+        indent: number,
+        mode: PpMode,
+        depth: number,
+    ) => {
         const id = uuid();
-        switch(pp[0]) {
-            case 'Ppcmd_empty':
-                console.error('Received PpTag with empty');
+        switch (pp[0]) {
+            case "Ppcmd_empty":
+                console.error("Received PpTag with empty");
                 return null;
-            case 'Ppcmd_string':
+            case "Ppcmd_string":
                 return {
                     type: DisplayType.term,
                     classList: [classes.Tag, tag],
-                    content: pp[1]
+                    content: pp[1],
                 } as Term;
-            case 'Ppcmd_glue':
+            case "Ppcmd_glue":
                 return {
-                    id: "box-"+id,
+                    id: "box-" + id,
                     type: DisplayType.box,
                     mode: mode,
                     classList: [tag],
                     indent: indent,
-                    boxChildren: flattenGlue(pp[1], mode, indent, id, depth + 1)
+                    boxChildren: flattenGlue(
+                        pp[1],
+                        mode,
+                        indent,
+                        id,
+                        depth + 1,
+                    ),
                 } as Box;
-            case 'Ppcmd_force_newline':
-                console.error('Received PpTag with fnl');
+            case "Ppcmd_force_newline":
+                console.error("Received PpTag with fnl");
                 return null;
-            case 'Ppcmd_comment':
-                console.error('Received PpTag with comment');
+            case "Ppcmd_comment":
+                console.error("Received PpTag with comment");
                 return null;
-            case 'Ppcmd_box':
+            case "Ppcmd_box":
                 const m = pp[1][0];
-                const i = (m !== PpMode.horizontal) ? pp[1][1] : 0;
+                const i = m !== PpMode.horizontal ? pp[1][1] : 0;
                 return {
-                    id: "box-"+id,
+                    id: "box-" + id,
                     type: DisplayType.box,
                     mode: mode,
                     classList: [tag],
                     indent: indent,
-                    boxChildren: getBoxChildren(pp[2], m, i, id, depth + 1)
+                    boxChildren: getBoxChildren(pp[2], m, i, id, depth + 1),
                 } as Box;
-            case 'Ppcmd_tag':
-                console.error('Received PpTag with tag');
+            case "Ppcmd_tag":
+                console.error("Received PpTag with tag");
                 return null;
-            case 'Ppcmd_print_break':
-                console.error('Received PpTag with br');
+            case "Ppcmd_print_break":
+                console.error("Received PpTag with br");
                 return null;
         }
     };
 
-    const flattenGlue = (glue: PpString[], mode: PpMode, indent: number, boxId: string, depth: number) : BoxDisplay[] => {
-
-        const g = glue.map(pp => {
-            switch(pp[0]) {
-                case 'Ppcmd_empty':
+    const flattenGlue = (
+        glue: PpString[],
+        mode: PpMode,
+        indent: number,
+        boxId: string,
+        depth: number,
+    ): BoxDisplay[] => {
+        const g = glue.map((pp) => {
+            switch (pp[0]) {
+                case "Ppcmd_empty":
                     return [];
-                case 'Ppcmd_string':
-                    return [{
-                        type: DisplayType.term,
-                        classList: [classes.Text],
-                        content: pp[1]
-                    } as Term];
-                case 'Ppcmd_glue':
-                        return flattenGlue(pp[1], mode, indent, boxId, depth);
-                case 'Ppcmd_force_newline':
-                    return [{
-                        id: "fnl",
-                        type: DisplayType.break,
-                        offset: 0,
-                        mode: mode,
-                        horizontalIndent: 0, 
-                        indent: indent,
-                        shouldBreak: true,
-                    } as Break];
-                case 'Ppcmd_comment':
+                case "Ppcmd_string":
+                    return [
+                        {
+                            type: DisplayType.term,
+                            classList: [classes.Text],
+                            content: pp[1],
+                        } as Term,
+                    ];
+                case "Ppcmd_glue":
+                    return flattenGlue(pp[1], mode, indent, boxId, depth);
+                case "Ppcmd_force_newline":
+                    return [
+                        {
+                            id: "fnl",
+                            type: DisplayType.break,
+                            offset: 0,
+                            mode: mode,
+                            horizontalIndent: 0,
+                            indent: indent,
+                            shouldBreak: true,
+                        } as Break,
+                    ];
+                case "Ppcmd_comment":
                     return [];
-                case 'Ppcmd_box':
+                case "Ppcmd_box":
                     return [boxifyPpString(pp, depth)];
-                case 'Ppcmd_tag':
-                    return [getPpTag(pp[2], rocqCss[pp[1].replaceAll(".", "-")], indent, mode, depth)];
-                case 'Ppcmd_print_break':
+                case "Ppcmd_tag":
+                    return [
+                        getPpTag(
+                            pp[2],
+                            rocqCss[pp[1].replaceAll(".", "-")],
+                            indent,
+                            mode,
+                            depth,
+                        ),
+                    ];
+                case "Ppcmd_print_break":
                     const brId = uuid();
-                    return [{
-                        id: "box-"+boxId+"break-"+brId,
-                        type: DisplayType.break,
-                        offset: 0,
-                        mode: mode,
-                        horizontalIndent: pp[1],
-                        indent: pp[2],
-                        shouldBreak: false
-                    } as Break];
+                    return [
+                        {
+                            id: "box-" + boxId + "break-" + brId,
+                            type: DisplayType.break,
+                            offset: 0,
+                            mode: mode,
+                            horizontalIndent: pp[1],
+                            indent: pp[2],
+                            shouldBreak: false,
+                        } as Break,
+                    ];
             }
         });
         const r = g.reduce((acc, curr) => {
@@ -198,100 +259,132 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
         return r;
     };
 
-    const getBoxChildren = (pp : PpString, mode: PpMode, indent: number, boxId: string, depth: number) : BoxDisplay[] => {
-        switch(pp[0]) {
+    const getBoxChildren = (
+        pp: PpString,
+        mode: PpMode,
+        indent: number,
+        boxId: string,
+        depth: number,
+    ): BoxDisplay[] => {
+        switch (pp[0]) {
             case "Ppcmd_empty":
                 return [];
             case "Ppcmd_glue":
                 return flattenGlue(pp[1], mode, indent, boxId, depth);
-            case 'Ppcmd_string':
-                return [{
-                    type: DisplayType.term,
-                    classList: [classes.Text],
-                    content: pp[1]
-                } as Term];
-            case 'Ppcmd_force_newline':
-                return [];
-            case 'Ppcmd_comment':
-                return [];
-            case 'Ppcmd_box':
+            case "Ppcmd_string":
                 return [
-                    boxifyPpString(pp, depth)
+                    {
+                        type: DisplayType.term,
+                        classList: [classes.Text],
+                        content: pp[1],
+                    } as Term,
                 ];
-            case 'Ppcmd_tag':
+            case "Ppcmd_force_newline":
+                return [];
+            case "Ppcmd_comment":
+                return [];
+            case "Ppcmd_box":
+                return [boxifyPpString(pp, depth)];
+            case "Ppcmd_tag":
                 return [
-                    getPpTag(pp[2], rocqCss[pp[1].replaceAll(".", "-")], indent, mode, depth)
+                    getPpTag(
+                        pp[2],
+                        rocqCss[pp[1].replaceAll(".", "-")],
+                        indent,
+                        mode,
+                        depth,
+                    ),
                 ];
-            case 'Ppcmd_print_break':
+            case "Ppcmd_print_break":
                 return [];
         }
     };
 
-    const boxifyPpString = (pp : PpString, depth : number = 0) => {
+    const boxifyPpString = (pp: PpString, depth: number = 0) => {
         const id = uuid();
         switch (pp[0]) {
-            case 'Ppcmd_empty':
-            case 'Ppcmd_string':
-            case 'Ppcmd_glue':
-            case 'Ppcmd_force_newline':
-            case 'Ppcmd_comment':
-            case 'Ppcmd_tag':
-            case 'Ppcmd_print_break':
-                console.log('Goal contains non-boxed PpString');
+            case "Ppcmd_empty":
+            case "Ppcmd_string":
+            case "Ppcmd_glue":
+            case "Ppcmd_force_newline":
+            case "Ppcmd_comment":
+            case "Ppcmd_tag":
+            case "Ppcmd_print_break":
+                console.log("Goal contains non-boxed PpString");
                 return {
-                    id: "box-"+id,
+                    id: "box-" + id,
                     type: DisplayType.box,
                     depth: depth,
                     classList: [],
                     mode: PpMode.hovBox,
                     indent: 0,
-                    boxChildren: getBoxChildren(pp, PpMode.hovBox, 0, id, depth + 1)
+                    boxChildren: getBoxChildren(
+                        pp,
+                        PpMode.hovBox,
+                        0,
+                        id,
+                        depth + 1,
+                    ),
                 } as Box;
-            case 'Ppcmd_box':
+            case "Ppcmd_box":
                 const mode = pp[1][0];
-                const indent = (mode !== PpMode.horizontal) ? pp[1][1] : 0;
+                const indent = mode !== PpMode.horizontal ? pp[1][1] : 0;
                 return {
-                    id: "box-"+id,
+                    id: "box-" + id,
                     type: DisplayType.box,
                     depth: depth,
                     mode: mode,
                     classList: [],
                     indent: indent,
-                    boxChildren: getBoxChildren(pp[2], mode, indent, id, depth + 1)
+                    boxChildren: getBoxChildren(
+                        pp[2],
+                        mode,
+                        indent,
+                        id,
+                        depth + 1,
+                    ),
                 } as Box;
         }
     };
 
     const computeNeededBreaks = () => {
-        if(container.current) {
+        if (container.current) {
             const containerRect = container.current.getBoundingClientRect();
-            if(displayState.tokenStream && displayState.context) {
-                scanTokenStream(displayState.tokenStream, containerRect.width, displayState.context);
+            if (displayState.tokenStream && displayState.context) {
+                scanTokenStream(
+                    displayState.tokenStream,
+                    containerRect.width,
+                    displayState.context,
+                );
             }
         }
-
     };
 
     //create a canvas and get its context to compute character width
-    const getContext = ()  => {
+    const getContext = () => {
         const fragment = document.createDocumentFragment();
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         fragment.appendChild(canvas);
-        return canvas.getContext('2d');
+        return canvas.getContext("2d");
     };
 
-    const estimateBoxWidth = (box: Box, context: CanvasRenderingContext2D) : number => {
+    const estimateBoxWidth = (
+        box: Box,
+        context: CanvasRenderingContext2D,
+    ): number => {
         let currentWidth = 0;
         for (let childBox of box.boxChildren) {
-            if(childBox) {
-                switch(childBox.type) {
+            if (childBox) {
+                switch (childBox.type) {
                     case DisplayType.box:
                         currentWidth += estimateBoxWidth(childBox, context);
                         break;
                     case DisplayType.break:
                         break;
                     case DisplayType.term:
-                        currentWidth += context.measureText(childBox.content).width;
+                        currentWidth += context.measureText(
+                            childBox.content,
+                        ).width;
                         break;
                 }
             }
@@ -299,19 +392,25 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
         return currentWidth;
     };
 
-    const scanTokenStream = (tokenStream: Token[], containerWidth: number, context: CanvasRenderingContext2D) => {
+    const scanTokenStream = (
+        tokenStream: Token[],
+        containerWidth: number,
+        context: CanvasRenderingContext2D,
+    ) => {
         let currentLineWidth = 0;
-        let breakAll : boolean[] = [];
-        let breaks : BreakInfo[] = [];
-        let currentOffset : number[] = [0];
-        for(let token of tokenStream) {
-            switch(token.type) {
+        let breakAll: boolean[] = [];
+        let breaks: BreakInfo[] = [];
+        let currentOffset: number[] = [0];
+        for (let token of tokenStream) {
+            switch (token.type) {
                 case TokenType.term:
                     currentLineWidth += token.length;
                     break;
                 case TokenType.open:
-                    if((token.mode === PpMode.hvBox && currentLineWidth + token.length > containerWidth)
-                        || token.mode === PpMode.vertical
+                    if (
+                        (token.mode === PpMode.hvBox &&
+                            currentLineWidth + token.length > containerWidth) ||
+                        token.mode === PpMode.vertical
                     ) {
                         breakAll.push(true);
                     } else {
@@ -320,13 +419,22 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
                     currentOffset.push(token.offset + currentLineWidth);
                     break;
                 case TokenType.close:
-                    if(breakAll.length > 0) { breakAll.pop(); }
+                    if (breakAll.length > 0) {
+                        breakAll.pop();
+                    }
                     currentOffset.pop();
                     break;
                 case TokenType.break:
-                    if(currentLineWidth + token.length > containerWidth || breakAll[breakAll.length - 1] || token.id === "fnl") {
+                    if (
+                        currentLineWidth + token.length > containerWidth ||
+                        breakAll[breakAll.length - 1] ||
+                        token.id === "fnl"
+                    ) {
                         const offset = currentOffset[currentOffset.length - 1];
-                        breaks.push({id: token.id, offset: offset + token.indent});
+                        breaks.push({
+                            id: token.id,
+                            offset: offset + token.indent,
+                        });
                         currentLineWidth = offset + token.indent;
                         break;
                     }
@@ -334,61 +442,104 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
                     break;
             }
         }
-        setDisplayState(ds => {
+        setDisplayState((ds) => {
             return {
                 ...ds,
-                breakIds: breaks
+                breakIds: breaks,
             };
         });
     };
 
-    const initTokenStream = (box: Box, context: CanvasRenderingContext2D) : Token[] => {
+    const initTokenStream = (
+        box: Box,
+        context: CanvasRenderingContext2D,
+    ): Token[] => {
         const blockWidth = estimateBoxWidth(box, context);
         const offset = context.measureText(" ".repeat(box.indent)).width;
         const blockTokenStream = buildTokenStream(box, context);
-        const tokenStream = [{type: TokenType.open, length: blockWidth, mode: box.mode, offset: offset}] as Token[];
-        return tokenStream.concat(blockTokenStream)
-                        .concat([{type: TokenType.close}]);
+        const tokenStream = [
+            {
+                type: TokenType.open,
+                length: blockWidth,
+                mode: box.mode,
+                offset: offset,
+            },
+        ] as Token[];
+        return tokenStream
+            .concat(blockTokenStream)
+            .concat([{ type: TokenType.close }]);
     };
 
-    const buildTokenStream = (box: Box, context: CanvasRenderingContext2D) : Token[] => {
-        let tokenStream : Token[] = [];
+    const buildTokenStream = (
+        box: Box,
+        context: CanvasRenderingContext2D,
+    ): Token[] => {
+        let tokenStream: Token[] = [];
         for (let i = 0; i < box.boxChildren.length; i++) {
             let childBox = box.boxChildren[i];
-            if(childBox) {
-                switch(childBox.type) {
+            if (childBox) {
+                switch (childBox.type) {
                     case DisplayType.box:
                         const blockWidth = estimateBoxWidth(childBox, context);
-                        const blockTokenStream = buildTokenStream(childBox, context);
-                        const offset = context.measureText(" ".repeat(childBox.indent)).width;
-                        tokenStream = tokenStream.concat([{type: TokenType.open, length: blockWidth, mode: childBox.mode, offset: offset}])
-                                             .concat(blockTokenStream)
-                                             .concat([{type: TokenType.close}]);
+                        const blockTokenStream = buildTokenStream(
+                            childBox,
+                            context,
+                        );
+                        const offset = context.measureText(
+                            " ".repeat(childBox.indent),
+                        ).width;
+                        tokenStream = tokenStream
+                            .concat([
+                                {
+                                    type: TokenType.open,
+                                    length: blockWidth,
+                                    mode: childBox.mode,
+                                    offset: offset,
+                                },
+                            ])
+                            .concat(blockTokenStream)
+                            .concat([{ type: TokenType.close }]);
                         break;
                     case DisplayType.break:
                         let blockLength = 0;
-                        for(let j = i + 1; j < box.boxChildren.length; j++) {
+                        for (let j = i + 1; j < box.boxChildren.length; j++) {
                             let nextBlock = box.boxChildren[j];
-                            if(nextBlock) {
-                                switch(nextBlock.type) {
+                            if (nextBlock) {
+                                switch (nextBlock.type) {
                                     case DisplayType.box:
-                                        blockLength += estimateBoxWidth(nextBlock, context);
+                                        blockLength += estimateBoxWidth(
+                                            nextBlock,
+                                            context,
+                                        );
                                         break;
                                     case DisplayType.break:
                                         break;
                                     case DisplayType.term:
-                                        blockLength += context.measureText(nextBlock.content).width;
+                                        blockLength += context.measureText(
+                                            nextBlock.content,
+                                        ).width;
                                 }
-                                if(nextBlock.type === DisplayType.break) {
+                                if (nextBlock.type === DisplayType.break) {
                                     break;
                                 }
                             }
                         }
-                        const indent = context.measureText(" ").width * childBox.indent;
-                        tokenStream = tokenStream.concat([{type: TokenType.break, id: childBox.id, length: blockLength, indent: indent}]);
+                        const indent =
+                            context.measureText(" ").width * childBox.indent;
+                        tokenStream = tokenStream.concat([
+                            {
+                                type: TokenType.break,
+                                id: childBox.id,
+                                length: blockLength,
+                                indent: indent,
+                            },
+                        ]);
                         break;
                     case DisplayType.term:
-                        tokenStream = tokenStream.concat({type: TokenType.term, length: context.measureText(childBox.content).width});
+                        tokenStream = tokenStream.concat({
+                            type: TokenType.term,
+                            length: context.measureText(childBox.content).width,
+                        });
                         break;
                 }
             }
@@ -399,8 +550,7 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
     return (
         <div ref={container} className={classes.Container}>
             <span ref={content} className={classes.Content}>
-                {
-                    displayState.display ?
+                {displayState.display ? (
                     <PpBox
                         id={displayState.display.id}
                         rocqCss={rocqCss}
@@ -416,13 +566,10 @@ const ppDisplay : FunctionComponent<PpProps> = (props) => {
                         breaks={displayState.breakIds}
                         addedDepth={0}
                     />
-                    : null
-                }
+                ) : null}
             </span>
         </div>
     );
-
 };
-
 
 export default ppDisplay;
