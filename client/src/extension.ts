@@ -531,6 +531,7 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
 
     const externalApi = {
         getDocumentProofs,
+        onProofStateChanged: GoalPanel.onProofStateChanged,
     };
 
     return externalApi;
