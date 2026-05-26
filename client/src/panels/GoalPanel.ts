@@ -11,6 +11,7 @@ import {
     workspace,
 } from "vscode";
 import Client from "../client";
+import { EventEmitter } from "vscode";
 import { ProofViewNotification } from "../protocol/types";
 import { getNonce } from "../utilities/getNonce";
 import { getUri } from "../utilities/getUri";
@@ -32,6 +33,8 @@ import { getUri } from "../utilities/getUri";
 export default class GoalPanel {
     public static currentPanel: GoalPanel | undefined;
     public static currentPv: ProofViewNotification | undefined;
+    public static readonly _onProofStateChanged = new EventEmitter<ProofViewNotification>();
+    public static readonly onProofStateChanged = GoalPanel._onProofStateChanged.event;
     private readonly _panel: WebviewPanel;
     private _disposables: Disposable[] = [];
 
@@ -177,6 +180,7 @@ export default class GoalPanel {
             "[GoalPanel] Received proofview notification",
         );
         GoalPanel.currentPv = pv;
+        GoalPanel._onProofStateChanged.fire(pv);
 
         if (!GoalPanel.currentPanel) {
             //If autoDisplay is set then render the proofview immediately
