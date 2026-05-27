@@ -13,7 +13,11 @@
 (**************************************************************************)
 open Protocol
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
 module CompactedDecl = Context.Compacted.Declaration
+[%%else]
+module CompactedDecl = Ppconstr.CompactedDecl
+[%%endif]
 open Printer
 open EConstr
 open Names
@@ -43,11 +47,11 @@ module Atomics = Set.Make(TypeCompare)
 module HypothesisMap = Map.Make (struct type t = Id.t let compare = compare end)
 
 let mk_hyp d l =
-  let ids, typ = match d with
-  | CompactedDecl.LocalAssum (ids, typ) -> ids, typ
-  | CompactedDecl.LocalDef (ids,_,typ) -> ids, typ
+  let typ = match d with
+  | CompactedDecl.LocalAssum (_, typ) -> typ
+  | CompactedDecl.LocalDef (_,_,typ) -> typ
   in
-  let ids' = List.map (fun id -> id.Context.binder_name) ids in
+  let ids' = ProofState.get_ids d in
   let m = List.fold_right (fun id acc -> HypothesisMap.add id typ acc) ids' l in
   m
 
@@ -55,8 +59,10 @@ let get_hyps env sigma goal =
     let EvarInfo evi = Evd.find sigma goal in
     let env = Evd.evar_filtered_env env evi in
     let hyps =
-      Context.Compacted.fold (mk_hyp)
-        (Termops.compact_named_context sigma (EConstr.named_context env)) ~init:HypothesisMap.empty in
+      List.fold_right mk_hyp
+        (ProofState.compact sigma env)
+        HypothesisMap.empty
+    in
     hyps
 
 let type_kind_opt sigma t = try Some (kind_of_type sigma t) with _ -> None 

@@ -48,7 +48,23 @@ type t = {
 } [@@deriving yojson]
 
 open Printer
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
 module CompactedDecl = Context.Compacted.Declaration
+type compacted_context = EConstr.compacted_context
+let get_ids = function
+  | CompactedDecl.LocalAssum (ids, _) | LocalDef (ids, _, _) ->
+    List.map (fun id -> id.Context.binder_name) ids
+
+let compact sigma env = Termops.compact_named_context sigma (EConstr.named_context env)
+[%%else]
+module CompactedDecl = Ppconstr.CompactedDecl
+type compacted_context = CompactedDecl.t list
+let get_ids = function
+  | CompactedDecl.LocalAssum (ids, _) | LocalDef (ids, _, _) ->
+    List.map (fun (_,id) -> id.Context.binder_name) ids
+
+let compact sigma env = Ppconstr.compact_named_context sigma (Environ.named_context_val env)
+[%%endif]
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
 let goal_name = Names.Id.to_string
@@ -70,8 +86,7 @@ let mk_goal env sigma g =
   in
   let mk_hyp d = pr_ecompacted_decl env sigma d in
   let hyps =
-    List.rev_map mk_hyp
-      (Termops.compact_named_context sigma (EConstr.named_context env)) in
+    List.rev_map mk_hyp (compact sigma env) in
   {
     id;
     name;

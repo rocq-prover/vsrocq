@@ -35,23 +35,23 @@ type t = {
 } [@@deriving yojson]
 
 open Printer
-module CompactedDecl = Context.Compacted.Declaration
+module CompactedDecl = ProofState.CompactedDecl
 
-let mk_pp_hyp env sigma (decl:EConstr.compacted_declaration) =
-  let ids, pbody, typ = match decl with
-    | CompactedDecl.LocalAssum (ids, typ) ->
-       ids, None, typ
-    | CompactedDecl.LocalDef (ids,c,typ) ->
-       (* Force evaluation *)
-       let pb = pr_leconstr_env ~inctx:true env sigma c in
-       let pb = if EConstr.isCast sigma c then Pp.surround pb else pb in
-       ids, Some pb, typ in
-    let ids =
-      List.map (fun id -> Pp.string_of_ppcmds @@ Ppconstr.pr_id id.Context.binder_name) ids in
-    let body = Option.map Pp.string_of_ppcmds pbody in
-    let typ = pr_letype_env env sigma typ in
-    let _type = Pp.string_of_ppcmds typ in
-    {ids; body; _type} 
+let mk_pp_hyp env sigma decl =
+  let pbody, typ = match decl with
+    | CompactedDecl.LocalAssum (_, typ) ->
+      None, typ
+    | CompactedDecl.LocalDef (_,c,typ) ->
+      (* Force evaluation *)
+      let pb = pr_leconstr_env ~inctx:true env sigma c in
+      let pb = if EConstr.isCast sigma c then Pp.surround pb else pb in
+      Some pb, typ in
+  let ids =
+    List.map (fun id -> Pp.string_of_ppcmds @@ Ppconstr.pr_id id) (ProofState.get_ids decl) in
+  let body = Option.map Pp.string_of_ppcmds pbody in
+  let typ = pr_letype_env env sigma typ in
+  let _type = Pp.string_of_ppcmds typ in
+  {ids; body; _type}
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
 let goal_name = Names.Id.to_string
@@ -78,7 +78,7 @@ let mk_goal env sigma g =
   in
   let hyps =
     List.rev_map mk_hyp
-      (Termops.compact_named_context sigma (EConstr.named_context env)) in
+      (ProofState.compact sigma env) in
   {
     id;
     name;
