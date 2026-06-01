@@ -22,7 +22,11 @@ open Protocol.LspWrapper
 open Protocol.ExtProtocol
 open Dm.Types
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
 module CompactedDecl = Context.Compacted.Declaration
+[%%else]
+module CompactedDecl = Ppconstr.CompactedDecl
+[%%endif]
 
 let init_state : Vernacstate.t option ref = ref None
 let get_init_state () =

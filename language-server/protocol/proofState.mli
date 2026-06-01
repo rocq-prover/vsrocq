@@ -26,3 +26,15 @@ val get_proof : previous:Vernacstate.t option -> Goals.Diff.Mode.t -> Vernacstat
 val mk_proof_statement : string -> Lsp.Types.Range.t -> proof_statement
 val mk_proof_step : string -> Lsp.Types.Range.t -> proof_step
 val mk_proof_block : proof_statement -> proof_step list -> Lsp.Types.Range.t -> proof_block
+
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
+module CompactedDecl = Context.Compacted.Declaration
+type compacted_context = EConstr.compacted_context
+val get_ids : _ CompactedDecl.pt -> Names.Id.t list
+[%%else]
+module CompactedDecl = Ppconstr.CompactedDecl
+type compacted_context = CompactedDecl.t list
+val get_ids : CompactedDecl.t -> Names.Id.t list
+[%%endif]
+
+val compact : Evd.evar_map -> Environ.env -> compacted_context
