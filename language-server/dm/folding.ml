@@ -1,16 +1,28 @@
+(** Computes LSP folding ranges for parsed Rocq documents from sentence-level
+    regions, located Gallina subexpressions, indentation fallback ranges, and
+    recorded comments.
+*)
+
 open Lsp.Types
 
+(** Classifies stack-managed regions whose end is discovered by a later
+    vernacular sentence. *)
 type region_type =
   | ProofRegion
   | SectionRegion
   | ModuleRegion
 
+(** Internal folding entry tree; children are accumulated while an enclosing
+    region is still open and flattened before conversion to LSP ranges. *)
 type entry = {
+  name: string option;
   range: Range.t;
   kind: FoldingRangeKind.t option;
   children: entry list;
 }
 
+(** Region currently open in the sentence traversal.  Proof regions start with
+    no [start] and are claimed by the first proof step. *)
 type open_region = {
   name: string option;
   region_type: region_type;
@@ -19,47 +31,54 @@ type open_region = {
   children: entry list;
 }
 
+(** Accumulator for the sentence traversal.  [stack] contains currently open
+    regions with the innermost region first; entries discovered while a region
+    is open are accumulated in that region's [children].  [top] contains closed
+    top-level entries in reverse source order. *)
 type state = {
   stack: open_region list;
   top: entry list;
 }
 
-let empty_state = { stack = []; top = [] }
+let init_entry_state : state = { stack = []; top = [] }
 
-let range_spans_lines (range: Range.t) =
+let range_spans_lines (range: Range.t) : bool =
   range.start.line < range.end_.line
 
-let make_entry ?(kind = Some FoldingRangeKind.Region) ?(children = []) (range: Range.t) =
-  if range_spans_lines range then Some { range; kind; children } else None
+let make_entry ?name ~(kind: FoldingRangeKind.t option) ?(children: entry list = []) (range: Range.t) : entry option =
+  if range_spans_lines range then Some { name; range; kind; children } else None
 
-let entry_of_loc raw loc =
-  make_entry (RawDocument.range_of_loc raw loc)
+let entry_of_loc ?name (raw: RawDocument.t) loc : entry option =
+  make_entry ?name ~kind:(Some FoldingRangeKind.Region) (RawDocument.range_of_loc raw loc)
 
-let entry_of_sentence document (sentence: Document.sentence) =
-  make_entry (Document.range_of_id document sentence.id)
+let entry_of_sentence ?name (document: Document.document) (sentence: Document.sentence) : entry option =
+  make_entry ?name ~kind:(Some FoldingRangeKind.Region) (Document.range_of_id document sentence.id)
 
-let add_entry state entry =
+let add_entry (state: state) (entry: entry) : state =
   match state.stack with
   | [] -> { state with top = entry :: state.top }
   | region :: stack ->
     { state with stack = { region with children = entry :: region.children } :: stack }
 
-let add_entries state entries =
+let add_entries (state: state) (entries: entry list) : state =
   List.fold_left add_entry state entries
 
-let open_region state region =
+let open_region (state: state) (region: open_region) : state =
   { state with stack = region :: state.stack }
 
-let close_top_region state pred end_ =
+(** Closes the first open region when it matches [pred], attaching its collected
+    children to the emitted entry. *)
+let close_top_region (state: state) (pred: open_region -> bool) (end_: Position.t) : state =
   match state.stack with
   | { start = Some start; _ } as region :: stack when pred region ->
-    let entry = { range = { start; end_ }; kind = region.kind; children = List.rev region.children } in
+    let entry = { name = region.name; range = { start; end_ }; kind = region.kind; children = List.rev region.children } in
     add_entry { state with stack } entry
   | region :: stack when pred region ->
     { state with stack }
   | _ -> state
 
-let begin_proof state start =
+(** Marks the first pending proof region as starting at the first proof command. *)
+let begin_proof (state: state) (start: Position.t) : state =
   let rec aux seen = function
     | [] -> state.stack
     | { region_type = ProofRegion; start = None; _ } as region :: rest ->
@@ -68,25 +87,31 @@ let begin_proof state start =
   in
   { state with stack = aux [] state.stack }
 
-let close_proof state end_ =
+let close_proof (state: state) (end_: Position.t) : state =
   close_top_region state (fun region -> region.region_type = ProofRegion) end_
 
-let close_segment state name end_ =
+let close_segment (state: state) (name: string) (end_: Position.t) : state =
   close_top_region state (fun region ->
     match region.name with
     | Some region_name -> region_name = name
     | None -> false
   ) end_
 
-let open_segment document (sentence: Document.sentence) lident region_type state =
+let name_of_variables : Names.variable list -> string option = function
+  | [] -> None
+  | name :: _ -> Some (Names.Id.to_string name)
+
+(** Opens a named section/module region at the sentence start. *)
+let open_segment (document: Document.document) (sentence: Document.sentence) (lident: Names.lident) (region_type: region_type) (state: state) : state =
   let range = Document.range_of_id document sentence.id in
   let name = Names.Id.to_string lident.CAst.v in
   open_region state { name = Some name; region_type; start = Some range.start; kind = Some FoldingRangeKind.Region; children = [] }
 
-let open_proof _document (_sentence: Document.sentence) state =
-  open_region state { name = None; region_type = ProofRegion; start = None; kind = Some FoldingRangeKind.Region; children = [] }
+(** Opens a proof region whose start will be set by the first proof command. *)
+let open_proof (names: Names.variable list) (state: state) : state =
+  open_region state { name = name_of_variables names; region_type = ProofRegion; start = None; kind = Some FoldingRangeKind.Region; children = [] }
 
-let loc_entries_of_constr raw (e: Constrexpr.constr_expr) =
+let loc_entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
   match e.CAst.loc with
   | None -> []
   | Some loc ->
@@ -94,7 +119,9 @@ let loc_entries_of_constr raw (e: Constrexpr.constr_expr) =
     | None -> []
     | Some entry -> [entry]
 
-let rec entries_of_constr raw (e: Constrexpr.constr_expr) =
+(** Extracts folding entries from a located Gallina expression and selected
+    nested subexpressions that are useful fold points. *)
+let rec entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
   let open Constrexpr in
   let self = entries_of_constr raw in
   let self_opt = function None -> [] | Some e -> self e in
@@ -149,89 +176,35 @@ let rec entries_of_constr raw (e: Constrexpr.constr_expr) =
   in
   own @ nested
 
-let entries_of_constr_opt raw = function
+let entries_of_constr_opt (raw: RawDocument.t) : Constrexpr.constr_expr option -> entry list = function
   | None -> []
   | Some e -> entries_of_constr raw e
 
-let entries_of_binders raw binders =
+let entries_of_binders (raw: RawDocument.t) binders : entry list =
   let open Constrexpr in
   List.concat_map (function
-    | CLocalAssum (_, _, _, ty) -> entries_of_constr raw ty
-    | CLocalDef (_, _, e, e_opt) -> entries_of_constr raw e @ entries_of_constr_opt raw e_opt
+    | CLocalAssum (_, _, _, ty) ->
+        entries_of_constr raw ty
+    | CLocalDef (_, _, e, e_opt) ->
+        entries_of_constr raw e
+        @ entries_of_constr_opt raw e_opt
     | CLocalPattern _ -> []
   ) binders
 
-let entry_of_constr_loc raw e =
+let entry_of_constr_loc ?name (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
   match e.CAst.loc with
   | None -> []
   | Some loc ->
-    match entry_of_loc raw loc with
+    match entry_of_loc ?name raw loc with
     | None -> []
     | Some entry -> [entry]
 
-let option_to_list = function
+let option_to_list (x: 'a option) : 'a list =
+  match x with
   | None -> []
   | Some x -> [x]
 
-let entries_of_local_decl raw = function
-  | Vernacexpr.AssumExpr (_, binders, ty) ->
-    entries_of_binders raw binders @ entry_of_constr_loc raw ty @ entries_of_constr raw ty
-  | Vernacexpr.DefExpr (_, binders, body, ty_opt) ->
-    entries_of_binders raw binders
-    @ entry_of_constr_loc raw body @ entries_of_constr raw body
-    @ entries_of_constr_opt raw ty_opt
-
-let entries_of_inductive raw (((_coercion, (_name, _univs)), (params, extra_params), rtype, ctors), _notations) =
-  let param_entries = entries_of_binders raw params in
-  let extra_param_entries = Option.cata (entries_of_binders raw) [] extra_params in
-  let rtype_entries = entries_of_constr_opt raw rtype in
-  let ctor_entries =
-    match ctors with
-    | Vernacexpr.Constructors constructors ->
-      List.concat_map (fun (_, (_name, ty)) -> entry_of_constr_loc raw ty @ entries_of_constr raw ty) constructors
-    | Vernacexpr.RecordDecl (_, fields, _) ->
-      List.concat_map (fun (decl, _attrs) -> entries_of_local_decl raw decl) fields
-  in
-  param_entries @ extra_param_entries @ rtype_entries @ ctor_entries
-
-let entries_of_vernac_ast raw (ast: Synterp.vernac_control_entry) =
-  match ast.v.expr with
-  | Vernacexpr.VernacSynPure pure ->
-    begin match pure with
-    | Vernacexpr.VernacDefinition (_, _, body) ->
-      begin match body with
-      | Vernacexpr.ProveBody (binders, ty) ->
-        entries_of_binders raw binders @ entry_of_constr_loc raw ty @ entries_of_constr raw ty
-      | Vernacexpr.DefineBody (binders, _, body, rest) ->
-        entries_of_binders raw binders
-        @ entry_of_constr_loc raw body @ entries_of_constr raw body
-        @ entries_of_constr_opt raw rest
-      end
-    | Vernacexpr.VernacStartTheoremProof (_, proofs) ->
-      List.concat_map (fun (_name_decl, (binders, ty)) ->
-        entries_of_binders raw binders @ entry_of_constr_loc raw ty @ entries_of_constr raw ty
-      ) proofs
-    | Vernacexpr.VernacFixpoint (_, (_, fixes)) ->
-      List.concat_map (fun fix ->
-        entries_of_binders raw fix.Vernacexpr.binders
-        @ entry_of_constr_loc raw fix.Vernacexpr.rtype
-        @ entries_of_constr raw fix.Vernacexpr.rtype
-        @ entries_of_constr_opt raw fix.Vernacexpr.body_def
-      ) fixes
-    | Vernacexpr.VernacCoFixpoint (_, cofixes) ->
-      List.concat_map (fun cofix ->
-        entries_of_binders raw cofix.Vernacexpr.binders
-        @ entry_of_constr_loc raw cofix.Vernacexpr.rtype
-        @ entries_of_constr raw cofix.Vernacexpr.rtype
-        @ entries_of_constr_opt raw cofix.Vernacexpr.body_def
-      ) cofixes
-    | Vernacexpr.VernacInductive (_, inds) ->
-      List.concat_map (entries_of_inductive raw) inds
-    | _ -> []
-    end
-  | _ -> []
-
-let count_indent s =
+let count_indent (s: string) : int option =
   let rec loop i =
     if i >= String.length s then None
     else match s.[i] with
@@ -242,7 +215,9 @@ let count_indent s =
   in
   loop 0
 
-let indentation_entries_of_sentence document (sentence: Document.sentence) =
+(** Uses indentation runs as a fallback for extension sentences whose AST does
+    not expose more precise foldable structure. *)
+let indentation_entries_of_sentence (document: Document.document) (sentence: Document.sentence) : entry list =
   let raw = Document.raw_document document in
   let text = RawDocument.string_in_range raw sentence.start sentence.stop in
   let lines = String.split_on_char '\n' text in
@@ -266,7 +241,7 @@ let indentation_entries_of_sentence document (sentence: Document.sentence) =
       let (_, start, _) = List.hd rev_run in
       let (_, _, stop) = List.hd run in
       let range: Range.t = { start = RawDocument.position_of_loc raw start; end_ = RawDocument.position_of_loc raw stop } in
-      begin match make_entry range with
+      begin match make_entry ~kind:(Some FoldingRangeKind.Region) range with
       | None -> acc
       | Some entry -> entry :: acc
       end
@@ -280,16 +255,95 @@ let indentation_entries_of_sentence document (sentence: Document.sentence) =
   in
   loop [] [] lines
 
-let sentence_entries_of_ast document sentence (ast: Synterp.vernac_control_entry) =
+(** Extracts folds from a record field or local definition declaration. *)
+let entries_of_local_decl (raw: RawDocument.t) : _ -> entry list = function
+  | Vernacexpr.AssumExpr (_, binders, ty) ->
+    entries_of_binders raw binders @ entry_of_constr_loc raw ty @ entries_of_constr raw ty
+  | Vernacexpr.DefExpr (_, binders, body, ty_opt) ->
+    entries_of_binders raw binders
+    @ entry_of_constr_loc raw body
+    @ entries_of_constr raw body
+    @ entries_of_constr_opt raw ty_opt
+
+(** Extracts folds from an inductive body, including constructor types and
+    record fields. *)
+let entries_of_inductive (raw: RawDocument.t) (((_coercion, (_name, _univs)), (params, extra_params), rtype, ctors), _notations) : entry list =
+  let param_entries = entries_of_binders raw params in
+  let extra_param_entries = Option.cata (entries_of_binders raw) [] extra_params in
+  let rtype_entries = entries_of_constr_opt raw rtype in
+  let ctor_entries =
+    match ctors with
+    | Vernacexpr.Constructors constructors ->
+      List.concat_map (fun (_, (name, ty)) ->
+        let name = Some (Names.Id.to_string name.CAst.v) in
+        entry_of_constr_loc ?name raw ty @ entries_of_constr raw ty
+      ) constructors
+    | Vernacexpr.RecordDecl (_, fields, _) ->
+      List.concat_map (fun (decl, _attrs) -> entries_of_local_decl raw decl) fields
+  in
+  param_entries @ extra_param_entries @ rtype_entries @ ctor_entries
+
+(** Extracts sub-sentence Gallina folds from vernacular AST nodes that contain
+    located terms. *)
+let entries_of_vernac_ast (document: Document.document) (sentence: Document.sentence) (ast: Synterp.vernac_control_entry) : entry list =
+  let raw = Document.raw_document document in
   match ast.v.expr with
+  | Vernacexpr.VernacSynPure pure ->
+    begin match pure with
+    | Vernacexpr.VernacDefinition (_, _, body) ->
+      begin match body with
+      | Vernacexpr.ProveBody (binders, ty) ->
+        entries_of_binders raw binders
+        @ entry_of_constr_loc raw ty
+        @ entries_of_constr raw ty
+      | Vernacexpr.DefineBody (binders, _, body, rest) ->
+        entries_of_binders raw binders
+        @ entry_of_constr_loc raw body @ entries_of_constr raw body
+        @ entries_of_constr_opt raw rest
+      end
+    | Vernacexpr.VernacStartTheoremProof (_, proofs) ->
+      List.concat_map (fun (_name_decl, (binders, ty)) ->
+        entries_of_binders raw binders
+        @ entry_of_constr_loc raw ty
+        @ entries_of_constr raw ty
+      ) proofs
+    | Vernacexpr.VernacFixpoint (_, (_, fixes)) ->
+      List.concat_map (fun fix ->
+        entries_of_binders raw fix.Vernacexpr.binders
+        @ entry_of_constr_loc raw fix.Vernacexpr.rtype
+        @ entries_of_constr raw fix.Vernacexpr.rtype
+        @ entries_of_constr_opt raw fix.Vernacexpr.body_def
+      ) fixes
+    | Vernacexpr.VernacCoFixpoint (_, cofixes) ->
+      List.concat_map (fun cofix ->
+        entries_of_binders raw cofix.Vernacexpr.binders
+        @ entry_of_constr_loc raw cofix.Vernacexpr.rtype
+        @ entries_of_constr raw cofix.Vernacexpr.rtype
+        @ entries_of_constr_opt raw cofix.Vernacexpr.body_def
+      ) cofixes
+    | Vernacexpr.VernacInductive (_, inds) ->
+      List.concat_map (entries_of_inductive raw) inds
+      @ option_to_list (entry_of_sentence document sentence)
+    | _ -> []
+    end
   | Vernacexpr.VernacSynterp (Synterp.EVernacRequire _)
   | Vernacexpr.VernacSynterp (Synterp.EVernacNotation _) ->
     option_to_list (entry_of_sentence document sentence)
   | Vernacexpr.VernacSynterp (Synterp.EVernacExtend _) ->
-    option_to_list (entry_of_sentence document sentence) @ indentation_entries_of_sentence document sentence
+    indentation_entries_of_sentence document sentence
   | _ -> []
 
-let apply_classification document (sentence: Document.sentence) (p_ast: Document.parsed_ast) state =
+(** Adds whole-sentence fold *)
+let full_sentence_entry (document: Document.document) (sentence: Document.sentence) (ast: Synterp.vernac_control_entry) : entry list =
+  match ast.v.expr with
+  | Vernacexpr.VernacSynterp (Synterp.EVernacExtend _) ->
+    option_to_list (entry_of_sentence document sentence)
+    @ indentation_entries_of_sentence document sentence
+  | _ -> []
+
+(** Updates the open-region stack according to Rocq's vernacular
+    classification for sections, modules, and proofs. *)
+let apply_classification (document: Document.document) (sentence: Document.sentence) (p_ast: Document.parsed_ast) (state: state) : state =
   let open Vernacextend in
   let ast = p_ast.ast in
   match p_ast.classification with
@@ -299,8 +353,8 @@ let apply_classification document (sentence: Document.sentence) (p_ast: Document
   | VtQed _ ->
     let range = Document.range_of_id document sentence.id in
     close_proof state range.start
-  | VtStartProof _ ->
-    open_proof document sentence state
+  | VtStartProof (_, names) ->
+    open_proof names state
   | VtSideff _ ->
     begin match ast.v.expr with
     | Vernacexpr.VernacSynterp (Synterp.EVernacBeginSection lident) ->
@@ -318,22 +372,25 @@ let apply_classification document (sentence: Document.sentence) (p_ast: Document
     end
   | _ -> state
 
-let add_ast_entries document (sentence: Document.sentence) (p_ast: Document.parsed_ast) state =
-  let raw = Document.raw_document document in
-  let entries = entries_of_vernac_ast raw p_ast.ast @ sentence_entries_of_ast document sentence p_ast.ast in
+(** Adds fold entries discovered from the current parsed AST to the current
+    open region or to the top level. *)
+let add_ast_entries (document: Document.document) (sentence: Document.sentence) (p_ast: Document.parsed_ast) (state: state) : state =
+  let entries = entries_of_vernac_ast document sentence p_ast.ast
+    @ full_sentence_entry document sentence p_ast.ast in
   add_entries state entries
 
-let comment_entries document =
+(** Converts recorded multi-line comments into LSP comment folding entries. *)
+let comment_entries (document: Document.document) : entry list =
   let raw = Document.raw_document document in
   Document.comments document
   |> List.filter_map (fun (comment: Document.comment) ->
     let range: Range.t = { start = RawDocument.position_of_loc raw comment.start; end_ = RawDocument.position_of_loc raw comment.stop } in
     make_entry ~kind:(Some FoldingRangeKind.Comment) range)
 
-let rec flatten_entry (entry: entry) =
+let rec flatten_entry (entry: entry) : entry list =
   entry :: List.concat_map flatten_entry entry.children
 
-let compare_range (a: entry) (b: entry) =
+let compare_range (a: entry) (b: entry) : int =
   let c = Int.compare a.range.start.line b.range.start.line in
   if c <> 0 then c else
   let c = Int.compare a.range.start.character b.range.start.character in
@@ -342,29 +399,25 @@ let compare_range (a: entry) (b: entry) =
   if c <> 0 then c else
   Int.compare a.range.end_.character b.range.end_.character
 
-let same_range (a: entry) (b: entry) =
+let range_eq (a: entry) (b: entry) : bool =
   a.range = b.range && a.kind = b.kind
 
-let sort_dedup_filter entries =
+(** Normalizes collected entries by flattening nesting, removing single-line
+    ranges, sorting by source order, and dropping exact duplicates. *)
+let normalize_entries (entries: entry list) : entry list =
   entries
   |> List.concat_map flatten_entry
   |> List.filter (fun entry -> range_spans_lines entry.range)
   |> List.sort compare_range
   |> List.fold_left (fun acc entry ->
     match acc with
-    | last :: _ when same_range last entry -> acc
+    | last :: _ when range_eq last entry -> acc
     | _ -> entry :: acc
   ) []
   |> List.rev
 
-let to_lsp (entry: entry) =
-  let startLine = entry.range.start.line in
-  let startCharacter = entry.range.start.character in
-  let endLine = entry.range.end_.line in
-  let endCharacter = entry.range.end_.character in
-  FoldingRange.create ~startLine ~startCharacter ~endLine ~endCharacter ?kind:entry.kind ()
-
-let folding_ranges document =
+(** Get the structured outline of the documents *)
+let document_entries (document: Document.document) : entry list =
   let state =
     List.fold_left (fun state (sentence: Document.sentence) ->
       match sentence.ast with
@@ -373,7 +426,20 @@ let folding_ranges document =
         state
         |> apply_classification document sentence ast
         |> add_ast_entries document sentence ast
-    ) empty_state (Document.sentences_sorted_by_loc document)
+    ) init_entry_state (Document.sentences_sorted_by_loc document)
   in
-  let entries = List.rev state.top @ comment_entries document in
-  List.map to_lsp (sort_dedup_filter entries)
+  let entries = List.rev state.top
+    @ comment_entries document in
+  entries
+
+(** Convert entry to an LSP folding range *)
+let folding_range_of_entry (entry: entry) : FoldingRange.t =
+  let startLine = entry.range.start.line in
+  let startCharacter = entry.range.start.character in
+  let endLine = entry.range.end_.line in
+  let endCharacter = entry.range.end_.character in
+  FoldingRange.create ~startLine ~startCharacter ~endLine ~endCharacter ?kind:entry.kind ()
+
+(** Computes all LSP folding ranges for a parsed document. *)
+let folding_ranges (document: Document.document) : FoldingRange.t list =
+  List.map folding_range_of_entry (normalize_entries (document_entries document))
