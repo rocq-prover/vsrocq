@@ -85,17 +85,90 @@ let%test_unit "parse.extensions" =
   [%test_eq: int list] start_positions [ 0; 35 ];
   check_no_diag st
 
+let folding_ranges_of text =
+  let st, _init_events = em_init_test_doc ~text in
+  DocumentManager.get_folding_ranges st
+
+let has_folding_range ?kind ~startLine ~endLine ranges =
+  let matches_kind (range: Lsp.Types.FoldingRange.t) =
+    match kind with
+    | None -> true
+    | Some kind -> Stdlib.(=) range.kind (Some kind)
+  in
+  Stdlib.List.exists (fun (range: Lsp.Types.FoldingRange.t) ->
+    range.startLine = startLine && range.endLine = endLine && matches_kind range
+  ) ranges
+
+let assert_has_folding_range ?kind ~startLine ~endLine ranges =
+  [%test_eq: bool] (has_folding_range ?kind ~startLine ~endLine ranges) true
+
+let assert_no_folding_range ?kind ~startLine ~endLine ranges =
+  [%test_eq: bool] (has_folding_range ?kind ~startLine ~endLine ranges) false
+
+let%test_unit "folding.proof_starts_at_proof_command" =
+  folding_ranges_of "Lemma foo : True.\nProof.\n  exact I.\nQed."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:3
+
+let%test_unit "folding.proof_without_proof_command_starts_at_first_tactic" =
+  folding_ranges_of "Lemma foo : True.\n  exact I.\nQed."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:2
+
 let%test_unit "folding.proof_starts_at_first_proof_step" =
-  let st, _init_events = em_init_test_doc ~text:"Lemma foo : True.\nProof.\n  exact I.\n  exact I.\nQed." in
-  let ranges = DocumentManager.get_folding_ranges st in
-  let has_proof_range (range: Lsp.Types.FoldingRange.t) =
-    range.startLine = 1 && range.endLine = 4
-  in
-  let has_late_start_range (range: Lsp.Types.FoldingRange.t) =
-    range.startLine = 3 && range.endLine = 4
-  in
-  [%test_eq: bool] (Stdlib.List.exists has_proof_range ranges) true;
-  [%test_eq: bool] (Stdlib.List.exists has_late_start_range ranges) false
+  let ranges = folding_ranges_of "Lemma foo : True.\nProof.\n  exact I.\n  exact I.\nQed." in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:4 ranges;
+  assert_no_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:3 ~endLine:4 ranges
+
+let%test_unit "folding.defined_emits_proof_fold" =
+  folding_ranges_of "Lemma foo : True.\nProof.\n  exact I.\nDefined."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:3
+
+let%test_unit "folding.admitted_emits_proof_fold" =
+  folding_ranges_of "Lemma foo : True.\nProof.\nAdmitted."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:2
+
+let%test_unit "folding.abort_emits_proof_fold" =
+  folding_ranges_of "Lemma foo : True.\nProof.\nAbort."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:2
+
+let%test_unit "folding.section" =
+  folding_ranges_of "Section S.\nDefinition x := true.\nEnd S."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:2
+
+let%test_unit "folding.module" =
+  folding_ranges_of "Module M.\nDefinition x := true.\nEnd M."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:2
+
+let%test_unit "folding.nested_section_module" =
+  let ranges = folding_ranges_of "Module M.\nSection S.\nDefinition x := true.\nEnd S.\nEnd M." in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:4 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:3 ranges
+
+let%test_unit "folding.multiline_comment" =
+  folding_ranges_of "(* one\ntwo *)\nCheck nat."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Comment ~startLine:0 ~endLine:1
+
+let%test_unit "folding.single_line_ranges_filtered" =
+  let ranges = folding_ranges_of "Definition x := true.\n(* comment *)" in
+  [%test_eq: int] (Stdlib.List.length ranges) 0
+
+let%test_unit "folding.inductive_whole_declaration" =
+  folding_ranges_of "Inductive color :=\n| Red\n| Blue."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:2
+
+let%test_unit "folding.inductive_constructor_type" =
+  let ranges = folding_ranges_of "Inductive tree : Type :=\n| Leaf : tree\n| Node :\n    tree ->\n    tree ->\n    tree." in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:5 ranges;
+  [%test_eq: bool] (Stdlib.List.exists (fun (range: Lsp.Types.FoldingRange.t) ->
+    range.startLine > 0 && range.endLine = 5 && Stdlib.(=) range.kind (Some Lsp.Types.FoldingRangeKind.Region)
+  ) ranges) true
+
+let%test_unit "folding.record_whole_declaration" =
+  folding_ranges_of "Record box := {\n  value : nat\n}."
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:2
+
+let%test_unit "folding.single_line_inductive_filtered" =
+  let ranges = folding_ranges_of "Inductive color := Red | Blue." in
+  [%test_eq: int] (Stdlib.List.length ranges) 0
 
 let%test_unit "parse.invalidate_before_module" =
   let st, init_events = em_init_test_doc ~text:"Check nat. Module M := Nat." in
