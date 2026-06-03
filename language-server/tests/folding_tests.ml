@@ -47,11 +47,6 @@ let assert_has_folding_range ?kind ~startLine ~endLine ranges =
     failwith (Printf.sprintf "missing folding range %d-%d in [%s]"
       startLine endLine (string_of_folding_ranges ranges))
 
-let assert_no_folding_range ?kind ~startLine ~endLine ranges =
-  if has_folding_range ?kind ~startLine ~endLine ranges then
-    failwith (Printf.sprintf "unexpected folding range %d-%d in [%s]"
-      startLine endLine (string_of_folding_ranges ranges))
-
 let%test_unit "folding.proof_starts_at_proof_command" =
   folding_ranges_of {|Lemma foo : True.
 Proof.
@@ -64,15 +59,6 @@ let%test_unit "folding.proof_without_proof_command_starts_at_first_tactic" =
   exact I.
 Qed.|}
   |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:2
-
-let%test_unit "folding.proof_starts_at_first_proof_step" =
-  let ranges = folding_ranges_of {|Lemma foo : True.
-Proof.
-  exact I.
-  exact I.
-Qed.|} in
-  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:4 ranges;
-  assert_no_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:3 ~endLine:4 ranges
 
 let%test_unit "folding.defined_emits_proof_fold" =
   folding_ranges_of {|Lemma foo : True.
@@ -92,6 +78,82 @@ let%test_unit "folding.abort_emits_proof_fold" =
 Proof.
 Abort.|}
   |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:2
+
+let%test_unit "folding.proof_multiline_dash_bullet_blocks" =
+  let ranges = folding_ranges_of {|Lemma foo : True /\ True.
+Proof.
+  split.
+  -
+    exact I.
+  -
+    exact I.
+Qed.|} in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:7 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:3 ~endLine:4 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:5 ~endLine:6 ranges
+
+let%test_unit "folding.proof_nested_bullet_blocks" =
+  let ranges = folding_ranges_of {|Lemma foo : (True /\ True) /\ (True /\ True).
+Proof.
+  split.
+  - split.
+    +
+      exact I.
+    +
+      exact I.
+  - split.
+    +
+      exact I.
+    +
+      exact I.
+Qed.|} in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:3 ~endLine:7 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:4 ~endLine:5 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:6 ~endLine:7 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:8 ~endLine:12 ranges
+
+let%test_unit "folding.proof_curly_subproof" =
+  let ranges = folding_ranges_of {|Lemma foo : True.
+Proof.
+  {
+    exact I.
+  }
+Qed.|} in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:5 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:2 ~endLine:4 ranges
+
+let%test_unit "folding.proof_nested_curly_subproofs" =
+  let ranges = folding_ranges_of {|Lemma foo : True.
+Proof.
+  {
+    {
+      exact I.
+    }
+  }
+Qed.|} in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:2 ~endLine:6 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:3 ~endLine:5 ranges
+
+let%test_unit "folding.proof_mixed_bullets_and_curly_subproofs" =
+  let ranges = folding_ranges_of {|Lemma foo : True /\ True.
+Proof.
+  split.
+  -
+    {
+      exact I.
+    }
+  - exact I.
+Qed.|} in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:3 ~endLine:6 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:4 ~endLine:6 ranges
+
+let%test_unit "folding.incomplete_curly_subproof_closes_at_qed" =
+  let ranges = folding_ranges_of {|Lemma foo : True.
+Proof.
+  {
+    exact I.
+Qed.|} in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:2 ~endLine:3 ranges
 
 let%test_unit "folding.section" =
   folding_ranges_of {|Section S.

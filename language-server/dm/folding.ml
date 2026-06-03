@@ -11,6 +11,8 @@ type region_type =
   | ProofRegion
   | SectionRegion
   | ModuleRegion
+  | BulletRegion of Proof_bullet.t * int
+  | SubproofRegion
 
 (** Internal folding entry tree; children are accumulated while an enclosing
     region is still open and flattened before conversion to LSP ranges. *)
@@ -66,6 +68,12 @@ let add_entries (state: state) (entries: entry list) : state =
 let open_region (state: state) (region: open_region) : state =
   { state with stack = region :: state.stack }
 
+let end_of_previous_line (raw: RawDocument.t) (position: Position.t) : Position.t =
+  if position.line = 0 then position
+  else
+    let line_start = RawDocument.loc_of_position raw { line = position.line; character = 0 } in
+    RawDocument.position_of_loc raw (line_start - 1)
+
 (** Closes the first open region when it matches [pred], attaching its collected
     children to the emitted entry. *)
 let close_top_region (state: state) (pred: open_region -> bool) (end_: Position.t) : state =
@@ -90,6 +98,48 @@ let begin_proof (state: state) (start: Position.t) : state =
 let close_proof (state: state) (end_: Position.t) : state =
   close_top_region state (fun region -> region.region_type = ProofRegion) end_
 
+let close_bullet (state: state) (end_: Position.t) : state =
+  close_top_region state (function
+    | { region_type = BulletRegion _; _ } -> true
+    | _ -> false
+  ) end_
+
+let close_subproof (state: state) (end_: Position.t) : state =
+  close_top_region state (function
+    | { region_type = SubproofRegion; _ } -> true
+    | _ -> false
+  ) end_
+
+let close_proof_subregions (raw: RawDocument.t) (state: state) (end_: Position.t) : state =
+  let excluded_end = end_of_previous_line raw end_ in
+  let rec loop state =
+    match state.stack with
+    | { region_type = BulletRegion _; _ } :: _ ->
+      loop (close_bullet state excluded_end)
+    | { region_type = SubproofRegion; _ } :: _ ->
+      loop (close_subproof state excluded_end)
+    | _ -> state
+  in
+  loop state
+
+let rec close_subproof_region (raw: RawDocument.t) (state: state) (end_: Position.t) : state =
+  match state.stack with
+  | { region_type = BulletRegion _; _ } :: _ ->
+    close_subproof_region raw (close_bullet state (end_of_previous_line raw end_)) end_
+  | { region_type = SubproofRegion; _ } :: _ ->
+    close_subproof state end_
+  | _ -> state
+
+let rec close_bullet_regions_for (raw: RawDocument.t) (bullet: Proof_bullet.t) (indent: int) (state: state) (end_: Position.t) : state =
+  let excluded_end = end_of_previous_line raw end_ in
+  match state.stack with
+  | { region_type = BulletRegion (_, open_indent); _ } :: _ when open_indent > indent ->
+    close_bullet_regions_for raw bullet indent (close_bullet state excluded_end) end_
+  | { region_type = BulletRegion (open_bullet, open_indent); _ } :: _
+      when open_indent = indent && Stdlib.(=) open_bullet bullet ->
+    close_bullet_regions_for raw bullet indent (close_bullet state excluded_end) end_
+  | _ -> state
+
 let close_segment (state: state) (name: string) (end_: Position.t) : state =
   close_top_region state (fun region ->
     match region.name with
@@ -110,6 +160,24 @@ let open_segment (document: Document.document) (sentence: Document.sentence) (li
 (** Opens a proof region whose start will be set by the first proof command. *)
 let open_proof (names: Names.variable list) (state: state) : state =
   open_region state { name = name_of_variables names; region_type = ProofRegion; start = None; kind = Some FoldingRangeKind.Region; children = [] }
+
+let open_bullet_region (bullet: Proof_bullet.t) (indent: int) (start: Position.t) (state: state) : state =
+  open_region state { name = None; region_type = BulletRegion (bullet, indent); start = Some start; kind = Some FoldingRangeKind.Region; children = [] }
+
+let open_subproof_region (start: Position.t) (state: state) : state =
+  open_region state { name = None; region_type = SubproofRegion; start = Some start; kind = Some FoldingRangeKind.Region; children = [] }
+
+type proof_delimiter =
+  | ProofBullet of Proof_bullet.t
+  | ProofSubproofStart
+  | ProofSubproofEnd
+
+let proof_delimiter_of_ast (ast: Synterp.vernac_control_entry) : proof_delimiter option =
+  match ast.v.expr with
+  | Vernacexpr.VernacSynPure (Vernacexpr.VernacBullet bullet) -> Some (ProofBullet bullet)
+  | Vernacexpr.VernacSynPure (Vernacexpr.VernacSubproof _) -> Some ProofSubproofStart
+  | Vernacexpr.VernacSynPure Vernacexpr.VernacEndSubproof -> Some ProofSubproofEnd
+  | _ -> None
 
 let loc_entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
   match e.CAst.loc with
@@ -345,13 +413,25 @@ let full_sentence_entry (document: Document.document) (sentence: Document.senten
     classification for sections, modules, and proofs. *)
 let apply_classification (document: Document.document) (sentence: Document.sentence) (p_ast: Document.parsed_ast) (state: state) : state =
   let open Vernacextend in
+  let raw = Document.raw_document document in
   let ast = p_ast.ast in
   match p_ast.classification with
   | VtProofStep _ ->
     let range = Document.range_of_id document sentence.id in
-    begin_proof state range.start
+    let state = begin_proof state range.start in
+    begin match proof_delimiter_of_ast ast with
+    | Some (ProofBullet bullet) ->
+      let state = close_bullet_regions_for raw bullet range.start.character state range.start in
+      open_bullet_region bullet range.start.character range.start state
+    | Some ProofSubproofStart ->
+      open_subproof_region range.start state
+    | Some ProofSubproofEnd ->
+      close_subproof_region raw state range.start
+    | None -> state
+    end
   | VtQed _ ->
     let range = Document.range_of_id document sentence.id in
+    let state = close_proof_subregions raw state range.start in
     close_proof state range.start
   | VtStartProof (_, names) ->
     open_proof names state
