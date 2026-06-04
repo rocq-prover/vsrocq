@@ -11,3 +11,4 @@ language-server/*.install
 .DS_Store
 result
 *.local*
+_opam

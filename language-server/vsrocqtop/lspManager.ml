@@ -441,7 +441,7 @@ let documentFoldingRange id params =
   | Some { st } ->
     log (fun () -> "[documentFoldingRange] getting folding ranges");
     if Dm.DocumentManager.is_parsing st then
-      Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} 
+      Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"}
     else
       let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
       Ok(Some folding_ranges)

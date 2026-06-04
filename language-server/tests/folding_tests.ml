@@ -155,11 +155,33 @@ Proof.
 Qed.|} in
   assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:2 ~endLine:3 ranges
 
+let%test_unit "folding.incomplete_proof_closes_at_eof" =
+  folding_ranges_of {|Lemma foo : True.
+Proof.
+  exact I.|}
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:2
+
+let%test_unit "folding.incomplete_proof_bullet_closes_at_eof" =
+  let ranges = folding_ranges_of {|Lemma foo : True /\ True.
+Proof.
+  split.
+  -
+    exact I.
+  -
+    exact I.|} in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:6 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:5 ~endLine:6 ranges
+
 let%test_unit "folding.section" =
   folding_ranges_of {|Section S.
 Definition x := true.
 End S.|}
   |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:2
+
+let%test_unit "folding.incomplete_section_closes_at_eof" =
+  folding_ranges_of {|Section S.
+Definition x := true.|}
+  |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:1
 
 let%test_unit "folding.module" =
   folding_ranges_of {|Module M.
