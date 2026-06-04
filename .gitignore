@@ -10,3 +10,4 @@ language-server/tests/vsrocq_config.mlh
 language-server/*.install
 .DS_Store
 result
+*.local*
