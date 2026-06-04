@@ -147,6 +147,18 @@ let close_segment (state: state) (name: string) (end_: Position.t) : state =
     | None -> false
   ) end_
 
+let finalize_open_regions (state: state) (end_: Position.t) : state =
+  let rec loop state =
+    match state.stack with
+    | [] -> state
+    | ({ start = Some start; _ } as region) :: stack ->
+      let entry = { name = region.name; range = { start; end_ }; kind = region.kind; children = List.rev region.children } in
+      loop (add_entry { state with stack } entry)
+    | _ :: stack ->
+      loop { state with stack }
+  in
+  loop state
+
 let name_of_variables : Names.variable list -> string option = function
   | [] -> None
   | name :: _ -> Some (Names.Id.to_string name)
@@ -187,62 +199,20 @@ let loc_entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : ent
     | None -> []
     | Some entry -> [entry]
 
-(** Extracts folding entries from a located Gallina expression and selected
-    nested subexpressions that are useful fold points. *)
-let rec entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
+let entries_of_whole_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
+  loc_entries_of_constr raw e
+
+(** Extracts folding entries from selected Gallina subexpressions that are useful
+    fold points. *)
+let entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
   let open Constrexpr in
-  let self = entries_of_constr raw in
-  let self_opt = function None -> [] | Some e -> self e in
-  let entries_of_binders binders =
-    List.concat_map (function
-      | CLocalAssum (_, _, _, ty) -> self ty
-      | CLocalDef (_, _, e, e_opt) -> self e @ self_opt e_opt
-      | CLocalPattern _ -> []
-    ) binders
-  in
-  let nested =
+  Utilities.fold_constr (fun entries e ->
     match e.CAst.v with
-    | CRef _ | CHole _ | CPatVar _ | CEvar _ | CSort _ | CPrim _
-    | CGenarg _ | CGenargGlob _ -> []
-    | CNotation (_, _, (terms, recursive_terms, _, recursive_binders)) ->
-      List.concat_map self terms
-      @ List.concat_map (List.concat_map self) recursive_terms
-      @ List.concat_map entries_of_binders recursive_binders
-    | CFix (_, fixes) ->
-      List.concat_map (fun (_name, _rel, _order, binders, rtype, body) ->
-        entries_of_binders binders @ self rtype @ self body
-      ) fixes
-    | CCoFix (_, cofixes) ->
-      List.concat_map (fun (_name, _rel, binders, rtype, body) ->
-        entries_of_binders binders @ self rtype @ self body
-      ) cofixes
-    | CProdN (binders, body) | CLambdaN (binders, body) ->
-      entries_of_binders binders @ self body
-    | CLetIn (_, e1, e2_opt, e3) ->
-      self e1 @ self_opt e2_opt @ self e3
-    | CAppExpl (_, args) -> List.concat_map self args
-    | CApp (fn, args) -> self fn @ List.concat_map (fun (arg, _) -> self arg) args
-    | CProj (_, _, args, e) ->
-      List.concat_map (fun (arg, _) -> self arg) args @ self e
-    | CRecord fields -> List.concat_map (fun (_, e) -> self e) fields
-    | CCases (_style, ret, scrutinees, branches) ->
-      self_opt ret
-      @ List.concat_map (fun (e, _, _) -> self e) scrutinees
-      @ List.concat_map (fun (branch: branch_expr) -> let (_pats, body) = branch.CAst.v in self body) branches
-    | CLetTuple (_, _, e1, e2) -> self e1 @ self e2
-    | CIf (cond, (_, ret_opt), then_br, else_br) ->
-      self cond @ self_opt ret_opt @ self then_br @ self else_br
-    | CCast (e1, _, e2) -> self e1 @ self e2
-    | CGeneralization (_, e) | CDelimiters (_, _, e) -> self e
-    | CArray (_, elems, _, default) ->
-      List.concat_map self (Array.to_list elems) @ self default
-  in
-  let own =
-    match e.CAst.v with
-    | CCases _ | CIf _ | CLambdaN _ | CLetIn _ -> loc_entries_of_constr raw e
-    | _ -> []
-  in
-  own @ nested
+    | CCases _ | CIf _ | CLambdaN _ | CLetIn _ ->
+      List.rev_append (loc_entries_of_constr raw e) entries
+    | _ -> entries
+  ) [] e
+  |> List.rev
 
 let entries_of_constr_opt (raw: RawDocument.t) : Constrexpr.constr_expr option -> entry list = function
   | None -> []
@@ -258,14 +228,6 @@ let entries_of_binders (raw: RawDocument.t) binders : entry list =
         @ entries_of_constr_opt raw e_opt
     | CLocalPattern _ -> []
   ) binders
-
-let entry_of_constr_loc ?name (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
-  match e.CAst.loc with
-  | None -> []
-  | Some loc ->
-    match entry_of_loc ?name raw loc with
-    | None -> []
-    | Some entry -> [entry]
 
 let option_to_list (x: 'a option) : 'a list =
   match x with
@@ -326,10 +288,9 @@ let indentation_entries_of_sentence (document: Document.document) (sentence: Doc
 (** Extracts folds from a record field or local definition declaration. *)
 let entries_of_local_decl (raw: RawDocument.t) : _ -> entry list = function
   | Vernacexpr.AssumExpr (_, binders, ty) ->
-    entries_of_binders raw binders @ entry_of_constr_loc raw ty @ entries_of_constr raw ty
+    entries_of_binders raw binders @ entries_of_constr raw ty
   | Vernacexpr.DefExpr (_, binders, body, ty_opt) ->
     entries_of_binders raw binders
-    @ entry_of_constr_loc raw body
     @ entries_of_constr raw body
     @ entries_of_constr_opt raw ty_opt
 
@@ -342,9 +303,8 @@ let entries_of_inductive (raw: RawDocument.t) (((_coercion, (_name, _univs)), (p
   let ctor_entries =
     match ctors with
     | Vernacexpr.Constructors constructors ->
-      List.concat_map (fun (_, (name, ty)) ->
-        let name = Some (Names.Id.to_string name.CAst.v) in
-        entry_of_constr_loc ?name raw ty @ entries_of_constr raw ty
+      List.concat_map (fun (_, (_name, ty)) ->
+        entries_of_whole_constr raw ty @ entries_of_constr raw ty
       ) constructors
     | Vernacexpr.RecordDecl (_, fields, _) ->
       List.concat_map (fun (decl, _attrs) -> entries_of_local_decl raw decl) fields
@@ -362,30 +322,27 @@ let entries_of_vernac_ast (document: Document.document) (sentence: Document.sent
       begin match body with
       | Vernacexpr.ProveBody (binders, ty) ->
         entries_of_binders raw binders
-        @ entry_of_constr_loc raw ty
         @ entries_of_constr raw ty
       | Vernacexpr.DefineBody (binders, _, body, rest) ->
         entries_of_binders raw binders
-        @ entry_of_constr_loc raw body @ entries_of_constr raw body
+        @ entries_of_constr raw body
         @ entries_of_constr_opt raw rest
       end
     | Vernacexpr.VernacStartTheoremProof (_, proofs) ->
       List.concat_map (fun (_name_decl, (binders, ty)) ->
         entries_of_binders raw binders
-        @ entry_of_constr_loc raw ty
+        @ entries_of_whole_constr raw ty
         @ entries_of_constr raw ty
       ) proofs
     | Vernacexpr.VernacFixpoint (_, (_, fixes)) ->
       List.concat_map (fun fix ->
         entries_of_binders raw fix.Vernacexpr.binders
-        @ entry_of_constr_loc raw fix.Vernacexpr.rtype
         @ entries_of_constr raw fix.Vernacexpr.rtype
         @ entries_of_constr_opt raw fix.Vernacexpr.body_def
       ) fixes
     | Vernacexpr.VernacCoFixpoint (_, cofixes) ->
       List.concat_map (fun cofix ->
         entries_of_binders raw cofix.Vernacexpr.binders
-        @ entry_of_constr_loc raw cofix.Vernacexpr.rtype
         @ entries_of_constr raw cofix.Vernacexpr.rtype
         @ entries_of_constr_opt raw cofix.Vernacexpr.body_def
       ) cofixes
@@ -508,6 +465,9 @@ let document_entries (document: Document.document) : entry list =
         |> add_ast_entries document sentence ast
     ) init_entry_state (Document.sentences_sorted_by_loc document)
   in
+  let raw = Document.raw_document document in
+  let eof = RawDocument.position_of_loc raw (RawDocument.end_loc raw) in
+  let state = finalize_open_regions state eof in
   let entries = List.rev state.top
     @ comment_entries document in
   entries
