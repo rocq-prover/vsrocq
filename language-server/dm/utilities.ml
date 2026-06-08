@@ -67,6 +67,22 @@ let vernacstate_synterp_parsing x = x.Vernacstate.synterp.Vernacstate.Synterp.pa
 let vernacstate_synterp_parsing x = Vernacstate.(Synterp.parsing x.synterp)
 [%%endif]
 
+let option_to_list = function
+  | None -> []
+  | Some x -> [x]
+
+[%%if rocq = "8.18" || rocq = "8.19"]
+let constrs_of_local_binder = function
+  | Constrexpr.CLocalAssum (_, _, ty) -> [ty]
+  | Constrexpr.CLocalDef (_, e, e_opt) -> e :: option_to_list e_opt
+  | Constrexpr.CLocalPattern _ -> []
+[%%else]
+let constrs_of_local_binder = function
+  | Constrexpr.CLocalAssum (_, _, _, ty) -> [ty]
+  | Constrexpr.CLocalDef (_, _, e, e_opt) -> e :: option_to_list e_opt
+  | Constrexpr.CLocalPattern _ -> []
+[%%endif]
+
 let rec fold_constr (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'acc) (e : Constrexpr.constr_expr) : 'acc =
   let acc = f acc e in
   fold_constr_children f acc e
@@ -84,13 +100,7 @@ and fold_constr_children (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'ac
     | Some e -> fold_constr f acc e
   in
   let walk_binders acc binders =
-    List.fold_left (fun acc b -> match b with
-      | CLocalAssum (_, _, _, ty) -> fold_constr f acc ty
-      | CLocalDef (_, _, e, e_opt) ->
-        let acc = fold_constr f acc e in
-        walk_opt acc e_opt
-      | CLocalPattern _ -> acc
-    ) acc binders
+    List.fold_left (fun acc b -> walk acc (constrs_of_local_binder b)) acc binders
   in
   let walk_branches acc branches =
     List.fold_left (fun acc (b : branch_expr) ->
