@@ -219,15 +219,9 @@ let entries_of_constr_opt (raw: RawDocument.t) : Constrexpr.constr_expr option -
   | Some e -> entries_of_constr raw e
 
 let entries_of_binders (raw: RawDocument.t) binders : entry list =
-  let open Constrexpr in
-  List.concat_map (function
-    | CLocalAssum (_, _, _, ty) ->
-        entries_of_constr raw ty
-    | CLocalDef (_, _, e, e_opt) ->
-        entries_of_constr raw e
-        @ entries_of_constr_opt raw e_opt
-    | CLocalPattern _ -> []
-  ) binders
+  binders
+  |> List.concat_map Utilities.constrs_of_local_binder
+  |> List.concat_map (entries_of_constr raw)
 
 let option_to_list (x: 'a option) : 'a list =
   match x with
@@ -311,6 +305,23 @@ let entries_of_inductive (raw: RawDocument.t) (((_coercion, (_name, _univs)), (p
   in
   param_entries @ extra_param_entries @ rtype_entries @ ctor_entries
 
+let entries_of_recursive_defs raw defs =
+  List.concat_map (fun def ->
+    entries_of_binders raw def.Vernacexpr.binders
+    @ entries_of_constr raw def.Vernacexpr.rtype
+    @ entries_of_constr_opt raw def.Vernacexpr.body_def
+  ) defs
+
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
+let entries_of_fixpoint raw = function
+  | Vernacexpr.VernacFixpoint (_, fixes) -> entries_of_recursive_defs raw fixes
+  | _ -> []
+[%%else]
+let entries_of_fixpoint raw = function
+  | Vernacexpr.VernacFixpoint (_, (_, fixes)) -> entries_of_recursive_defs raw fixes
+  | _ -> []
+[%%endif]
+
 (** Extracts sub-sentence Gallina folds from vernacular AST nodes that contain
     located terms. *)
 let entries_of_vernac_ast (document: Document.document) (sentence: Document.sentence) (ast: Synterp.vernac_control_entry) : entry list =
@@ -334,18 +345,10 @@ let entries_of_vernac_ast (document: Document.document) (sentence: Document.sent
         @ entries_of_whole_constr raw ty
         @ entries_of_constr raw ty
       ) proofs
-    | Vernacexpr.VernacFixpoint (_, (_, fixes)) ->
-      List.concat_map (fun fix ->
-        entries_of_binders raw fix.Vernacexpr.binders
-        @ entries_of_constr raw fix.Vernacexpr.rtype
-        @ entries_of_constr_opt raw fix.Vernacexpr.body_def
-      ) fixes
+    | Vernacexpr.VernacFixpoint _ as pure ->
+      entries_of_fixpoint raw pure
     | Vernacexpr.VernacCoFixpoint (_, cofixes) ->
-      List.concat_map (fun cofix ->
-        entries_of_binders raw cofix.Vernacexpr.binders
-        @ entries_of_constr raw cofix.Vernacexpr.rtype
-        @ entries_of_constr_opt raw cofix.Vernacexpr.body_def
-      ) cofixes
+      entries_of_recursive_defs raw cofixes
     | Vernacexpr.VernacInductive (_, inds) ->
       List.concat_map (entries_of_inductive raw) inds
       @ option_to_list (entry_of_sentence document sentence)
