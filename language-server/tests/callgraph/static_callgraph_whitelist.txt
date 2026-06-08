@@ -37,6 +37,8 @@ SM\.
 Dm\.Log\.
 Dm\.RawDocument\.get_character_loc\.loop
 Dm\.RawDocument\.get_character_pos\.loop
+Dm\.Folding\.
+Dm\.Utilities\.fold_constr
 Dm\.Types\.
 get_document_symbols\.
 Internal\.string_of_state\.string_of_state
