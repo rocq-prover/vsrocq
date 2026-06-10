@@ -256,3 +256,28 @@ type PrintRocqResponse = PpString;
 
 The verb `prover/interrupt` forces the interruption of Rocq interpreter. It
 takes an argument `textDocument` of type `VersionedTextDocumentIdentifier`.
+
+## External Extension API
+
+VSRocq exposes a public API that allows third-party extensions to access live proof state updates without spawning their own language server instance.
+
+The API is accessible via the VSCode extension API:
+
+```typescript
+const vsrocq = vscode.extensions.getExtension('rocq-prover.vsrocq');
+const api = await vsrocq.activate();
+```
+
+The `onProofStateChanged` event fires every time the proof state updates, e.g., when the user steps through a proof.
+
+```typescript
+api.onProofStateChanged((pv: ProofViewNotification) => {
+    // pv.proof.goals
+    // pv.proof.shelvedGoals
+    // pv.proof.givenUpGoals
+    // pv.proof.unfocusedGoals
+    // pv.messages (e.g. idtac output)
+});
+```
+
+`pv.proof` is `null` when the cursor is outside a proof. Proof state data is provided as the nested array `PpString` and can be converted to plain text using the `stringOfPpString` function in `client/pp-display/src/utilities.ts`.
