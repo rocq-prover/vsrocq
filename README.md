@@ -22,13 +22,13 @@ and (2) install and configure the VsRocq extension in either VS Code or VSCodium
 
 ### Installing the language server
 
-**Version check (recommended).** Before installing the language server, check the installed VsRocq extension version in VS Code (Extensions view → “VsRocq” → version). 
+**Version check (recommended).** Before installing the language server, check the installed VsRocq extension version in VS Code (Extensions view → “VsRocq” → version).
 The VS Code extension and the opam package `vsrocq-language-server` are released independently; if their versions are mismatched, the language server may fail during LSP initialization and commands like "Interpret to point" may appear to do nothing.
 
 After creating an opam switch, pin Rocq,
 and install the `vsrocq-language-server` package:
 ```shell
-$ opam pin add rocq-core 9.1.0 # replace with correct version 
+$ opam pin add rocq-core 9.1.0 # replace with correct version
 # For Coq 8.x: use coq / coq-core packages instead of rocq-core
 $ opam install vsrocq-language-server.2.3.4 # replace "2.3.4" with correct version
 ```
@@ -56,6 +56,10 @@ for pre-release ```v2.3.1```:
 $ opam pin add vsrocq-language-server.2.3.1  https://github.com/rocq-prover/vsrocq/releases/download/v2.3.1/vsrocq-language-server-2.3.1.tar.gz
 ```
 When pinning a pre-release language server, ensure you also select the matching VsRocq extension version in VS Code.
+
+#### Using a Local Version of Rocq
+
+See the developers [documentation](https://github.com/rocq-prover/vsrocq/blob/main/docs/developers.md#composing-the-build-with-rocq)
 
 ### Installing and configuring the extension
 
@@ -98,20 +102,20 @@ If you are unable to set-up vsrocq, feel free to contact us on the ```VsRocq Dev
 Vsrocq allows users to opt for continuous checking, see the goal panel update as you scroll or edit your document.
 ![](gif/continuous-mode.gif)
 
-By default, vsrocq is configured to use classic step by step checking mode. 
+By default, vsrocq is configured to use classic step by step checking mode.
 ![](gif/manual-mode.gif)
 
-* Customisable goal panel 
-  
+* Customisable goal panel
+
 Users can choose their preferred display mode, see goals in accordion lists...
 ![](gif/goals-accordion.gif)
 
-... Or organized in tabs. 
+... Or organized in tabs.
 ![](gif/goals-tab.gif)
 
 * Dedicated panel for queries and their history
 
-We now support a dedicated panel for queries. We currently support Search, Check, About, Locate and Print with plans 
+We now support a dedicated panel for queries. We currently support Search, Check, About, Locate and Print with plans
 to add more in the future.
 ![](gif/query-panel.gif)
 
@@ -134,7 +138,7 @@ We now support a document outline, which displays theorems and definitions in th
 
 Goals can now be ellided. First through the `"vsrocq.goals.maxDepth"` setting which ellides a goal if the display becomes to large.
 Finally by clicking on the goal view as showcased here.
-The following modifiers can be used: 
+The following modifiers can be used:
 - ```Alt + Click```: open/close an ellipsis (only opens partially).
 - ```Shift + Alt + Click```: fully open an ellipsis (all children are also opened).
 
@@ -172,11 +176,11 @@ After installation and activation of the extension:
 
 #### Proof checking
 * `"vsrocq.proof.mode": Continuous | Manual` -- Decide whether documents should checked continuously or using the classic navigation commmands (defaults to `Manual`)
-* `"vsrocq.proof.pointInterpretationMode": Cursor | NextCommand` -- Determines the point to which the proof should be check to when using the 'Interpret to point' command. 
+* `"vsrocq.proof.pointInterpretationMode": Cursor | NextCommand` -- Determines the point to which the proof should be check to when using the 'Interpret to point' command.
 * `"vsrocq.proof.cursor.sticky": bool` -- a toggle to specify whether the cursor should move as Rocq interactively navigates a document (step forward, backward, etc...)
-* `"vsrocq.proof.delegation": None | Skip | Delegate` -- Decides which delegation strategy should be used by the server. 
+* `"vsrocq.proof.delegation": None | Skip | Delegate` -- Decides which delegation strategy should be used by the server.
   `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers
-  to delegate proofs. 
+  to delegate proofs.
 * `"vsrocq.proof.workers": int` -- Determines how many workers should be used for proof checking
 * `"vsrocq.proof.block": bool` -- Determines if the the execution of a document should halt on first error.  Defaults to true (since version >= 2.1.7).
 * `"vsrocq.proof.display-buttons": bool` -- A toggle to control whether buttons related to Rocq (step forward/back, reset, etc.) are displayed in the editor actions menu (defaults to `true`)
@@ -189,7 +193,7 @@ After installation and activation of the extension:
 #### Diagnostics
 * `"vsrocq.diagnostics.full": bool` -- Toggles the printing of `Info` level diagnostics (defaults to `false`)
 
-## For extension developers 
+## For extension developers
 See [Dev docs](https://github.com/rocq-prover/vsrocq/blob/main/docs/developers.md)
 
 ## Maintainers

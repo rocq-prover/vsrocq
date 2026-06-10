@@ -1,14 +1,14 @@
-# Development 
+# Development
 
-This page is intended for software developers who wish to help with the VsCoq2 development effort. 
+This page is intended for software developers who wish to help with the VsRocq2 development effort.
 
-The two main building blocks are the language server and the client (the vscode extension, namely). 
+The two main building blocks are the language server and the client (the vscode extension, namely).
 
 ## Language server
 
-The language server is developed in ocaml and makes it possible to link from the client directly to the Rocq API and exploit [LSP](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/). 
+The language server is developed in ocaml and makes it possible to link from the client directly to the Rocq API and exploit [LSP](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/).
 
-### Architecture 
+### Architecture
 
 The *document* data structure holds:
 - the text
@@ -72,7 +72,7 @@ flowchart TD
     style G1 fill: #f3ef1d
     style J fill: #75e15c
     style K fill: #75e15c
-    
+
 ```
 
 ### Building
@@ -83,45 +83,46 @@ If you have nix installed, you can do a full developer build of the language ser
 nix develop .#vsrocq-language-server -c bash -c "cd language-server && dune build"
 ```
 
-### Composing the build with Coq
+### Composing the build with Rocq
 
-We assume you are in a directory `rocq/` where you have a Rocq checkout (built or not).
-You can git clone the vsrocq repository in `rocq/vsrocq/` (next to, say, `kernel/`).
-Then `dune build vsrocq/language-server` will build the server, typically in
+To build a VsRocq with a local version of Rocq, from the modified Rocq directory:
+
+1. Build Rocq, e.g. with `make world` to build Rocq and set up dune
+2. Clone the VsRocq repository in `rocq/vsrocq/` (next to, say, `kernel/`).
+3. Then `dune build vsrocq/language-server` will build the server, typically in
 `_build/install/default/bin/vsrocqtop` (next to the rocq binaries).
-
-In order to use this binary, point the `vsrocq.path` option to that path (better in its absolute form).
-
-Whenever you change the Coq sources `dune build` will also rebuild vsrocqtop.
-If you specify a more specific dune target, remember that vsrocqtop is *linked* to Coq,
-so if you don't rebuild it it will not work.
+4. Set the (absolute) path to the local build `"vsrocq.path": "path/rocq/_build/install/default/bin/vsrocqtop"` in user settings.
+5. Reload VsCode.
+6. Whenever you change the Rocq sources `dune build` will now also rebuild vsrocqtop.
+  If you specify a more specific dune target, remember that vsrocqtop is *linked* to Rocq,
+  so if you don't rebuild it it will not work.
 
 ### Debugging
 
-## Client 
+## Client
 
-The client is the VSCode extension in itself. Apart from the usual [VSCode](https://code.visualstudio.com/api) lingo, we develop two web apps that are used within separate panels in the extension and are specific to Coq, namely the goal-view-ui and the search-view-ui.
+The client is the VSCode extension in itself. Apart from the usual [VSCode](https://code.visualstudio.com/api) lingo, we develop two web apps that are used within separate panels in the extension and are specific to Rocq, namely the goal-view-ui and the search-view-ui.
 
 ### Design pattern for the web apps
 
-Both of the two Rocq exclusive panels are react apps. We use the [atomic design pattern](https://atomicdesign.bradfrost.com/table-of-contents/) and the [VSCode webview UI toolkit](https://github.com/microsoft/vscode-webview-ui-toolkit). 
+Both of the two Rocq exclusive panels are react apps. We use the [atomic design pattern](https://atomicdesign.bradfrost.com/table-of-contents/) and the [VSCode webview UI toolkit](https://github.com/microsoft/vscode-webview-ui-toolkit).
 
-### Building 
+### Building
 
 * Make sure you have up to date `npm` and `node.js`. For example, at the time of writing this guide, `node.js` version 19.0.1
-* From the client folder run `npm install` which will ensure all dependencies are installed for the extension and the web apps. 
+* From the client folder run `npm install` which will ensure all dependencies are installed for the extension and the web apps.
 * Still from the client folder, run `npm run build --workspaces` to build the extension and all the sub-web apps.
 * To package the extension run `npm run package`
 * To make an installable `.vsx` package, `npx vsce package`.
-  This package can be installed locally in any code workspace or all (not recommended, as it can overwrite an existing 
+  This package can be installed locally in any code workspace or all (not recommended, as it can overwrite an existing
   globally installed vsx `code --install-extension vsrocq-*.vsix`)
 * For publishing to VSCode market place use the [vsce tool](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)
 
-### Debugging 
+### Debugging
 
-You can debug the web apps independently. From the client folder just run `npm run start -w goal-view-ui` or `npm run start -w search-ui`. This will launch the corresponding web app in local development server. You can then access it through your usual browser or the VSCode browser. 
+You can debug the web apps independently. From the client folder just run `npm run start -w goal-view-ui` or `npm run start -w search-ui`. This will launch the corresponding web app in local development server. You can then access it through your usual browser or the VSCode browser.
 
-Note that both the apps can also be built independently through the `npm run build -w goal-view-ui` or `npm run build -w search-ui` commands. 
+Note that both the apps can also be built independently through the `npm run build -w goal-view-ui` or `npm run build -w search-ui` commands.
 
 To launch the extension in debug mode, assuming you have built the language-server, you can either use a nix dev shell to run vscode (`nix develop .#vsrocq-client -c code .`) or handle your own config.
 
@@ -143,24 +144,24 @@ To run the tests on a language server not in a standard location (not in
 the language-server folder nor in PATH), set `VSCOQPATH` to the binary you
 want to be run by the test.
 
-# Release process 
+# Release process
 
-To release a new version of VsCoq: 
+To release a new version of VsRocq:
 
-1. First make sure to bump the version number in the three folowing files: 
+1. First make sure to bump the version number in the three folowing files:
     - flake.nix (look for `vsrocq_version`)
     - client/package.json (llok for `"version":`)
     - language-server/vsrocqtop/lspManager.ml (look for `let server_info`)
 
 1.a Don't forget to add the version requirements in
     `client/src/utilities/versioning.ts`, look for `versionRequirements`.
-  
-2. Create a signed tag for the release with the new version number 
+
+2. Create a signed tag for the release with the new version number
 ```shell
     git tag -s #VERSION_NUMBER
 ```
 3. Push
-```shell 
+```shell
     git push origin #VERSION_NUMBER
 ```
 
