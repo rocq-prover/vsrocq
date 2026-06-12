@@ -159,6 +159,9 @@ let hover document pos =
         hover_of_sentence pattern (Document.find_next_qed_pos document pos)
       | _ -> None
 
+(* FIXME: implement feature *)
+let highlight document pos = []
+
 [%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
 let jump_to_definition ~vs:_ _ = None
 [%%else]
@@ -283,6 +286,10 @@ let hover document pos =
   ProverThread.try_run ~doc_id:(Document.id document) ~name:"hover" ~timeout
     (fun () -> hover document pos) |>
   to_option |> Option.flatten
+
+let highlight document pos =
+  ProverThread.try_run ~doc_id:(Document.id document) ~name:"highlight" ~timeout
+    (fun () -> highlight document pos) |> to_list
 
 let about ~doc_id ~vs ~pattern =
   ProverThread.try_run ~doc_id ~name:"about" ~timeout (fun () -> about vs ~pattern) |>
