@@ -47,5 +47,8 @@ export type VSCodeMessage =
           command: "openGoalSettings";
       }
     | {
+          command: "togglePropFilter";
+      }
+    | {
           command: "pollGoals";
       };
