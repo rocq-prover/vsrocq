@@ -15,5 +15,3 @@
 val usage : unit -> Boot.Usage.specific_usage
 
 val get_local_args : string -> Coqargs.t
-
-val mcp_mode : bool ref

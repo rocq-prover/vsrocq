@@ -12,16 +12,14 @@
 (*                                                                        *)
 (**************************************************************************)
 
-let Dm.Types.Log log = Dm.Log.mk_log "args"
+[%%import "vsrocq_config.mlh"]
 
-(* Flag to indicate MCP server mode instead of LSP *)
-let mcp_mode = ref false
+let Dm.Types.Log log = Dm.Log.mk_log "args"
 
 let rec skip_vsrocq_args acc = function
 | [] -> (), List.rev acc
 | "-vsrocq-d" :: _ :: rest -> skip_vsrocq_args acc rest
 | "-without-project-file" :: rest -> skip_vsrocq_args acc rest
-| "-mcp" :: rest -> mcp_mode := true; skip_vsrocq_args acc rest
 | x :: rest -> skip_vsrocq_args (x::acc) rest
 
 let vsrocqtop_specific_usage () = {
@@ -30,7 +28,6 @@ let vsrocqtop_specific_usage () = {
   extra_options = {|
 VSRocq options are:
   -without-project-file   disable reading local _RocqProject or _CoqProject file for arguments
-  -mcp                    start MCP server instead of LSP server
   -vsrocq-d c1,..,cn      enable debugging for vsrocq components c1 ... cn.
                          Known components:
                            all (shorthand for all components)
@@ -79,7 +76,7 @@ let get_local_args dir =
   ) else (
     let find_project_file = CoqProject_file.find_project_file ~from:dir in
     let project_file = match find_project_file ~projfile_name:"_RocqProject" with
-    | Some f as x -> x
+    | Some _ as x -> x
     | None -> find_project_file ~projfile_name:"_CoqProject"
     in
     match project_file with

@@ -1,11 +1,3 @@
-(library
- (name vsrocqtop_args)
- (public_name vsrocq-language-server.vsrocqtop_args)
- (wrapped false)
- (modules args vsrocqSettings)
- (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
- (libraries @@ROCQ_RUNTIME@@.sysinit dm))
-
 (executable
  (name vsrocqtop)
  (public_name vsrocqtop)
@@ -13,4 +5,4 @@
  (flags -linkall)
  (package vsrocq-language-server)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
- (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel yojson dm lsp mcpserver vsrocqtop_args))
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel yojson dm lsp vsrocqtop_boot))
