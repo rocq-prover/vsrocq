@@ -499,14 +499,14 @@ let interpret_in_background document st =
 let validate_document document st =
   if !settings.check_mode = Settings.Mode.Continuous then interpret_in_background document st else st, []
 
-let execution_finished st id started =
+let execution_finished st id started block_events =
   let time = Unix.gettimeofday () -. started in
   log (fun () -> Printf.sprintf "ExecuteToLoc %d ends after %2.3f" (Stateid.to_int id) time);
   (* We update the state to trigger a publication of diagnostics *)
   let update_view = true in
   let state = Some st in
   let pv_event = mk_proof_view_event id in
-  { state; events = [ pv_event ]; update_view; notification = None }
+  { state; events = [ pv_event ] @ block_events; update_view; notification = None }
 
 let post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error = 
   let st, tasks, block_events =
@@ -520,7 +520,7 @@ let post_execute document st id started background proof_view_event task tasks b
         (st, [], mk_block_on_error_event error_range error_id background)
   in
   match tasks with
-  | [] -> execution_finished st id started
+  | [] -> execution_finished st id started block_events
   | task :: tasks ->
       let event = mk_execution_event background (Execute { id; vst_for_next_task; task; tasks; started }) in
       let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
