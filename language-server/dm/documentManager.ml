@@ -443,7 +443,10 @@ let jump_to_definition st pos =
   QueryManager.jump_to_definition ~doc_id:(Document.id st.document) ~vs opattern
 let hover st pos =
   QueryManager.hover st.document pos
- 
+
+let highlight st pos =
+  QueryManager.highlight st.document pos
+
 let about st pos ~pattern =
   let vs = rocq_state_for st pos in
   QueryManager.about ~doc_id:(Document.id st.document) ~vs ~pattern

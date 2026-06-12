@@ -156,6 +156,7 @@ let do_initialize id params =
   let textDocumentSync = `TextDocumentSyncKind TextDocumentSyncKind.Incremental in
   let completionProvider = CompletionOptions.create ~resolveProvider:false () in
   let documentSymbolProvider = `DocumentSymbolOptions (DocumentSymbolOptions.create ~workDoneProgress:true ()) in
+  let documentHighlightProvider = `Bool true in
   let hoverProvider = `Bool true in
   let definitionProvider = `Bool true in
   let capabilities = ServerCapabilities.create
@@ -164,6 +165,7 @@ let do_initialize id params =
     ~hoverProvider
     ~definitionProvider
     ~documentSymbolProvider
+    ~documentHighlightProvider
   ()
   in
   let initialize_result = Lsp.Types.InitializeResult.{
@@ -363,6 +365,15 @@ let textDocumentHover id params =
     | Some contents -> Ok (Some (Hover.create ~contents:(`MarkupContent contents) ()))
     | _ -> Ok None (* FIXME handle error case properly *)
 
+let textDocumentHighlight id params =
+  let Lsp.Types.DocumentHighlightParams.{ textDocument; position } = params in
+  let open Yojson.Safe.Util in
+  match Hashtbl.find_opt states (DocumentUri.to_path textDocument.uri) with
+  | None -> log (fun () -> "[textDocumentHighlight] ignoring event on non existing document"); Ok None (* FIXME handle error case properly *)
+  | Some { st } ->
+    let ranges = Dm.DocumentManager.highlight st position in
+    Ok (Some (List.map (fun range -> DocumentHighlight.create ~range:range ()) ranges))
+
 let textDocumentDefinition params =
   let Lsp.Types.DefinitionParams.{ textDocument; position } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path textDocument.uri) with
@@ -550,6 +561,8 @@ let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a,
     textDocumentDefinition params, []
   | TextDocumentHover params ->
     textDocumentHover id params, []
+  | TextDocumentHighlight params ->
+    textDocumentHighlight id params, []
   | DocumentSymbol params ->
     documentSymbol id params
   | UnknownRequest _ | _  -> Error ({message="Received unknown request"; code=None}), []
