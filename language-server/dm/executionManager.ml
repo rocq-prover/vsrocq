@@ -212,9 +212,12 @@ let add_using proof proof_using lemmas =
         using;
       let _, pstate = Declare.Proof.set_used_variables proof ~using in
       pstate
-[%%else]
+[%%elif rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
 let add_using proof proof_using _ =
   Declare.Proof.set_proof_using proof proof_using |> snd
+[%%else]
+let add_using proof proof_using _ =
+  Declare.Proof.set_proof_using proof (Some proof_using)
 [%%endif]
 
 let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
