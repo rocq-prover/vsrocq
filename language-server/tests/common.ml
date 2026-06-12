@@ -151,6 +151,7 @@ let () = CheckingManager.(set_options {
   diff_mode = Protocol.Settings.Goals.Diff.Mode.Off;
   pp_mode = Protocol.Settings.Goals.PrettyPrint.Pp;
   point_interp_mode = Protocol.Settings.PointInterpretationMode.Cursor;
+  show_only_prop_hypotheses = false;
   preempt = true;
 })
 

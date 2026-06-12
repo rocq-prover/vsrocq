@@ -18,6 +18,8 @@ const app = () => {
         useState<string>("List");
     const [goalDepth, setGoalDepth] = useState<number>(10);
     const [helpMessage, setHelpMessage] = useState<string>("");
+    const [showOnlyPropHypotheses, setShowOnlyPropHypotheses] =
+        useState<boolean>(false);
 
     const handleMessage = useCallback((msg: any) => {
         switch (msg.data.command) {
@@ -78,6 +80,9 @@ const app = () => {
                 setMessages([]);
                 setGoals(null);
                 break;
+            case "updatePropFilter":
+                setShowOnlyPropHypotheses(msg.data.enabled);
+                break;
         }
     }, []);
 
@@ -121,6 +126,12 @@ const app = () => {
         });
     };
 
+    const propFilterClickHandler = () => {
+        vscode.postMessage({
+            command: "togglePropFilter",
+        });
+    };
+
     return (
         <main>
             <ProofViewPage
@@ -135,6 +146,8 @@ const app = () => {
                     setHelpMessage(message)
                 }
                 toggleContextHandler={toggleContext}
+                showOnlyPropHypotheses={showOnlyPropHypotheses}
+                propFilterClickHandler={propFilterClickHandler}
             />
         </main>
     );
