@@ -257,8 +257,7 @@ let record_outline document {id; ast} outline =
   | Parsed ast -> record_outline document id ast.ast ast.classification outline
 
 let compute_outline ({ sentences_by_end } as document) =
-    LM.fold (fun _ s -> record_outline document (sentence_of_id document s)) sentences_by_end []
-
+  LM.fold (fun _ s -> record_outline document (sentence_of_id document s)) sentences_by_end []
 
 let schedule doc = doc.schedule
 
@@ -347,6 +346,10 @@ let parsing_errors_before parsed loc =
 
 let comments_before parsed loc =
   LM.filter (fun stop _v -> stop <= loc) parsed.comments_by_end
+
+let comments parsed =
+  List.map snd @@ LM.bindings parsed.comments_by_end
+
 let get_sentence parsed id =
   SM.find_opt id parsed.sentences_by_id
 

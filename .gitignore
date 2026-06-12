@@ -1,5 +1,5 @@
 language-server/_build
-language-server/_opam
+_opam
 language-server/dm/dune
 language-server/language/dune
 language-server/protocol/dune
@@ -10,3 +10,4 @@ language-server/tests/vsrocq_config.mlh
 language-server/*.install
 .DS_Store
 result
+*.local*

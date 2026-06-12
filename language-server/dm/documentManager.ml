@@ -272,6 +272,11 @@ let get_document_symbols st =
   let outline = List.rev @@ Document.outline st.document in
   get_document_symbols outline [] []
 
+let get_folding_ranges st =
+  let folding_ranges = Folding.folding_ranges st.document in
+  log (fun () -> "Folding ranges: " ^ (string_of_int @@ List.length folding_ranges));
+  folding_ranges
+
 let get_next_range st pos =
   match Document.find_sentence_before_pos st.document pos with
   | None -> None
