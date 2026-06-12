@@ -19,6 +19,28 @@ let folding_ranges_of text =
   let st, _init_events = em_init_test_doc ~text in
   DocumentManager.get_folding_ranges st
 
+let document_symbols_of text =
+  let Document.{ parsed_document; _ } = init_and_parse_test_doc ~text () in
+  Folding.document_symbols parsed_document
+
+let children_of_symbol (symbol: Lsp.Types.DocumentSymbol.t) =
+  match symbol.children with
+  | None -> []
+  | Some children -> children
+
+let find_symbol name symbols =
+  Stdlib.List.find_opt (fun (symbol: Lsp.Types.DocumentSymbol.t) -> Stdlib.(=) symbol.name name) symbols
+
+let assert_symbol ?kind name symbols =
+  match find_symbol name symbols with
+  | None -> failwith (Printf.sprintf "missing document symbol %s" name)
+  | Some symbol ->
+    begin match kind with
+    | None -> ()
+    | Some kind -> [%test_eq: bool] Stdlib.(symbol.kind = kind) true
+    end;
+    symbol
+
 let has_folding_range ?kind ~startLine ~endLine ranges =
   let matches_kind (range: Lsp.Types.FoldingRange.t) =
     match kind with
@@ -208,6 +230,49 @@ let%test_unit "folding.single_line_ranges_filtered" =
   let ranges = folding_ranges_of {|Definition x := true.
 (* comment *)|} in
   [%test_eq: int] (Stdlib.List.length ranges) 0
+
+let%test_unit "folding_symbols.single_line_definition" =
+  let symbols = document_symbols_of "Definition x := true." in
+  let symbol = assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "x" symbols in
+  [%test_eq: int] symbol.range.start.line 0;
+  [%test_eq: int] symbol.selectionRange.start.line 0
+
+let%test_unit "folding_symbols.nested_module_section_ranges" =
+  let symbols = document_symbols_of {|Module M.
+Section S.
+Definition x := true.
+End S.
+End M.|} in
+  let m = assert_symbol ~kind:Lsp.Types.SymbolKind.Class "M" symbols in
+  [%test_eq: int] m.range.start.line 0;
+  [%test_eq: int] m.range.end_.line 4;
+  [%test_eq: int] m.selectionRange.start.line 0;
+  [%test_eq: int] m.selectionRange.end_.line 0;
+  let s = assert_symbol ~kind:Lsp.Types.SymbolKind.Class "S" (children_of_symbol m) in
+  [%test_eq: int] s.range.start.line 1;
+  [%test_eq: int] s.range.end_.line 3;
+  [%test_eq: int] s.selectionRange.start.line 1;
+  [%test_eq: int] s.selectionRange.end_.line 1;
+  ignore (assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "x" (children_of_symbol s))
+
+let%test_unit "folding_symbols.constr_subexpressions_not_symbols" =
+  let symbols = document_symbols_of {|Definition nested_match (b c : bool) :=
+  match b with
+  | true =>
+      match c with
+      | true => 1
+      | false => 2
+      end
+  | false => 0
+  end.|} in
+  [%test_eq: int] (Stdlib.List.length symbols) 1;
+  ignore (assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "nested_match" symbols)
+
+let%test_unit "folding_symbols.notation_folds_not_symbols" =
+  let symbols = document_symbols_of {|Notation "## x" :=
+  x
+  (at level 0).|} in
+  [%test_eq: int] (Stdlib.List.length symbols) 0
 
 let%test_unit "folding.inductive_whole_declaration" =
   folding_ranges_of {|Inductive color :=
