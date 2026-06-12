@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*                                 VSRocq                                  *)
+(*                                 VSRoc                                  *)
 (*                                                                        *)
 (*                   Copyright INRIA and contributors                     *)
 (*       (see version control and README file for authors & dates)        *)
@@ -12,8 +12,6 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type pp [@@deriving yojson]
+val usage : unit -> Boot.Usage.specific_usage
 
-val pp_of_rocqpp : Pp.t -> pp
-
-val string_of_pp : pp -> string
+val get_local_args : string -> Coqargs.t

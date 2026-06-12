@@ -12,12 +12,12 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** This toplevel implements an LSP-based server language for VsCode,
-    used by the VsRocq extension. *)
+(** This toplevel implements an LSP-based server language for VsCode, used by
+      the VsRocq extension. *)
 
 let Dm.Types.Log log = Dm.Log.mk_log "top"
 
-let loop () =
+let lsp_loop () =
   let events = LspManager.init () in
   let rec loop (todo : LspManager.event Sel.Todo.t) =
     (*log fun () -> "looking for next step";*)
@@ -43,33 +43,5 @@ let loop () =
     log ~force:true (fun () -> Pp.string_of_ppcmds @@ CErrors.iprint_no_report info);
     log ~force:true (fun () -> "==========================================================")
 
-[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
-let _ =
-  Coqinit.init_ocaml ();
-  log (fun () -> "------------------ begin ---------------");
-  let cwd = Unix.getcwd () in
-  let opts = Args.get_local_args  cwd in
-  let _injections = Coqinit.init_runtime opts in
-  Safe_typing.allow_delayed_constants := true; (* Needed to delegate or skip proofs *)
-  Flags.load_vos_libraries := true;
-  Sys.(set_signal sigint Signal_ignore);
-  loop ()
-[%%else]
 
-[%%if rocq = "9.0" || rocq = "9.1"]
-let load_vos = Flags.load_vos_libraries
-[%%else]
-let load_vos = Loadpath.load_vos_libraries
-[%%endif]
-
-let () =
-  Coqinit.init_ocaml ();
-  log (fun () -> "------------------ begin ---------------");
-  let cwd = Unix.getcwd () in
-  let opts = Args.get_local_args cwd in
-  let () = Coqinit.init_runtime ~usage:(Args.usage ()) opts in
-  Safe_typing.allow_delayed_constants := true; (* Needed to delegate or skip proofs *)
-  load_vos := true;
-  Sys.(set_signal sigint Signal_ignore);
-  loop ()
-[%%endif]
+let () = VsrocqBoot.boot lsp_loop

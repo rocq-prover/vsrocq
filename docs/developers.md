@@ -150,8 +150,8 @@ To release a new version of VsRocq:
 
 1. First make sure to bump the version number in the three folowing files:
     - flake.nix (look for `vsrocq_version`)
-    - client/package.json (llok for `"version":`)
-    - language-server/vsrocqtop/lspManager.ml (look for `let server_info`)
+    - client/package.json (look for `"version":`)
+    - language-server/vsrocq_boot/vsrocqSettings.ml
 
 1.a Don't forget to add the version requirements in
     `client/src/utilities/versioning.ts`, look for `versionRequirements`.

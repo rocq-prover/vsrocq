@@ -12,8 +12,10 @@
 (*                                                                        *)
 (**************************************************************************)
 
-type pp [@@deriving yojson]
+[%%import "vsrocq_config.mlh"]
 
-val pp_of_rocqpp : Pp.t -> pp
+let mcp_loop () =
+  Mcpserver.McpManager.init ();
+  Mcpserver.McpManager.main_loop ()
 
-val string_of_pp : pp -> string
+let () = VsrocqBoot.boot mcp_loop

@@ -12,13 +12,15 @@
 (*                                                                        *)
 (**************************************************************************)
 
+[%%import "vsrocq_config.mlh"]
+
 let Dm.Types.Log log = Dm.Log.mk_log "args"
 
-let rec skip_xd acc = function
+let rec skip_vsrocq_args acc = function
 | [] -> (), List.rev acc
-| "-vsrocq-d" :: _ :: rest -> skip_xd acc rest
-| "-without-project-file" :: rest -> skip_xd acc rest
-| x :: rest -> skip_xd (x::acc) rest
+| "-vsrocq-d" :: _ :: rest -> skip_vsrocq_args acc rest
+| "-without-project-file" :: rest -> skip_vsrocq_args acc rest
+| x :: rest -> skip_vsrocq_args (x::acc) rest
 
 let vsrocqtop_specific_usage () = {
   Boot.Usage.executable_name = "vsrocqtop";
@@ -31,7 +33,7 @@ VSRocq options are:
                            all (shorthand for all components)
                            init (all components but only during initialization)
 |} ^ "\t\t\t   " ^ String.concat "\n\t\t\t   " (Dm.Log.logs ()) ^ {|
-  
+
 |}
 }
 
@@ -40,7 +42,7 @@ let usage () = vsrocqtop_specific_usage ()
 [%%if  rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
 
   let parse_extra x =
-    skip_xd [] x  
+    skip_vsrocq_args [] x  
 
   let parse_args_default () =
     let initial_args = Coqargs.default in
@@ -55,7 +57,7 @@ let usage () = vsrocqtop_specific_usage ()
 [%%else]
 
 let parse_extra _ x =
-  skip_xd [] x
+  skip_vsrocq_args [] x
 
   let parse_args_default () =
     let initial_args = Coqargs.default in
@@ -74,7 +76,7 @@ let get_local_args dir =
   ) else (
     let find_project_file = CoqProject_file.find_project_file ~from:dir in
     let project_file = match find_project_file ~projfile_name:"_RocqProject" with
-    | Some f as x -> x
+    | Some _ as x -> x
     | None -> find_project_file ~projfile_name:"_CoqProject"
     in
     match project_file with
