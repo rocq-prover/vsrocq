@@ -83,6 +83,50 @@ let constrs_of_local_binder = function
   | Constrexpr.CLocalPattern _ -> []
 [%%endif]
 
+[%%if rocq = "8.18" || rocq = "8.19"]
+let fold_fix fold_constr f walk_binders acc fixes =
+  List.fold_left (fun acc (_name, _order, binders, rtype, body) ->
+    let acc = walk_binders acc binders in
+    let acc = fold_constr f acc rtype in
+    fold_constr f acc body
+  ) acc fixes
+
+let fold_cofix fold_constr f walk_binders acc cofixes =
+  List.fold_left (fun acc (_name, binders, rtype, body) ->
+    let acc = walk_binders acc binders in
+    let acc = fold_constr f acc rtype in
+    fold_constr f acc body
+  ) acc cofixes
+
+[%%else]
+let fold_fix fold_constr f walk_binders acc fixes =
+  List.fold_left (fun acc (_name, _rel, _order, binders, rtype, body) ->
+    let acc = walk_binders acc binders in
+    let acc = fold_constr f acc rtype in
+    fold_constr f acc body
+  ) acc fixes
+
+let fold_cofix fold_constr f walk_binders acc cofixes =
+  List.fold_left (fun acc (_name, _rel, binders, rtype, body) ->
+    let acc = walk_binders acc binders in
+    let acc = fold_constr f acc rtype in
+    fold_constr f acc body
+  ) acc cofixes
+
+[%%endif]
+
+[%%if rocq = "8.18"]
+let try_fold_delimiters fold_constr f acc e =
+  match e.CAst.v with
+  | Constrexpr.CDelimiters (_scope, e) -> fold_constr f acc e
+  | _ -> acc
+[%%else]
+let try_fold_delimiters fold_constr f acc e =
+  match e.CAst.v with
+  | Constrexpr.CDelimiters (_depth, _scope, e) -> fold_constr f acc e
+  | _ -> acc
+[%%endif]
+
 let rec fold_constr (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'acc) (e : Constrexpr.constr_expr) : 'acc =
   let acc = f acc e in
   fold_constr_children f acc e
@@ -109,25 +153,15 @@ and fold_constr_children (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'ac
     ) acc branches
   in
   match e.v with
-  | CRef _ | CHole _ | CPatVar _ | CEvar _ | CSort _ | CPrim _
+  | CRef _ | CPatVar _ | CEvar _ | CSort _ | CPrim _
   | CGenarg _ | CGenargGlob _ ->
     acc
   | CNotation (_, _, (terms, recursive_terms, _, recursive_binders)) ->
     let acc = walk acc terms in
     let acc = List.fold_left walk acc recursive_terms in
     List.fold_left walk_binders acc recursive_binders
-  | CFix (_, fixes) ->
-    List.fold_left (fun acc (_name, _rel, _order, binders, rtype, body) ->
-      let acc = walk_binders acc binders in
-      let acc = fold_constr f acc rtype in
-      fold_constr f acc body
-    ) acc fixes
-  | CCoFix (_, cofixes) ->
-    List.fold_left (fun acc (_name, _rel, binders, rtype, body) ->
-      let acc = walk_binders acc binders in
-      let acc = fold_constr f acc rtype in
-      fold_constr f acc body
-    ) acc cofixes
+  | CFix (_, fixes) -> fold_fix fold_constr f walk_binders acc fixes
+  | CCoFix (_, cofixes) -> fold_cofix fold_constr f walk_binders acc cofixes
   | CProdN (binders, body) | CLambdaN (binders, body) ->
     let acc = walk_binders acc binders in
     fold_constr f acc body
@@ -159,7 +193,7 @@ and fold_constr_children (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'ac
     let acc = fold_constr f acc e1 in
     fold_constr f acc e2
   | CGeneralization (_, e) -> fold_constr f acc e
-  | CDelimiters (_, _, e) -> fold_constr f acc e
   | CArray (_, elems, _, default) ->
     let acc = walk acc (Array.to_list elems) in
     fold_constr f acc default
+  | _ -> try_fold_delimiters fold_constr f acc e
