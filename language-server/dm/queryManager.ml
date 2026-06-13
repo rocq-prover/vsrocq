@@ -159,8 +159,24 @@ let hover document pos =
         hover_of_sentence pattern (Document.find_next_qed_pos document pos)
       | _ -> None
 
-(* FIXME: implement feature *)
-let highlight document pos = []
+(* Within a list of tokens, find all that are an identifier whose name is `ident` *)
+let find_all_ident (tokens: (Range.t * Tok.t) list) (ident: string) : Range.t list =
+  List.filter_map (fun (range, tok) ->
+    match tok with
+    | Tok.IDENT s when s = ident -> Some range
+    | _ -> None) tokens
+
+(* We perform syntactic highlight of all identifiers that the same as the word at `pos` *)
+let highlight document pos =
+  let raw = Document.raw_document document in
+  let loc = RawDocument.loc_of_position raw pos in
+  let opattern = RawDocument.word_at_position raw pos in
+  match opattern with
+  | None -> log (fun () -> "highlight: no word found at cursor"); []
+  | Some pattern ->
+  log (fun () -> "highlight: found word at cursor: \"" ^ pattern ^ "\"");
+  let sentences = Document.sentences document in
+  find_all_ident (List.concat_map Document.tokens_of_sentence sentences) pattern
 
 [%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
 let jump_to_definition ~vs:_ _ = None

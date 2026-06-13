@@ -160,6 +160,12 @@ let range_of_sentence_with_blank_space raw (sentence : sentence) =
   let end_ = RawDocument.position_of_loc raw sentence.stop in
   Range.{ start; end_ }
 
+let tokens_of_sentence (sentence: sentence) =
+  match sentence.ast with
+  (* TODO: we could collect (best-effort) tokens for failed paring too *)
+  | Error _ -> []
+  | Parsed { tokens } -> tokens
+
 let string_of_id document id =
   match SM.find_opt id document.sentences_by_id with
   | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
