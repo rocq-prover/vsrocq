@@ -317,9 +317,6 @@ let textDocumentDidChange params =
       update_view uri st;
       inject_dm_events (uri, events)
 
-let textDocumentDidSave params =
-  [] (* TODO handle properly *)
-
 let current_memory_usage () =
   let { Gc.heap_words; _ } = Gc.stat () in
   Sys.word_size * heap_words
