@@ -146,6 +146,9 @@ val sentences_sorted_by_loc : document -> sentence list
 val get_sentence : document -> sentence_id -> sentence option
 val sentences_before : document -> int -> sentence list
 
+val tokens_of_sentence : sentence -> (Range.t * Tok.t) list
+(** [tokens_of_sentence sentence] returns the list of tokens for the given sentence *)
+
 val find_sentence : document -> int -> sentence option
 (** [find_sentence doc loc] finds the sentence containing the loc *)
 
