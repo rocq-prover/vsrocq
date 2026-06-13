@@ -82,7 +82,7 @@ val handle_event : document -> event -> document * events * parsing_end_info opt
 type parsed_ast = {
   ast: Synterp.vernac_control_entry;
   classification: Vernacextend.vernac_classification;
-  tokens: Tok.t list
+  tokens: (Range.t * Tok.t) list
 }
 
 type parsing_error = {
