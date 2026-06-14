@@ -55,9 +55,9 @@ val highlight :
   Lsp.Types.Range.t list
 
 val jump_to_definition :
-  doc_id:int ->
-  vs:Vernacstate.t ->
-  string option ->
+  Document.document ->
+  Vernacstate.t ->
+  Lsp.Types.Position.t ->
   (Lsp.Types.Range.t * string) option
 
 val get_completions :
