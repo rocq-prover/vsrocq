@@ -51,7 +51,7 @@ type outline = outline_element list
 type parsed_ast = {
   ast: Synterp.vernac_control_entry;
   classification: Vernacextend.vernac_classification;
-  tokens: (Range.t * Tok.t) list
+  tokens: (Loc.t * Tok.t) list
 }
 
 type comment = {
@@ -368,7 +368,6 @@ let find_sentence_before parsed loc =
   | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
   | _ -> None
 
-(* moved here from DM, maybe can be simplified / use find_sentence_after *)
 let find_sentence_before_pos document pos =
   let loc = RawDocument.loc_of_position (raw_document document) pos in
   find_sentence_before document loc
@@ -745,7 +744,7 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
       let str = String.sub (RawDocument.text raw) begin_char (end_char - begin_char) in
       let sstr = Stream.of_string str in
       let lex = CLexer.Lexer.tok_func sstr in
-      let tokens = List.map (fun (loc, tok) -> (RawDocument.range_of_loc raw loc, tok)) @@ stream_tok 0 [] lex ast_loc in
+      let tokens = stream_tok 0 [] lex ast_loc in
       begin
         try
           log (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));

@@ -82,7 +82,8 @@ val handle_event : document -> event -> document * events * parsing_end_info opt
 type parsed_ast = {
   ast: Synterp.vernac_control_entry;
   classification: Vernacextend.vernac_classification;
-  tokens: (Range.t * Tok.t) list
+  tokens: (Loc.t * Tok.t) list
+  (** The token ranges are absolute to the entire document *)
 }
 
 type parsing_error = {
@@ -146,7 +147,7 @@ val sentences_sorted_by_loc : document -> sentence list
 val get_sentence : document -> sentence_id -> sentence option
 val sentences_before : document -> int -> sentence list
 
-val tokens_of_sentence : sentence -> (Range.t * Tok.t) list
+val tokens_of_sentence : sentence -> (Loc.t * Tok.t) list
 (** [tokens_of_sentence sentence] returns the list of tokens for the given sentence *)
 
 val find_sentence : document -> int -> sentence option
