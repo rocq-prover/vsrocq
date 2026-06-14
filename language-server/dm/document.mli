@@ -150,6 +150,9 @@ val sentences_before : document -> int -> sentence list
 val tokens_of_sentence : sentence -> (Loc.t * Tok.t) list
 (** [tokens_of_sentence sentence] returns the list of tokens for the given sentence *)
 
+val token_at_loc : sentence -> int -> Tok.t option
+(** [token_at_loc sentence loc] returns the token at the given location in the sentence, if any *)
+
 val find_sentence : document -> int -> sentence option
 (** [find_sentence doc loc] finds the sentence containing the loc *)
 

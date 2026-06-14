@@ -167,6 +167,10 @@ let tokens_of_sentence (sentence: sentence) =
   | Error _ -> []
   | Parsed { tokens } -> tokens
 
+let token_at_loc sentence loc =
+  let contains (Loc.{ bp; ep }) = bp <= loc && loc <= ep in
+  List.find_opt (fun (token_loc, _) -> contains token_loc) (tokens_of_sentence sentence) |> Option.map snd
+
 let string_of_id document id =
   match SM.find_opt id document.sentences_by_id with
   | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)

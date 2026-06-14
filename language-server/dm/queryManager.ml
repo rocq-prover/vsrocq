@@ -134,10 +134,15 @@ let hover document pos =
        e.g. Definition, Inductive
      - At the next QED (for symbols defined after proof), if the next sentence 
        is in proof mode e.g. Lemmas, Definition with tactics *)
-  let opattern = RawDocument.word_at_position (Document.raw_document document) pos in
-  match opattern with
-  | None -> log (fun () -> "hover: no word found at cursor"); None
-  | Some pattern ->
+  let raw = Document.raw_document document in
+  let loc = RawDocument.loc_of_position raw pos in
+  let opattern = RawDocument.word_at_loc raw loc in
+  let osentence = Document.find_sentence document loc in
+  let otoken = Option.bind osentence (fun s -> Document.token_at_loc s loc) in
+  match opattern, otoken with
+  (* if the location has no associated token (eg. a comment) or it is a string literal, we ignore it *)
+  | None, _ | _, None | _, Some (Tok.STRING _) -> log (fun () -> "hover: no hoverable item found at cursor"); None
+  | Some pattern, _ ->
     log (fun () -> "hover: found word at cursor: \"" ^ pattern ^ "\"");
     (* hover at previous sentence *)
     match hover_of_sentence pattern (Document.find_sentence_before_pos document pos) with
@@ -180,13 +185,19 @@ let highlight document pos =
   find_all_ident (List.concat_map Document.tokens_of_sentence sentences) pattern
 
 [%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
-let jump_to_definition ~vs:_ _ = None
+let jump_to_definition _ _ _ = None
 [%%else]
-let jump_to_definition ~vs opattern  =
+let jump_to_definition document vs pos  =
   let _side_effect_needed_ = context_of_vernac_state vs in
-  match opattern with
-  | None -> log (fun () -> "jumpToDef: no word found at cursor"); None
-  | Some pattern ->
+  let raw = Document.raw_document document in
+  let loc = RawDocument.loc_of_position raw pos in
+  let opattern = RawDocument.word_at_loc raw loc in
+  let osentence = Document.find_sentence document loc in
+  let otoken = Option.bind osentence (fun s -> Document.token_at_loc s loc) in
+  match opattern, otoken with
+  (* if the location has no associated token (eg. a comment) or it is a string literal, we ignore it *)
+  | None, _ | _, None | _, Some (Tok.STRING _) -> log (fun () -> "jumpToDef: no jumpable item found at cursor"); None
+  | Some pattern, _ ->
     log (fun () -> "jumpToDef: found word at cursor: \"" ^ pattern ^ "\"");
     try
     let qid = parse_entry vs (Procq.Prim.qualid) pattern in
@@ -283,8 +294,9 @@ let check ~doc_id ~vs ~pattern =
   ProverThread.try_run ~doc_id ~name:"check" ~timeout (fun () -> check ~vs ~pattern) |>
   to_types_error
 
-let jump_to_definition ~doc_id ~vs opattern =
-  ProverThread.try_run ~doc_id ~name:"jump_to_definition" ~timeout (fun () -> jump_to_definition ~vs opattern) |>
+let jump_to_definition document vs pos =
+  ProverThread.try_run ~doc_id:(Document.id document) ~name:"jump_to_definition" ~timeout
+    (fun () -> jump_to_definition document vs pos) |>
   to_option |> Option.flatten
 
 let locate ~doc_id ~vs ~pattern =
