@@ -438,12 +438,15 @@ let check st pos ~pattern =
   QueryManager.check ~doc_id:(Document.id st.document) ~vs ~pattern
 
 let jump_to_definition st pos =
-  let opattern = RawDocument.word_at_position (Document.raw_document st.document) pos in
   let vs = rocq_state_for st pos in
-  QueryManager.jump_to_definition ~doc_id:(Document.id st.document) ~vs opattern
+  QueryManager.jump_to_definition st.document vs pos
+
 let hover st pos =
   QueryManager.hover st.document pos
- 
+
+let highlight st pos =
+  QueryManager.highlight st.document pos
+
 let about st pos ~pattern =
   let vs = rocq_state_for st pos in
   QueryManager.about ~doc_id:(Document.id st.document) ~vs ~pattern
