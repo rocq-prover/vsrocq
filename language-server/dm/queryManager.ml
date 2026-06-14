@@ -160,10 +160,11 @@ let hover document pos =
       | _ -> None
 
 (* Within a list of tokens, find all that are an identifier whose name is `ident` *)
-let find_all_ident (tokens: (Range.t * Tok.t) list) (ident: string) : Range.t list =
-  List.filter_map (fun (range, tok) ->
+let find_all_ident (tokens: (Loc.t * Tok.t) list) (ident: string) : Loc.t list =
+  List.filter_map (fun (loc, tok) ->
     match tok with
-    | Tok.IDENT s when s = ident -> Some range
+    | Tok.IDENT s
+    | Tok.FIELD s when s = ident -> Some loc
     | _ -> None) tokens
 
 (* We perform syntactic highlight of all identifiers that the same as the word at `pos` *)
