@@ -2,7 +2,7 @@ dune_no_stop = dune $(1)
 dune = dune $(1) --stop-on-first-error
 dune_dev = dune $(1) --stop-on-first-error --profile dev
 dune_fatal = dune $(1) --stop-on-first-error --profile fatalwarnings
-DUNE_IN_FILES = $(shell find . -name "dune.in" | sed -e 's/.in$$//')
+DUNE_IN_FILES := $(shell find . -name "dune.in" | sed -e 's/.in$$//')
 # This makefile is mostly calling dune and dune doesn't like
 # being called in parralel, so we enforce -j1
 .NOTPARALLEL:
