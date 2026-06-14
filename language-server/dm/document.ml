@@ -162,7 +162,7 @@ let range_of_sentence_with_blank_space raw (sentence : sentence) =
 
 let tokens_of_sentence (sentence: sentence) =
   match sentence.ast with
-  (* TODO: we could collect (best-effort) tokens for failed paring too *)
+  (* TODO: we could collect (best-effort) tokens for failed parsing too *)
   | Error _ -> []
   | Parsed { tokens } -> tokens
 
