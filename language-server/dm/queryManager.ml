@@ -176,13 +176,17 @@ let find_all_ident (tokens: (Loc.t * Tok.t) list) (ident: string) : Loc.t list =
 let highlight document pos =
   let raw = Document.raw_document document in
   let loc = RawDocument.loc_of_position raw pos in
-  let opattern = RawDocument.word_at_position raw pos in
-  match opattern with
-  | None -> log (fun () -> "highlight: no word found at cursor"); []
-  | Some pattern ->
-  log (fun () -> "highlight: found word at cursor: \"" ^ pattern ^ "\"");
-  let sentences = Document.sentences document in
-  find_all_ident (List.concat_map Document.tokens_of_sentence sentences) pattern
+  let osentence = Document.find_sentence document loc in
+  let otoken = Option.bind osentence (fun s -> Document.token_at_loc s loc) in
+  match otoken with
+  | None -> log (fun () -> "highlight: no item found at cursor"); []
+  | Some (Tok.IDENT pattern) | Some (Tok.FIELD pattern) ->
+    log (fun () -> "highlight: found token at cursor: \"" ^ pattern ^ "\"");
+    let sentences = Document.sentences document in
+    let tokens = List.concat_map Document.tokens_of_sentence sentences in
+    let locs = find_all_ident tokens pattern in
+    List.map (RawDocument.range_of_loc raw) locs
+  | Some token -> log (fun () -> "highlight: token at cursor is not an identifier: " ^ Tok.extract_string false token); []
 
 [%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
 let jump_to_definition _ _ _ = None
