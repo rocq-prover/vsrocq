@@ -998,7 +998,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "watch": "vite build --mode development --watch",
-    "gen-vscode-types": "vscode-ext-gen --output src/package-json.ts --scope vsrocq",
+    "gen-vscode-types": "vscode-ext-gen --output src/package-json.ts --scope vsrocq && prettier --write src/package-json.ts",
     "package": "npm install && npm run build --workspaces",
     "compile-tests": "tsc --outDir out",
     "watch-tests": "tsc -w --outDir out",

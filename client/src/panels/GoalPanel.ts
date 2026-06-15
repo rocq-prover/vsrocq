@@ -1,6 +1,7 @@
 import type { VSCodeMessage } from "goal-view-ui/src/types";
 import {
     Disposable,
+    EventEmitter,
     TextEditor,
     Uri,
     ViewColumn,
@@ -8,10 +9,9 @@ import {
     WebviewPanel,
     commands,
     window,
-    workspace,
 } from "vscode";
 import Client from "../client";
-import { EventEmitter } from "vscode";
+import { getConfigurationOption } from "../configuration";
 import { ProofViewNotification } from "../protocol/types";
 import { getNonce } from "../utilities/getNonce";
 import { getUri } from "../utilities/getUri";
@@ -33,8 +33,10 @@ import { getUri } from "../utilities/getUri";
 export default class GoalPanel {
     public static currentPanel: GoalPanel | undefined;
     public static currentPv: ProofViewNotification | undefined;
-    public static readonly _onProofStateChanged = new EventEmitter<ProofViewNotification>();
-    public static readonly onProofStateChanged = GoalPanel._onProofStateChanged.event;
+    public static readonly _onProofStateChanged =
+        new EventEmitter<ProofViewNotification>();
+    public static readonly onProofStateChanged =
+        GoalPanel._onProofStateChanged.event;
     private readonly _panel: WebviewPanel;
     private _disposables: Disposable[] = [];
 
@@ -270,18 +272,18 @@ export default class GoalPanel {
     }
 
     private _updateDisplaySettings(webview: Webview) {
-        const config = workspace.getConfiguration("vsrocq.goals");
+        const goalsDisplay = getConfigurationOption("goals", "display");
         webview.postMessage({
             command: "updateDisplaySettings",
-            text: config.display,
+            text: goalsDisplay,
         });
     }
 
     private _updateGoalDepth(webview: Webview) {
-        const config = workspace.getConfiguration("vsrocq.goals");
+        const goalsMaxDepth = getConfigurationOption("goals", "maxDepth");
         webview.postMessage({
             command: "updateGoalDepth",
-            text: config.maxDepth,
+            text: goalsMaxDepth,
         });
     }
 

@@ -11,6 +11,7 @@ import {
     decorationsErrorAnimation,
     decorationsManual,
 } from "./Decorations";
+import { getConfigurationOption } from "./configuration";
 
 export default class Client extends LanguageClient {
     private static _channel: any = vscode.window.createOutputChannel("VsRocq");
@@ -126,10 +127,10 @@ export default class Client extends LanguageClient {
         ranges: vscode.Range[],
         type: String = "processed",
     ) {
-        const config = vscode.workspace.getConfiguration("vsrocq.proof");
+        const proofMode = getConfigurationOption("proof", "mode");
         const editors = this.getDocumentEditors(uri);
         editors.map((editor) => {
-            if (config.mode === 0) {
+            if (proofMode === 0) {
                 if (type === "prepared") {
                     editor.setDecorations(decorationsManual.prepared, ranges);
                 }

@@ -27,7 +27,10 @@ import {
 } from "vscode-languageclient/node";
 
 import Client from "./client";
-import { updateServerOnConfigurationChange } from "./configuration";
+import {
+    getConfigurationOption,
+    updateServerOnConfigurationChange,
+} from "./configuration";
 import { initializeDecorations } from "./Decorations";
 import {
     sendInterpretToEnd,
@@ -205,7 +208,7 @@ export function activate(context: ExtensionContext) {
     }
 
     function intializeExtension(serverOptions: ServerOptions) {
-        const config = workspace.getConfiguration("vsrocq");
+        const config = getConfigurationOption();
 
         let clientOptions: LanguageClientOptions = {
             documentSelector: [{ scheme: "file", language: "rocq" }],
@@ -396,9 +399,9 @@ export function activate(context: ExtensionContext) {
                     return editor.document.uri.toString() === uri.toString();
                 });
                 if (
-                    workspace.getConfiguration("vsrocq.proof.cursor").sticky ===
+                    getConfigurationOption("proof", "cursor", "sticky") ===
                         true ||
-                    workspace.getConfiguration("vsrocq.proof").mode === 1
+                    getConfigurationOption("proof", "mode") === 1
                 ) {
                     editors.map((editor) => {
                         editor.selections = [
@@ -423,8 +426,7 @@ export function activate(context: ExtensionContext) {
                 const editor = window.activeTextEditor
                     ? window.activeTextEditor
                     : window.visibleTextEditors[0];
-                const autoDisplay =
-                    workspace.getConfiguration("vsrocq.goals").auto;
+                const autoDisplay = getConfigurationOption("goals", "auto");
                 GoalPanel.proofViewNotification(
                     context.extensionUri,
                     editor,
@@ -514,7 +516,7 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
                 (evt: TextEditorSelectionChangeEvent) => {
                     if (
                         evt.textEditor.document.languageId === "rocq" &&
-                        workspace.getConfiguration("vsrocq.proof").mode === 1
+                        getConfigurationOption("proof", "mode") === 1
                     ) {
                         sendInterpretToPoint(evt.textEditor, client);
                     }
