@@ -125,41 +125,28 @@ export default class Client extends LanguageClient {
     private updateDocumentEditors(
         uri: String,
         ranges: vscode.Range[],
-        type: String = "processed",
+        type: "prepared" | "processing" | "processed" = "processed",
     ) {
         const proofMode = getConfigurationOption("proof", "mode");
         const editors = this.getDocumentEditors(uri);
-        editors.map((editor) => {
-            if (proofMode === 0) {
-                if (type === "prepared") {
-                    editor.setDecorations(decorationsManual.prepared, ranges);
-                }
-                if (type === "processing") {
-                    editor.setDecorations(decorationsManual.processing, ranges);
-                }
-                if (type === "processed") {
-                    editor.setDecorations(decorationsManual.processed, ranges);
-                }
-            } else {
-                if (type === "prepared") {
-                    editor.setDecorations(
-                        decorationsContinuous.prepared,
-                        ranges,
-                    );
-                }
-                if (type === "processing") {
-                    editor.setDecorations(
-                        decorationsContinuous.processing,
-                        ranges,
-                    );
-                }
-                if (type === "processed") {
-                    editor.setDecorations(
-                        decorationsContinuous.processed,
-                        ranges,
-                    );
-                }
+        const decorations = (() => {
+            switch (type) {
+                case "prepared":
+                    return proofMode === 0
+                        ? decorationsManual.prepared
+                        : decorationsContinuous.prepared;
+                case "processing":
+                    return proofMode === 0
+                        ? decorationsManual.processing
+                        : decorationsContinuous.processing;
+                case "processed":
+                    return proofMode === 0
+                        ? decorationsManual.processed
+                        : decorationsContinuous.processed;
             }
+        })();
+        editors.map((editor) => {
+            editor.setDecorations(decorations, ranges);
         });
     }
 }
