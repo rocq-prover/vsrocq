@@ -39,6 +39,7 @@ import {
     sendStepBackward,
     sendStepForward,
 } from "./manualChecking";
+import { CommandKey } from "./package-json";
 import { DocumentStateViewProvider } from "./panels/DocumentStateViewProvider";
 import GoalPanel from "./panels/GoalPanel";
 import SearchViewProvider from "./panels/SearchViewProvider";
@@ -195,8 +196,8 @@ export function activate(context: ExtensionContext) {
 `;
     };
 
-    function registerVsrocqTextCommand(
-        command: string,
+    function registerVsrocqTextCommand<C extends string>(
+        command: `extension.rocq.${C}` extends CommandKey ? C : never,
         callback: (textEditor: TextEditor, ...args: any[]) => void,
     ) {
         context.subscriptions.push(
