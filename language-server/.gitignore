@@ -1,0 +1,10 @@
+_build/
+_opam/
+dm/dune
+language/dune
+protocol/dune
+vsrocqtop/dune
+tests/dune
+dm/vsrocq_config.mlh
+tests/vsrocq_config.mlh
+*.install
