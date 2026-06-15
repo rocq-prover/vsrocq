@@ -61,10 +61,6 @@ export default class GoalPanel {
 
         // Set an event listener to listen for messages passed from the webview context
         this._setWebviewMessageListener(this._panel.webview);
-
-        //init the app settings
-        this._updateDisplaySettings(this._panel.webview);
-        this._updateGoalDepth(this._panel.webview);
     }
 
     /**
@@ -130,30 +126,6 @@ export default class GoalPanel {
             if (disposable) {
                 disposable.dispose();
             }
-        }
-    }
-
-    // /////////////////////////////////////////////////////////////////////////////
-    // Change the goal display settings (gets triggered if the user changes
-    // his settings)
-    // /////////////////////////////////////////////////////////////////////////////
-    public static toggleGoalDisplaySettings() {
-        if (GoalPanel.currentPanel) {
-            Client.writeToVsrocqChannel(
-                "[GoalPanel] Toggling display settings",
-            );
-            GoalPanel.currentPanel._updateDisplaySettings(
-                GoalPanel.currentPanel._panel.webview,
-            );
-        }
-    }
-
-    public static changeGoalDisplayDepth() {
-        if (GoalPanel.currentPanel) {
-            Client.writeToVsrocqChannel("[GoalPanel] Changing goal depth");
-            GoalPanel.currentPanel._updateGoalDepth(
-                GoalPanel.currentPanel._panel.webview,
-            );
         }
     }
 
@@ -271,19 +243,21 @@ export default class GoalPanel {
     `;
     }
 
-    private _updateDisplaySettings(webview: Webview) {
-        const goalsDisplay = getConfigurationOption("goals", "display");
-        webview.postMessage({
-            command: "updateDisplaySettings",
-            text: goalsDisplay,
-        });
+    static configurationChanged() {
+        if (GoalPanel.currentPanel) {
+            GoalPanel.currentPanel._sendCurrentConfiguration();
+        }
     }
 
-    private _updateGoalDepth(webview: Webview) {
-        const goalsMaxDepth = getConfigurationOption("goals", "maxDepth");
-        webview.postMessage({
+    private _sendCurrentConfiguration() {
+        const goals = getConfigurationOption("goals");
+        this._panel.webview.postMessage({
+            command: "updateDisplaySettings",
+            text: goals.display,
+        });
+        this._panel.webview.postMessage({
             command: "updateGoalDepth",
-            text: goalsMaxDepth,
+            text: goals.maxDepth,
         });
     }
 
@@ -313,6 +287,9 @@ export default class GoalPanel {
                                 "[GoalPanel] No panel to send proof view to",
                             );
                         }
+                        break;
+                    case "pollDisplaySettings":
+                        this._sendCurrentConfiguration();
                         break;
                 }
             },

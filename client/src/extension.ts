@@ -503,13 +503,7 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
                         client.updateHightlights();
                     }
 
-                    if (event.affectsConfiguration("vsrocq.goals.display")) {
-                        GoalPanel.toggleGoalDisplaySettings();
-                    }
-
-                    if (event.affectsConfiguration("vsrocq.goals.maxDepth")) {
-                        GoalPanel.changeGoalDisplayDepth();
-                    }
+                    GoalPanel.configurationChanged();
                 }),
             );
 

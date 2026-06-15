@@ -48,4 +48,7 @@ export type VSCodeMessage =
       }
     | {
           command: "pollGoals";
+      }
+    | {
+          command: "pollDisplaySettings";
       };

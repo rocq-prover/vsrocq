@@ -84,6 +84,7 @@ const app = () => {
     useEffect(() => {
         window.addEventListener("message", handleMessage);
         vscode.postMessage({ command: "pollGoals" });
+        vscode.postMessage({ command: "pollDisplaySettings" });
         return () => {
             window.removeEventListener("message", handleMessage);
         };
