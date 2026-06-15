@@ -27,8 +27,11 @@ type AllPaths<O> = {
 export function getConfigurationOption<
     P extends AllPaths<NestedScopedConfigs> | [],
 >(...path: [...P]): GetDotAccess<NestedScopedConfigs, P> {
-    const key = ["vsrocq", ...path].join(".");
-    return vscode.workspace.getConfiguration(key) as any;
+    let obj = vscode.workspace.getConfiguration("vsrocq") as any;
+    for (const key of path) {
+        obj = obj[key];
+    }
+    return obj;
 }
 
 export function sendConfiguration(client: LanguageClient) {
