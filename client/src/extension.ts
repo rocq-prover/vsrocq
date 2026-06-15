@@ -493,7 +493,7 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
             // I think vscode should handle this automatically, TODO: try again after implemeting client capabilities
             context.subscriptions.push(
                 workspace.onDidChangeConfiguration((event) => {
-                    updateServerOnConfigurationChange(event, context, client);
+                    updateServerOnConfigurationChange(event, client);
 
                     if (event.affectsConfiguration("vsrocq.proof.mode")) {
                         client.resetHighlights();
