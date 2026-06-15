@@ -162,10 +162,8 @@ export default class VsRocqToolchainManager implements Disposable {
     }
 
     private rocqVersion(): Promise<void> {
-        const config = workspace
-            .getConfiguration("vsrocq")
-            .get("args") as string[];
-        const options = ["-v"].concat(config);
+        const args = getConfigurationOption("args") as string[];
+        const options = ["-v"].concat(args);
         const cmd = [this._vsrocqtopPath].concat(options).join(" ");
 
         return new Promise((resolve, reject: (reason: string) => void) => {

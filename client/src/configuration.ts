@@ -32,7 +32,7 @@ export function getConfigurationOption<
 }
 
 export function sendConfiguration(client: LanguageClient) {
-    const config = vscode.workspace.getConfiguration("vsrocq");
+    const config = getConfigurationOption();
     client.sendNotification("workspace/didChangeConfiguration", {
         settings: config,
     });
