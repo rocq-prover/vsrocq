@@ -1,4 +1,4 @@
-import type { VSCodeMessage } from "goal-view-ui/src/types";
+import type { VSCodeMessage, WebviewMessage } from "goal-view-ui/src/types";
 import {
     Disposable,
     EventEmitter,
@@ -180,13 +180,17 @@ export default class GoalPanel {
         }
     }
 
+    private _postMessage(message: VSCodeMessage) {
+        this._panel.webview.postMessage(message);
+    }
+
     private _reset() {
-        this._panel.webview.postMessage({ command: "reset" });
+        this._postMessage({ command: "reset" });
     }
 
     private _sendCurrentProofView() {
         if (GoalPanel.currentPv) {
-            this._panel.webview.postMessage({
+            this._postMessage({
                 command: "renderProofView",
                 proofView: GoalPanel.currentPv,
             });
@@ -251,13 +255,13 @@ export default class GoalPanel {
 
     private _sendCurrentConfiguration() {
         const goals = getConfigurationOption("goals");
-        this._panel.webview.postMessage({
+        this._postMessage({
             command: "updateDisplaySettings",
-            text: goals.display,
+            display: goals.display,
         });
-        this._panel.webview.postMessage({
+        this._postMessage({
             command: "updateGoalDepth",
-            text: goals.maxDepth,
+            maxDepth: goals.maxDepth,
         });
     }
 
@@ -269,7 +273,7 @@ export default class GoalPanel {
      */
     private _setWebviewMessageListener(webview: Webview) {
         webview.onDidReceiveMessage(
-            (message: VSCodeMessage) => {
+            (message: WebviewMessage) => {
                 const command = message.command;
 
                 switch (command) {
