@@ -13,9 +13,15 @@ type HypothesesBlockProps = {
 
 const hypothesesBlock: FunctionComponent<HypothesesBlockProps> = (props) => {
     const { hypotheses, maxDepth, showOnlyPropHypotheses } = props;
+    const isPropositionUniverse = (universe: string) =>
+        universe === "Prop" || universe === "SProp";
 
     const hypothesesComponents = hypotheses
-        .filter((hyp) => !showOnlyPropHypotheses || hyp.universe === "Prop")
+        .filter(
+            (hyp) =>
+                !showOnlyPropHypotheses ||
+                isPropositionUniverse(hyp.universe),
+        )
         .map((hyp, index) => {
             return (
                 <Hypothesis

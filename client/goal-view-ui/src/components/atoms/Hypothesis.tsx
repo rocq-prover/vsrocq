@@ -13,15 +13,21 @@ type HypothesisProps = {
 
 const hypothesis: FunctionComponent<HypothesisProps> = (props) => {
     const { ids, body, type, universe, maxDepth } = props;
+    const universeClass = (() => {
+        switch (universe) {
+            case "SProp":
+                return classes.IdentifierSProp;
+            case "Prop":
+                return classes.IdentifierProp;
+            case "Set":
+                return classes.IdentifierSet;
+            default:
+                return classes.IdentifierType;
+        }
+    })();
     const identifierClass = [
         classes.Identifier,
-        universe === "Prop"
-            ? classes.IdentifierProp
-            : universe === "Set"
-              ? classes.IdentifierSet
-              : universe.startsWith("Type")
-                ? classes.IdentifierType
-                : undefined,
+        universeClass,
     ]
         .filter(Boolean)
         .join(" ");

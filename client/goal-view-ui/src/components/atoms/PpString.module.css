@@ -48,6 +48,10 @@
     color: var(--vscode-rocq-hypothesisIdent);
 }
 
+.IdentifierSProp {
+    color: var(--vscode-rocq-termKeyword);
+}
+
 .IdentifierProp {
     color: var(--vscode-rocq-hypothesisIdent);
 }
