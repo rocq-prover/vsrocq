@@ -9,6 +9,7 @@ import {
     ProofViewMessage,
 } from "./types";
 
+import { normalizeProofPayload } from "./utilities/proofViewCompat";
 import { vscode } from "./utilities/vscode";
 
 const app = () => {
@@ -30,7 +31,9 @@ const app = () => {
                 setGoalDepth(msg.data.text);
                 break;
             case "renderProofView":
-                const allGoals = msg.data.proofView.proof;
+                const allGoals = normalizeProofPayload(
+                    msg.data.proofView.proof,
+                );
                 const messages = msg.data.proofView.messages;
                 setMessages(messages);
                 setGoals(

@@ -3,6 +3,7 @@ import { FunctionComponent } from "react";
 import Hypothesis from "../atoms/Hypothesis";
 
 import { Hypothesis as HypothesisType } from "../../types";
+import { isVisibleWithPropFilter } from "../../utilities/proofViewCompat";
 import classes from "./HypothesesBlock.module.css";
 
 type HypothesesBlockProps = {
@@ -13,14 +14,11 @@ type HypothesesBlockProps = {
 
 const hypothesesBlock: FunctionComponent<HypothesesBlockProps> = (props) => {
     const { hypotheses, maxDepth, showOnlyPropHypotheses } = props;
-    const isPropositionUniverse = (universe: string) =>
-        universe === "Prop" || universe === "SProp";
 
     const hypothesesComponents = hypotheses
         .filter(
             (hyp) =>
-                !showOnlyPropHypotheses ||
-                isPropositionUniverse(hyp.universe),
+                !showOnlyPropHypotheses || isVisibleWithPropFilter(hyp),
         )
         .map((hyp, index) => {
             return (
