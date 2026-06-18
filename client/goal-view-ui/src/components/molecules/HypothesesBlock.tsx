@@ -1,22 +1,30 @@
 import { FunctionComponent } from "react";
 
-import { PpString } from "pp-display";
-
 import Hypothesis from "../atoms/Hypothesis";
 
+import { Hypothesis as HypothesisType } from "../../types";
 import classes from "./HypothesesBlock.module.css";
 
 type HypothesesBlockProps = {
-    hypotheses: PpString[];
+    hypotheses: HypothesisType[];
     maxDepth: number;
+    showOnlyPropHypotheses: boolean;
 };
 
 const hypothesesBlock: FunctionComponent<HypothesesBlockProps> = (props) => {
-    const { hypotheses, maxDepth } = props;
+    const { hypotheses, maxDepth, showOnlyPropHypotheses } = props;
 
-    const hypothesesComponents = hypotheses.map((hyp, index) => {
-        return <Hypothesis key={index} content={hyp} maxDepth={maxDepth} />;
-    });
+    const hypothesesComponents = hypotheses
+        .filter((hyp) => !showOnlyPropHypotheses || hyp.universe === "Prop")
+        .map((hyp, index) => {
+            return (
+                <Hypothesis
+                    key={index}
+                    content={hyp.hypothesis}
+                    maxDepth={maxDepth}
+                />
+            );
+        });
 
     return <ul className={classes.Block}>{hypothesesComponents}</ul>;
 };

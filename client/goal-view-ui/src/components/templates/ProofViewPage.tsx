@@ -105,6 +105,7 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                     }
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
+                    showOnlyPropHypotheses={showOnlyPropHypotheses}
                 />
             </VSCodePanelView>,
             <VSCodePanelView className={classes.View}>
@@ -121,6 +122,7 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                     emptyMessage="There are no shelved goals"
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
+                    showOnlyPropHypotheses={showOnlyPropHypotheses}
                 />
             </VSCodePanelView>,
             <VSCodePanelView className={classes.View}>
@@ -137,6 +139,7 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                     emptyMessage="There are no given up goals"
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
+                    showOnlyPropHypotheses={showOnlyPropHypotheses}
                 />
             </VSCodePanelView>,
         ];

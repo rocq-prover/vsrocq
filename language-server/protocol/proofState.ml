@@ -34,10 +34,15 @@ type proof_block = {
   steps: proof_step list;
 } [@@deriving yojson]
 
+type hypothesis = {
+  hypothesis: pp;
+  universe: string;
+} [@@deriving yojson]
+
 type goal = {
   id: int;
   name: string option;
-  hypotheses: pp list;
+  hypotheses: hypothesis list;
   goal: pp;
 } [@@deriving yojson]
 
@@ -73,34 +78,33 @@ let goal_name = Names.Id.to_string
 let goal_name = Libnames.string_of_path
 [%%endif]
 
-let is_prop_hypothesis env sigma typ =
+let hypothesis_universe env sigma typ =
   try
     let sort = Retyping.get_sort_of env sigma typ in
-    ESorts.is_prop sigma sort
-  with _ -> false
+    Pp.string_of_ppcmds (Printer.pr_sort sigma (ESorts.kind sigma sort))
+  with _ -> ""
 
-let should_include_hypothesis env sigma d ~showOnlyPropHypotheses =
-  (not showOnlyPropHypotheses) ||
-  match d with
-  | CompactedDecl.LocalAssum (_, typ) -> is_prop_hypothesis env sigma typ
-  | CompactedDecl.LocalDef (_, _, typ) -> is_prop_hypothesis env sigma typ
+let decl_universe env sigma = function
+  | CompactedDecl.LocalAssum (_, typ) -> hypothesis_universe env sigma typ
+  | CompactedDecl.LocalDef (_, _, typ) -> hypothesis_universe env sigma typ
 
-let filter_diff_hypotheses env sigma hyps ~showOnlyPropHypotheses =
-  if not showOnlyPropHypotheses then hyps
-  else
-    let compacted = compact sigma env in
-    let rec filter_zip decls hps =
-      match decls, hps with
-      | [], [] -> []
-      | d :: ds, h :: hs ->
-        if should_include_hypothesis env sigma d ~showOnlyPropHypotheses
-        then h :: filter_zip ds hs
-        else filter_zip ds hs
-      | _ -> hyps
-    in
-    filter_zip compacted hyps
+let mk_hypothesis env sigma d = {
+  hypothesis = pp_of_rocqpp (pr_ecompacted_decl env sigma d);
+  universe = decl_universe env sigma d;
+}
 
-let mk_goal env sigma g ~showOnlyPropHypotheses =
+let add_diff_hypotheses_info env sigma hyps =
+  let compacted = compact sigma env in
+  let rec zip decls hps =
+    match decls, hps with
+    | [], [] -> []
+    | d :: ds, h :: hs ->
+      { hypothesis = pp_of_rocqpp h; universe = decl_universe env sigma d } :: zip ds hs
+    | _ -> List.map (fun h -> { hypothesis = pp_of_rocqpp h; universe = "" }) hyps
+  in
+  zip compacted hyps
+
+let mk_goal env sigma g =
   let EvarInfo evi = Evd.find sigma g in
   let env = Evd.evar_filtered_env env evi in
   let id = Evar.repr g in
@@ -112,17 +116,11 @@ let mk_goal env sigma g ~showOnlyPropHypotheses =
   let ccl =
     pr_letype_env ~goal_concl_style:true env sigma concl
   in
-  let mk_hyp d =
-    if should_include_hypothesis env sigma d ~showOnlyPropHypotheses
-    then Some (pr_ecompacted_decl env sigma d)
-    else None
-  in
-  let hyps =
-    List.filter_map mk_hyp (compact sigma env) |> List.rev in
+  let hyps = List.map (mk_hypothesis env sigma) (compact sigma env) |> List.rev in
   {
     id;
     name;
-    hypotheses = List.map pp_of_rocqpp hyps;
+    hypotheses = hyps;
     goal = pp_of_rocqpp ccl;
   }
 
@@ -132,18 +130,17 @@ let diff_goal = Proof_diffs.diff_goal
 let diff_goal ?og_s g = Proof_diffs.diff_goal ~flags:(PrintingFlags.current()) ?og_s g
 [%%endif]
 
-let mk_goal_diff diff_goal_map env sigma g ~showOnlyPropHypotheses =
+let mk_goal_diff diff_goal_map env sigma g =
   let EvarInfo evi = Evd.find sigma g in
   let env = Evd.evar_filtered_env env evi in
   let id = Evar.repr g in
   let name = Option.map goal_name (Evd.evar_ident g sigma) in
   let og_s = Proof_diffs.map_goal g diff_goal_map in
   let (hyps, ccl) = diff_goal ?og_s (Proof_diffs.make_goal env sigma g) in
-  let filtered_hyps = filter_diff_hypotheses env sigma hyps ~showOnlyPropHypotheses in
   {
     id;
     name;
-    hypotheses = List.rev_map pp_of_rocqpp filtered_hyps;
+    hypotheses = List.rev (add_diff_hypotheses_info env sigma hyps);
     goal = pp_of_rocqpp ccl;
   }
 
@@ -164,7 +161,7 @@ let string_of_diff_mode = function
 let set_diff_mode diff_mode =
   Goptions.set_string_option_value Proof_diffs.opt_name @@ string_of_diff_mode diff_mode
 
-let get_proof ~previous diff_mode ~showOnlyPropHypotheses st =
+let get_proof ~previous diff_mode st =
   Vernacstate.unfreeze_full_state st;
   match proof_of_state st with
   | None -> None
@@ -172,15 +169,15 @@ let get_proof ~previous diff_mode ~showOnlyPropHypotheses st =
     let mk_goal env sigma g =
       match diff_mode with
       | Settings.Goals.Diff.Mode.Off ->
-        mk_goal env sigma g ~showOnlyPropHypotheses
+        mk_goal env sigma g
       | _ ->
         begin
           set_diff_mode diff_mode;
           match Option.bind previous proof_of_state with
-          | None -> mk_goal env sigma g ~showOnlyPropHypotheses
+          | None -> mk_goal env sigma g
           | Some old_proof ->
             let diff_goal_map = Proof_diffs.make_goal_map old_proof proof in
-            mk_goal_diff diff_goal_map env sigma g ~showOnlyPropHypotheses
+            mk_goal_diff diff_goal_map env sigma g
         end
     in
     let env = Global.env () in

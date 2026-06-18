@@ -5,7 +5,12 @@ export interface Goal {
     id: string;
     name?: Nullable<string>;
     goal: PpString;
-    hypotheses: PpString[];
+    hypotheses: Hypothesis[];
+}
+
+export interface Hypothesis {
+    hypothesis: PpString;
+    universe: string;
 }
 
 export interface CollapsibleGoal extends Goal {

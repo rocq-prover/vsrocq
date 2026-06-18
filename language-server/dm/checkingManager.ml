@@ -26,7 +26,6 @@ type settings = {
   diff_mode : Protocol.Settings.Goals.Diff.Mode.t;
   pp_mode : Protocol.Settings.Goals.PrettyPrint.t;
   point_interp_mode:Protocol.Settings.PointInterpretationMode.t;
-  show_only_prop_hypotheses : bool;
   preempt : bool;
 }
 
@@ -35,7 +34,6 @@ let settings : settings ref = ref {
   diff_mode = Settings.Goals.Diff.Mode.Off;
   pp_mode = Settings.Goals.PrettyPrint.Pp;
   point_interp_mode = Settings.PointInterpretationMode.Cursor;
-  show_only_prop_hypotheses = false;
   block_on_first_error = true;
   preempt = false;
 }
@@ -590,7 +588,7 @@ let handle_execution_manager_event document st ev =
 let vernac_state_of_sentence document id =
   Document.get_sentence document id |> fun x -> Option.bind x (fun x -> Utilities.get_vernac_state x.Document.checked)
 
-let get_proof document st ?(showOnlyPropHypotheses = !settings.show_only_prop_hypotheses) id =
+let get_proof document st id =
   let previous_st id =
     let oid = fst @@ Scheduler.task_for_sentence (Document.schedule document) id in
     Option.bind oid (vernac_state_of_sentence document)
@@ -599,7 +597,7 @@ let get_proof document st ?(showOnlyPropHypotheses = !settings.show_only_prop_hy
   let oid = Option.append id observe_id in
   let ost = Option.bind oid (vernac_state_of_sentence document) in
   let previous = Option.bind oid previous_st in
-  Option.bind ost (ProofState.get_proof ~previous !settings.diff_mode ~showOnlyPropHypotheses)
+  Option.bind ost (ProofState.get_proof ~previous !settings.diff_mode)
 
 let get_string_proof document st id =
   let observe_id = get_observe_id st in

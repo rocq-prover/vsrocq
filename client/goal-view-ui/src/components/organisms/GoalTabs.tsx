@@ -14,10 +14,11 @@ type GoalSectionProps = {
     goals: Goal[];
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
+    showOnlyPropHypotheses: boolean;
 };
 
 const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
-    const { goals, maxDepth, helpMessageHandler } = props;
+    const { goals, maxDepth, helpMessageHandler, showOnlyPropHypotheses } = props;
     const goalRefs = useRef<Array<HTMLDivElement | null>>([]);
     useLayoutEffect(() => {
         goalRefs.current = goalRefs.current.slice(0, goals.length);
@@ -61,6 +62,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
                     displayHyps={true}
+                    showOnlyPropHypotheses={showOnlyPropHypotheses}
                 />
                 <div
                     ref={(el) => {

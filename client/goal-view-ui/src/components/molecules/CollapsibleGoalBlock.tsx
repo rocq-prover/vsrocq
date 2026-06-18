@@ -14,6 +14,7 @@ type CollapsibleGoalBlockProps = {
     goalIndicator: string;
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
+    showOnlyPropHypotheses: boolean;
 };
 
 const collapsibleGoalBlock: FunctionComponent<CollapsibleGoalBlockProps> = (
@@ -27,6 +28,7 @@ const collapsibleGoalBlock: FunctionComponent<CollapsibleGoalBlockProps> = (
         toggleContextHandler,
         maxDepth,
         helpMessageHandler,
+        showOnlyPropHypotheses,
     } = props;
 
     const secondaryActionIcon = goal.isContextHidden ? (
@@ -53,6 +55,7 @@ const collapsibleGoalBlock: FunctionComponent<CollapsibleGoalBlockProps> = (
                 maxDepth={maxDepth}
                 helpMessageHandler={helpMessageHandler}
                 displayHyps={!goal.isContextHidden}
+                showOnlyPropHypotheses={showOnlyPropHypotheses}
             />
         </Accordion>
     );

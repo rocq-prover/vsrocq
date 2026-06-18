@@ -11,6 +11,7 @@ type GoalSectionProps = {
     toggleContextHandler: (id: string) => void;
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
+    showOnlyPropHypotheses: boolean;
 };
 
 const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
@@ -20,6 +21,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
         toggleContextHandler,
         maxDepth,
         helpMessageHandler,
+        showOnlyPropHypotheses,
     } = props;
     const firstGoalRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +51,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                         toggleContextHandler={toggleContextHandler}
                         helpMessageHandler={helpMessageHandler}
                         maxDepth={maxDepth}
+                        showOnlyPropHypotheses={showOnlyPropHypotheses}
                     />
                     <div ref={firstGoalRef} />
                 </>
@@ -64,6 +67,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                 toggleContextHandler={toggleContextHandler}
                 maxDepth={maxDepth}
                 helpMessageHandler={helpMessageHandler}
+                showOnlyPropHypotheses={showOnlyPropHypotheses}
             />
         );
     });

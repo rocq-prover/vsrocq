@@ -150,7 +150,6 @@ module Goals = struct
     diff: Diff.t [@default { mode = Diff.Mode.Off }];
     messages: Messages.t;
     ppmode: PrettyPrint.t option [@yojson.option];
-    showOnlyPropHypotheses: bool [@default false];
   } [@@deriving yojson] [@@yojson.allow_extra_fields]
 
 end

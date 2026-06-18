@@ -17,6 +17,7 @@ type GoalSectionProps = {
     unfocusedGoals?: CollapsibleGoal[];
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
+    showOnlyPropHypotheses: boolean;
 };
 
 const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
@@ -30,6 +31,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
         emptyIcon,
         maxDepth,
         helpMessageHandler,
+        showOnlyPropHypotheses,
     } = props;
     const emptyMessageRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +65,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                         toggleContextHandler={toggleContextHandler}
                         maxDepth={maxDepth}
                         helpMessageHandler={helpMessageHandler}
+                        showOnlyPropHypotheses={showOnlyPropHypotheses}
                     />
                 </div>
             ) : (
@@ -76,6 +79,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                 goals={goals}
                 maxDepth={maxDepth}
                 helpMessageHandler={helpMessageHandler}
+                showOnlyPropHypotheses={showOnlyPropHypotheses}
             />
         ) : (
             <GoalCollapsibleSection
@@ -84,6 +88,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                 maxDepth={maxDepth}
                 helpMessageHandler={helpMessageHandler}
                 toggleContextHandler={toggleContextHandler}
+                showOnlyPropHypotheses={showOnlyPropHypotheses}
             />
         );
 

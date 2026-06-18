@@ -22,7 +22,6 @@ type settings = {
   diff_mode : Protocol.Settings.Goals.Diff.Mode.t;
   pp_mode : Protocol.Settings.Goals.PrettyPrint.t;
   point_interp_mode:Protocol.Settings.PointInterpretationMode.t;
-  show_only_prop_hypotheses : bool;
   preempt : bool;
 }
 
@@ -89,7 +88,6 @@ module Internal : sig
   val get_proof :
     document ->
     state ->
-    ?showOnlyPropHypotheses:bool ->
     sentence_id option ->
     Protocol.ProofState.t option
 

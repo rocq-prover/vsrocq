@@ -66,32 +66,23 @@ let%test_unit "goals: hypotheses are listed oldest-first" =
   [%test_eq: string list] [ "hyp_b"; "hyp_n" ] pp_names;
 
   let proof = get (Protocol.ProofState.get_proof
-                     ~previous:None Protocol.Settings.Goals.Diff.Mode.Off
-                     ~showOnlyPropHypotheses:false vstate) in
+                      ~previous:None Protocol.Settings.Goals.Diff.Mode.Off
+                      vstate) in
   let dump = Yojson.Safe.to_string (Protocol.ProofState.yojson_of_t proof) in
   let idx pattern = String.substr_index_exn dump ~pattern in
   [%test_eq: bool] true (idx "\"hyp_b\"" < idx "\"hyp_n\"")
 
-let%test_unit "goals: prop filtering excludes non-prop hypotheses" =
+let%test_unit "goals: hypotheses include universe metadata" =
   let st = dm_init_and_parse_test_doc ()
     ~text:"Lemma foo (n : nat) (H : n = 0) : n = 0." in
   let st, _ = dm_parse st (P O) in
   let exec_events = DocumentManager.interpret_to_next () in
   let todo = Sel.Todo.(add empty exec_events) in
   let st = handle_dm_events todo st in
-  let proof_all =
-    Stdlib.Option.get
-      (DocumentManager.Internal.get_proof st
-         ~showOnlyPropHypotheses:false None) in
-  let all_hyps_count =
-    proof_all |> Protocol.ProofState.yojson_of_t |> member "goals" |> to_list
-    |> List.hd_exn |> member "hypotheses" |> to_list |> List.length in
-  let proof_filtered =
-    Stdlib.Option.get
-      (DocumentManager.Internal.get_proof st
-         ~showOnlyPropHypotheses:true None) in
-  let filtered_hyps_count =
-    proof_filtered |> Protocol.ProofState.yojson_of_t |> member "goals" |> to_list
-    |> List.hd_exn |> member "hypotheses" |> to_list |> List.length in
-  [%test_eq: int] 2 all_hyps_count;
-  [%test_eq: int] 1 filtered_hyps_count
+  let proof = Stdlib.Option.get (DocumentManager.Internal.get_proof st None) in
+  let hyps =
+    proof |> Protocol.ProofState.yojson_of_t |> member "goals" |> to_list
+    |> List.hd_exn |> member "hypotheses" |> to_list in
+  let universes = List.map hyps ~f:(fun hyp -> hyp |> member "universe" |> to_string) in
+  [%test_eq: int] 2 (List.length hyps);
+  [%test_eq: string list] [ "Set"; "Prop" ] universes
