@@ -23,6 +23,7 @@ const hypothesesBlock: FunctionComponent<HypothesesBlockProps> = (props) => {
                     ids={hyp.ids}
                     body={hyp.body}
                     type={hyp._type}
+                    universe={hyp.universe}
                     maxDepth={maxDepth}
                 />
             );

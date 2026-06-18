@@ -7,13 +7,26 @@ type HypothesisProps = {
     ids: string[];
     body?: PpString | null;
     type: PpString;
+    universe: string;
     maxDepth: number;
 };
 
 const hypothesis: FunctionComponent<HypothesisProps> = (props) => {
-    const { ids, body, type, maxDepth } = props;
+    const { ids, body, type, universe, maxDepth } = props;
+    const identifierClass = [
+        classes.Identifier,
+        universe === "Prop"
+            ? classes.IdentifierProp
+            : universe === "Set"
+              ? classes.IdentifierSet
+              : universe.startsWith("Type")
+                ? classes.IdentifierType
+                : undefined,
+    ]
+        .filter(Boolean)
+        .join(" ");
     const names = ids.map((id, index) => (
-        <span className={classes.Identifier} key={id}>
+        <span className={identifierClass} key={id} title={universe}>
             {index === 0 ? id : `, ${id}`}
         </span>
     ));
