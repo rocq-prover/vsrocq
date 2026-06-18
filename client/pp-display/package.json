@@ -26,6 +26,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "unplugin-dts": "^1.0.0-beta.6",
+    "vite-plugin-libcss": "^1.1.2",
     "vscode-languageclient": "^9.0.1"
   }
 }
