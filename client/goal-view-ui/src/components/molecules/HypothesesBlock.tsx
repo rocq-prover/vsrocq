@@ -20,7 +20,9 @@ const hypothesesBlock: FunctionComponent<HypothesesBlockProps> = (props) => {
             return (
                 <Hypothesis
                     key={index}
-                    content={hyp.hypothesis}
+                    ids={hyp.ids}
+                    body={hyp.body}
+                    type={hyp._type}
                     maxDepth={maxDepth}
                 />
             );

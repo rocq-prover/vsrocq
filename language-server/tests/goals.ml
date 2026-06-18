@@ -84,5 +84,7 @@ let%test_unit "goals: hypotheses include universe metadata" =
     proof |> Protocol.ProofState.yojson_of_t |> member "goals" |> to_list
     |> List.hd_exn |> member "hypotheses" |> to_list in
   let universes = List.map hyps ~f:(fun hyp -> hyp |> member "universe" |> to_string) in
+  let ids = List.map hyps ~f:(fun hyp -> hyp |> member "ids" |> to_list |> List.map ~f:to_string) in
   [%test_eq: int] 2 (List.length hyps);
+  [%test_eq: string list list] [ [ "n" ]; [ "H" ] ] ids;
   [%test_eq: string list] [ "Set"; "Prop" ] universes

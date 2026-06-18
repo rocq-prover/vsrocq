@@ -40,7 +40,9 @@ export interface Goal {
 }
 
 export interface Hypothesis {
-    hypothesis: PpString;
+    ids: string[];
+    body?: Nullable<PpString>;
+    _type: PpString;
     universe: string;
 }
 

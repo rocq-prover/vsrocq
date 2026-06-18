@@ -35,7 +35,9 @@ type proof_block = {
 } [@@deriving yojson]
 
 type hypothesis = {
-  hypothesis: pp;
+  ids: string list;
+  body: pp option;
+  _type: pp;
   universe: string;
 } [@@deriving yojson]
 
@@ -88,9 +90,28 @@ let decl_universe env sigma = function
   | CompactedDecl.LocalAssum (_, typ) -> hypothesis_universe env sigma typ
   | CompactedDecl.LocalDef (_, _, typ) -> hypothesis_universe env sigma typ
 
-let mk_hypothesis env sigma d = {
-  hypothesis = pp_of_rocqpp (pr_ecompacted_decl env sigma d);
-  universe = decl_universe env sigma d;
+let mk_hypothesis env sigma d =
+  let pbody, typ = match d with
+    | CompactedDecl.LocalAssum (_, typ) -> None, typ
+    | CompactedDecl.LocalDef (_, c, typ) ->
+      let pb = pr_leconstr_env ~inctx:true env sigma c in
+      let pb = if EConstr.isCast sigma c then Pp.surround pb else pb in
+      Some pb, typ
+  in
+  let ids =
+    List.map (fun id -> Pp.string_of_ppcmds @@ Ppconstr.pr_id id) (get_ids d) in
+  {
+    ids;
+    body = Option.map pp_of_rocqpp pbody;
+    _type = pp_of_rocqpp (pr_letype_env env sigma typ);
+    universe = decl_universe env sigma d;
+  }
+
+let mk_fallback_hypothesis hyp = {
+  ids = [];
+  body = None;
+  _type = pp_of_rocqpp hyp;
+  universe = "";
 }
 
 let add_diff_hypotheses_info env sigma hyps =
@@ -99,8 +120,8 @@ let add_diff_hypotheses_info env sigma hyps =
     match decls, hps with
     | [], [] -> []
     | d :: ds, h :: hs ->
-      { hypothesis = pp_of_rocqpp h; universe = decl_universe env sigma d } :: zip ds hs
-    | _ -> List.map (fun h -> { hypothesis = pp_of_rocqpp h; universe = "" }) hyps
+      { (mk_fallback_hypothesis h) with ids = List.map (fun id -> Pp.string_of_ppcmds @@ Ppconstr.pr_id id) (get_ids d); universe = decl_universe env sigma d } :: zip ds hs
+    | _ -> List.map mk_fallback_hypothesis hyps
   in
   zip compacted hyps
 

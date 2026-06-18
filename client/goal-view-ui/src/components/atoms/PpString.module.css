@@ -56,6 +56,11 @@
 
 .Content {
     color: var(--vscode-editor-foreground);
+    min-width: 0;
+}
+
+.Hypothesis > .Content:last-child {
+    flex: 1 1 auto;
 }
 
 .constr-notation {
