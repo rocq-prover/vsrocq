@@ -26,7 +26,6 @@ type settings = {
 }
 
 val set_options : settings -> unit
-val get_options : unit -> settings
 
 type event
 
@@ -56,8 +55,6 @@ val observe_id_range : document -> state -> Range.t option
 val interpret_to_end : unit -> event Sel.Event.t list
 val interpret_to_next : unit -> event Sel.Event.t list
 val interpret_to_previous : unit -> event Sel.Event.t list
-
-val mk_current_proof_view_event : state -> event Sel.Event.t
 
 val interpret_to_position :
   Position.t ->

@@ -51,10 +51,6 @@ val apply_text_edits : state -> text_edit list -> state * events
 val reset_to_top : state -> state
 (** [reset_to_top state] updates the state to make the observe_id Top *)
 
-val mk_current_proof_view_event : state -> event Sel.Event.t
-(** [mk_current_proof_view_event state] creates a proof-view event for the
-    current observe id without changing execution state. *)
-
 val get_next_range : state -> Position.t -> Range.t option
 (** [get_next_range st pos] get the range of the next sentence relative to pos *)
 

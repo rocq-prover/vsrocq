@@ -490,9 +490,6 @@ let get_messages st id = CheckingManager.get_messages st.document id
 let reset_to_top st =
   { st with checking_state = CheckingManager.reset_to_top st.checking_state }
 
-let mk_current_proof_view_event st =
-  CheckingManager.mk_current_proof_view_event st.checking_state |> inject_im_event
-
 module Internal = struct
           
   let document st = st.document

@@ -42,8 +42,6 @@ let set_options s =
   settings := s;
   ProverThread.set_options ~preempt:s.preempt
 
-let get_options () = !settings
-
 let (Log log) = Log.mk_log "checkingManager"
 
 type interp_target = Next | Previous | Point of Position.t * Settings.PointInterpretationMode.t | End
@@ -145,11 +143,6 @@ let init ~feedback_pipe vs =
 let reset st vs ~feedback_pipe =
   ExecutionManager.destroy st.execution_state;
   init vs ~feedback_pipe
-
-let mk_current_proof_view_event st =
-  match st.observe_id with
-  | Id id -> mk_proof_view_event id
-  | Top -> mk_proof_view_event_empty
 
 let get_observe_id { observe_id } = match observe_id with Top -> None | Id x -> Some x
 let reset_to_top st = { st with observe_id = Top }

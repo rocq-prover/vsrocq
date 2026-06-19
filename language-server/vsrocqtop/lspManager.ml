@@ -34,14 +34,10 @@ let get_init_state () =
   | Some st -> st
   | None -> CErrors.anomaly Pp.(str "Initial state not available")
 
-type tab = { st : Dm.DocumentManager.state; visible : bool; current : bool }
+type tab = { st : Dm.DocumentManager.state; visible : bool }
 
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
 
-let set_current path =
-  Hashtbl.filter_map_inplace (fun p tab ->
-    Some { tab with current = String.equal p path }
-  ) states
 let max_memory_usage  = ref 4000000000
 
 let full_diagnostics = ref false
@@ -242,14 +238,10 @@ let update_view uri st =
   )
 
 let replace_state path st visible =
-  let current = match Hashtbl.find_opt states path with
-    | Some tab -> tab.current
-    | None -> false
-  in
-  Hashtbl.replace states path { st; visible; current }
+  Hashtbl.replace states path { st; visible }
 
 let run_documents () =
-  let interpret_doc_in_bg path { st : Dm.DocumentManager.state ; visible; _ } events =
+  let interpret_doc_in_bg path { st : Dm.DocumentManager.state ; visible } events =
       let st = Dm.DocumentManager.reset_to_top st in
       let (st, events') = Dm.DocumentManager.interpret_in_background st in
       let uri = DocumentUri.of_path path in
@@ -261,25 +253,13 @@ let run_documents () =
   Hashtbl.fold interpret_doc_in_bg states []
 
 let reset_observe_ids =
-  let reset_doc_observe_id path {st : Dm.DocumentManager.state; visible; _} events =
+  let reset_doc_observe_id path {st : Dm.DocumentManager.state; visible} events =
     let st = Dm.DocumentManager.reset_to_top st in
     let uri = DocumentUri.of_path path in
     replace_state path st visible;
     update_view uri st
   in
   Hashtbl.fold reset_doc_observe_id states
-
-let refresh_proof_views () =
-  let current_doc =
-    Hashtbl.fold (fun path { st; current; _ } acc ->
-      if current then Some (path, st) else acc
-    ) states None
-  in
-  match current_doc with
-  | None -> []
-  | Some (path, st) ->
-    let uri = DocumentUri.of_path path in
-    inject_dm_events (uri, [Dm.DocumentManager.mk_current_proof_view_event st])
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
 (* in these rocq versions init_runtime called globally for the process includes init_document
@@ -302,9 +282,7 @@ let open_new_document uri text =
   let st, events = try Dm.DocumentManager.init vst ~opts:(Coqargs.injection_commands local_args) uri ~text with
     e -> raise e
   in
-  let path = DocumentUri.to_path uri in
-  Hashtbl.add states path { st ; visible = true; current = false };
-  set_current path;
+  Hashtbl.add states (DocumentUri.to_path uri) { st ; visible = true };
   update_view uri st;
   inject_dm_events (uri, events)
 
@@ -312,18 +290,23 @@ let textDocumentDidOpen params =
   let Lsp.Types.DidOpenTextDocumentParams.{ textDocument = { uri; text } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> open_new_document uri text
-  | Some { st } ->
-    set_current (DocumentUri.to_path uri);
+  | Some { st } -> update_view uri st; []
+    (* let (st, events) = 
+      if !check_mode = Settings.Mode.Continuous then
+        let (st, events) = Dm.DocumentManager.interpret_in_background st ~should_block_on_error:!block_on_first_error in
+        (st, events)
+      else 
+        (st, [])
+    in
     update_view uri st;
-    []
+    inject_dm_events (uri, events) *)
 
 let textDocumentDidChange params =
   let Lsp.Types.DidChangeTextDocumentParams.{ textDocument; contentChanges } = params in
   let uri = textDocument.uri in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
     | None -> log (fun () -> "[textDocumentDidChange] ignoring event on non-existing document"); []
-    | Some { st; visible; _ } ->
-      set_current (DocumentUri.to_path uri);
+    | Some { st; visible } ->
       let mk_text_edit TextDocumentContentChangeEvent.{ range; text } =
         Option.get range, text
       in
@@ -341,7 +324,7 @@ let current_memory_usage () =
   Sys.word_size * heap_words
 
 let purge_invisible_tabs () =
-  Hashtbl.filter_map_inplace (fun u ({ visible; _ } as v) ->
+  Hashtbl.filter_map_inplace (fun u ({ visible } as v) ->
     if visible then Some v
     else begin
       log (fun () -> "purging tab " ^ u);
@@ -404,8 +387,7 @@ let rocqtopInterpretToPoint params =
   let uri = textDocument.uri in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
-  | Some { st; visible = _ } ->
-    set_current (DocumentUri.to_path uri);
+  | Some { st; visible } ->
     let events = Dm.DocumentManager.interpret_to_position position in
     let sel_events = inject_dm_events (uri, events) in
     sel_events
@@ -414,8 +396,7 @@ let rocqtopStepBackward params =
   let Notification.Client.StepBackwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
-  | Some { st; visible = _ } ->
-      set_current (DocumentUri.to_path uri);
+  | Some { st; visible } ->
       let events = Dm.DocumentManager.interpret_to_previous () in
       inject_dm_events (uri,events)
 
@@ -423,8 +404,7 @@ let rocqtopStepForward params =
   let Notification.Client.StepForwardParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
-  | Some { st; visible = _ } ->
-      set_current (DocumentUri.to_path uri);
+  | Some { st; visible } ->
       let events = Dm.DocumentManager.interpret_to_next () in
       inject_dm_events (uri,events) 
 
@@ -471,8 +451,7 @@ let rocqtopResetRocq id params =
   let Request.Client.ResetParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[resetRocq] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st; visible; _ } ->
-    set_current (DocumentUri.to_path uri);
+  | Some { st; visible } ->
     let st, events = Dm.DocumentManager.reset st in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;
@@ -482,8 +461,7 @@ let rocqtopInterpretToEnd params =
   let Notification.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
-  | Some { st; visible = _ } ->
-    set_current (DocumentUri.to_path uri);
+  | Some { st; visible } ->
     let events = Dm.DocumentManager.interpret_to_end () in
     inject_dm_events (uri,events)
 
@@ -548,12 +526,10 @@ let sendDocumentProofs id params =
 let workspaceDidChangeConfiguration params = 
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
   let settings = Settings.t_of_yojson settings in
-  let old_mode = (Dm.CheckingManager.get_options ()).check_mode in
   do_configuration settings;
-  match old_mode, settings.proof.mode with
-  | _, Continuous -> run_documents ()
-  | Continuous, Manual -> reset_observe_ids (); []
-  | Manual, Manual -> refresh_proof_views ()
+  match settings.proof.mode with
+  | Continuous -> run_documents ()
+  | Manual -> reset_observe_ids (); ([] : events)
 
 let handle_interrupt params =
   let Notification.Client.InterruptParams.{ textDocument } = params in
@@ -676,7 +652,7 @@ let handle_event = function
     | None ->
       log (fun () -> "ignoring event on non-existing document");
       []
-    | Some { st; visible; _ } ->
+    | Some { st; visible } ->
       let handled_event = Dm.DocumentManager.handle_event e st in
       let events = handled_event.events in
       begin match handled_event.state with
