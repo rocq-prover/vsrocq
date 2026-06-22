@@ -90,6 +90,9 @@ let decl_universe env sigma = function
   | CompactedDecl.LocalAssum (_, typ) -> hypothesis_universe env sigma typ
   | CompactedDecl.LocalDef (_, _, typ) -> hypothesis_universe env sigma typ
 
+let ids_of_decl decl =
+  List.map (fun id -> Pp.string_of_ppcmds @@ Ppconstr.pr_id id) (get_ids decl)
+
 let mk_hypothesis env sigma d =
   let pbody, typ = match d with
     | CompactedDecl.LocalAssum (_, typ) -> None, typ
@@ -98,10 +101,8 @@ let mk_hypothesis env sigma d =
       let pb = if EConstr.isCast sigma c then Pp.surround pb else pb in
       Some pb, typ
   in
-  let ids =
-    List.map (fun id -> Pp.string_of_ppcmds @@ Ppconstr.pr_id id) (get_ids d) in
   {
-    ids;
+    ids = ids_of_decl d;
     body = Option.map pp_of_rocqpp pbody;
     _type = pp_of_rocqpp (pr_letype_env env sigma typ);
     universe = decl_universe env sigma d;
@@ -115,15 +116,22 @@ let mk_fallback_hypothesis hyp = {
 }
 
 let add_diff_hypotheses_info env sigma hyps =
-  let compacted = compact sigma env in
-  let rec zip decls hps =
-    match decls, hps with
-    | [], [] -> []
-    | d :: ds, h :: hs ->
-      { (mk_fallback_hypothesis h) with ids = List.map (fun id -> Pp.string_of_ppcmds @@ Ppconstr.pr_id id) (get_ids d); universe = decl_universe env sigma d } :: zip ds hs
-    | _ -> List.map mk_fallback_hypothesis hyps
+  (* The proof-diff API gives us already-rendered hypotheses. We try to match them
+   against the current compacted context to recover ids and universe
+   information; if the shapes do not line up, keep the rendered diff hypotheses
+   and leave the extra metadata empty. *)
+  let enrich_hypothesis decl hyp =
+    {
+      (mk_fallback_hypothesis hyp) with
+      ids = ids_of_decl decl;
+      universe = decl_universe env sigma decl;
+    }
   in
-  zip compacted hyps
+  let compacted = compact sigma env in
+  if List.length hyps <> List.length compacted then
+    List.map mk_fallback_hypothesis hyps
+  else
+    List.map2 enrich_hypothesis compacted hyps
 
 let mk_goal env sigma g =
   let EvarInfo evi = Evd.find sigma g in
