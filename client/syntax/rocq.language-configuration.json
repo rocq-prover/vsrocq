@@ -37,7 +37,7 @@
         }
     ],
     // This allows for VSCode to suggest better intellisense hints (especially for definition names that include a "'" in them)
-    "wordPattern": "(_|[a-zA-Z\\p{L}])([a-zA-Z\\p{L}\\d'_])*",
+    "wordPattern": "(?u:(?:_|[a-zA-Z\\p{L}])(?:[a-zA-Z\\p{L}\\d'_])*)",
     "indentationRules": {
         /* Increase next lines indentation if:
          * We are a Section, Module Type, or Module opening
