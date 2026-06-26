@@ -1,4 +1,4 @@
-import { FunctionComponent } from "react";
+import { FunctionComponent, useState } from "react";
 
 import {
     VSCodeBadge,
@@ -6,11 +6,13 @@ import {
     VSCodePanels,
     VSCodePanelTab,
     VSCodePanelView,
+    VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react";
 
 import { VscFilter, VscGear } from "react-icons/vsc";
 
 import {
+    HypothesesFilter,
     ProofViewGoals,
     ProofViewGoalsKey,
     ProofViewMessage,
@@ -33,8 +35,9 @@ type ProofViewPageProps = {
     settingsClickHandler: () => void;
     helpMessage: string;
     helpMessageHandler: (message: string) => void;
-    showOnlyPropHypotheses: boolean;
-    propFilterClickHandler: () => void;
+    hypothesesFilter: HypothesesFilter;
+    hypothesesFilterClickHandler: () => void;
+    hypothesesFilterRegexHandler: (regex: string) => void;
 };
 
 const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
@@ -48,9 +51,11 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
         helpMessage,
         helpMessageHandler,
         toggleContextHandler,
-        showOnlyPropHypotheses,
-        propFilterClickHandler,
+        hypothesesFilter,
+        hypothesesFilterClickHandler,
+        hypothesesFilterRegexHandler,
     } = props;
+    const [isFilterRegexVisible, setIsFilterRegexVisible] = useState(false);
 
     const renderGoals = () => {
         const goalBadge = <VSCodeBadge>{goals!.main.length}</VSCodeBadge>;
@@ -105,7 +110,7 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                     }
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
-                    showOnlyPropHypotheses={showOnlyPropHypotheses}
+                    hypothesesFilter={hypothesesFilter}
                 />
             </VSCodePanelView>,
             <VSCodePanelView className={classes.View}>
@@ -122,7 +127,7 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                     emptyMessage="There are no shelved goals"
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
-                    showOnlyPropHypotheses={showOnlyPropHypotheses}
+                    hypothesesFilter={hypothesesFilter}
                 />
             </VSCodePanelView>,
             <VSCodePanelView className={classes.View}>
@@ -139,7 +144,7 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                     emptyMessage="There are no given up goals"
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
-                    showOnlyPropHypotheses={showOnlyPropHypotheses}
+                    hypothesesFilter={hypothesesFilter}
                 />
             </VSCodePanelView>,
         ];
@@ -170,22 +175,22 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                 <div className={classes.ButtonGroup}>
                     <VSCodeButton
                         appearance={"icon"}
-                        onClick={propFilterClickHandler}
+                        onClick={hypothesesFilterClickHandler}
                         onMouseOver={() => {
                             helpMessageHandler(
-                                showOnlyPropHypotheses
+                                hypothesesFilter.enabled
                                     ? "Show all hypotheses."
-                                    : "Show only Prop hypotheses.",
+                                    : "Filter hypotheses by regex.",
                             );
                         }}
                         onMouseOut={() => {
                             helpMessageHandler("");
                         }}
-                        aria-label="Toggle Prop filter"
+                        aria-label="Toggle hypotheses filter"
                     >
                         <span
                             className={
-                                showOnlyPropHypotheses
+                                hypothesesFilter.enabled
                                     ? classes.filterActive
                                     : undefined
                             }
@@ -193,6 +198,33 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                             <VscFilter />
                         </span>
                     </VSCodeButton>
+                    <VSCodeButton
+                        appearance={"icon"}
+                        onClick={() =>
+                            setIsFilterRegexVisible(!isFilterRegexVisible)
+                        }
+                        onMouseOver={() => {
+                            helpMessageHandler(
+                                "Show or hide the hypothesis filter regex.",
+                            );
+                        }}
+                        onMouseOut={() => {
+                            helpMessageHandler("");
+                        }}
+                        aria-label="Configure hypotheses filter regex"
+                    >
+                        <span className={classes.RegexButton}>.*</span>
+                    </VSCodeButton>
+                    {isFilterRegexVisible ? (
+                        <VSCodeTextField
+                            className={classes.RegexInput}
+                            value={hypothesesFilter.regex}
+                            placeholder="Hypothesis filter regex"
+                            onInput={(event: any) =>
+                                hypothesesFilterRegexHandler(event.target.value)
+                            }
+                        />
+                    ) : null}
                     <VSCodeButton
                         appearance={"icon"}
                         onClick={settingsClickHandler}

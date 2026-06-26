@@ -2,38 +2,67 @@ import { FunctionComponent } from "react";
 
 import Hypothesis from "../atoms/Hypothesis";
 
-import { Hypothesis as HypothesisType } from "../../types";
-import { isVisibleWithPropFilter } from "../../utilities/proofViewCompat";
+import { HypothesesFilter, Hypothesis as HypothesisType } from "../../types";
+import { isVisibleWithHypothesesFilter } from "../../utilities/proofViewCompat";
 import classes from "./HypothesesBlock.module.css";
 
 type HypothesesBlockProps = {
     hypotheses: HypothesisType[];
     maxDepth: number;
-    showOnlyPropHypotheses: boolean;
+    hypothesesFilter: HypothesesFilter;
 };
 
 const hypothesesBlock: FunctionComponent<HypothesesBlockProps> = (props) => {
-    const { hypotheses, maxDepth, showOnlyPropHypotheses } = props;
+    const { hypotheses, maxDepth, hypothesesFilter } = props;
+    let filterRegex: RegExp | null = null;
+    let hasInvalidRegex = false;
 
-    const hypothesesComponents = hypotheses
-        .filter(
-            (hyp) =>
-                !showOnlyPropHypotheses || isVisibleWithPropFilter(hyp),
-        )
-        .map((hyp, index) => {
-            return (
-                <Hypothesis
-                    key={index}
-                    ids={hyp.ids}
-                    body={hyp.body}
-                    type={hyp._type}
-                    universe={hyp.universe}
-                    maxDepth={maxDepth}
-                />
-            );
-        });
+    if (hypothesesFilter.enabled) {
+        try {
+            filterRegex = new RegExp(hypothesesFilter.regex);
+        } catch (_) {
+            hasInvalidRegex = true;
+        }
+    }
 
-    return <ul className={classes.Block}>{hypothesesComponents}</ul>;
+    const visibleHypotheses =
+        filterRegex === null
+            ? hypotheses
+            : hypotheses.filter((hyp) =>
+                  isVisibleWithHypothesesFilter(hyp, filterRegex),
+              );
+    const hiddenCount = hypotheses.length - visibleHypotheses.length;
+
+    const hypothesesComponents = visibleHypotheses.map((hyp, index) => {
+        return (
+            <Hypothesis
+                key={index}
+                ids={hyp.ids}
+                body={hyp.body}
+                type={hyp._type}
+                universe={hyp.universe}
+                maxDepth={maxDepth}
+            />
+        );
+    });
+    const hiddenMessage = hasInvalidRegex ? (
+        <li className={classes.FilterMessage}>
+            Invalid hypothesis filter regex; showing all hypotheses.
+        </li>
+    ) : hiddenCount > 0 ? (
+        <li className={classes.FilterMessage}>
+            {hiddenCount}{" "}
+            {hiddenCount === 1 ? "hypothesis is" : "hypotheses are"} hidden by
+            filter.
+        </li>
+    ) : null;
+
+    return (
+        <ul className={classes.Block}>
+            {hiddenMessage}
+            {hypothesesComponents}
+        </ul>
+    );
 };
 
 export default hypothesesBlock;

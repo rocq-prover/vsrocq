@@ -1,4 +1,4 @@
-import { PpString } from "pp-display";
+import { PpString, stringOfPpString } from "pp-display";
 
 import { Goal, Hypothesis } from "../types";
 
@@ -64,11 +64,13 @@ export const normalizeProofPayload = (
     };
 };
 
-export const isVisibleWithPropFilter = (hypothesis: Hypothesis) => {
-    // Legacy hypotheses have no universe metadata; keep them visible under the filter.
+export const isVisibleWithHypothesesFilter = (
+    hypothesis: Hypothesis,
+    filterRegex: RegExp,
+) => {
+    // Legacy hypotheses have no universe metadata; match them through their type.
     return (
-        hypothesis.universe === "" ||
-        hypothesis.universe === "Prop" ||
-        hypothesis.universe === "SProp"
+        filterRegex.test(hypothesis.universe) ||
+        filterRegex.test(stringOfPpString(hypothesis._type))
     );
 };

@@ -314,18 +314,14 @@ export function activate(context: ExtensionContext) {
         );
         context.subscriptions.push(
             commands.registerCommand(
-                "extension.rocq.toggleShowOnlyPropHypotheses",
+                "extension.rocq.toggleFilterHypotheses",
                 () => {
                     const config = workspace.getConfiguration("vsrocq");
                     const current = config.get<boolean>(
-                        "goals.showOnlyPropHypotheses",
+                        "goals.filterHypotheses",
                         false,
                     );
-                    config.update(
-                        "goals.showOnlyPropHypotheses",
-                        !current,
-                        false,
-                    );
+                    config.update("goals.filterHypotheses", !current, false);
                 },
             ),
         );
@@ -527,10 +523,13 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
 
                     if (
                         event.affectsConfiguration(
-                            "vsrocq.goals.showOnlyPropHypotheses",
+                            "vsrocq.goals.filterHypotheses",
+                        ) ||
+                        event.affectsConfiguration(
+                            "vsrocq.goals.hypothesesFilterRegex",
                         )
                     ) {
-                        GoalPanel.updatePropFilter();
+                        GoalPanel.updateHypothesesFilter();
                     }
                 }),
             );

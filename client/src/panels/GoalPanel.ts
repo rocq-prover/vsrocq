@@ -1,6 +1,7 @@
 import type { VSCodeMessage } from "goal-view-ui/src/types";
 import {
     Disposable,
+    EventEmitter,
     TextEditor,
     Uri,
     ViewColumn,
@@ -11,7 +12,6 @@ import {
     workspace,
 } from "vscode";
 import Client from "../client";
-import { EventEmitter } from "vscode";
 import { ProofViewNotification } from "../protocol/types";
 import { getNonce } from "../utilities/getNonce";
 import { getUri } from "../utilities/getUri";
@@ -33,8 +33,10 @@ import { getUri } from "../utilities/getUri";
 export default class GoalPanel {
     public static currentPanel: GoalPanel | undefined;
     public static currentPv: ProofViewNotification | undefined;
-    public static readonly _onProofStateChanged = new EventEmitter<ProofViewNotification>();
-    public static readonly onProofStateChanged = GoalPanel._onProofStateChanged.event;
+    public static readonly _onProofStateChanged =
+        new EventEmitter<ProofViewNotification>();
+    public static readonly onProofStateChanged =
+        GoalPanel._onProofStateChanged.event;
     private readonly _panel: WebviewPanel;
     private _disposables: Disposable[] = [];
 
@@ -63,7 +65,7 @@ export default class GoalPanel {
         //init the app settings
         this._updateDisplaySettings(this._panel.webview);
         this._updateGoalDepth(this._panel.webview);
-        this._updatePropFilter(this._panel.webview);
+        this._updateHypothesesFilter(this._panel.webview);
     }
 
     /**
@@ -156,9 +158,9 @@ export default class GoalPanel {
         }
     }
 
-    public static updatePropFilter() {
+    public static updateHypothesesFilter() {
         if (GoalPanel.currentPanel) {
-            GoalPanel.currentPanel._updatePropFilter(
+            GoalPanel.currentPanel._updateHypothesesFilter(
                 GoalPanel.currentPanel._panel.webview,
             );
         }
@@ -294,11 +296,15 @@ export default class GoalPanel {
         });
     }
 
-    private _updatePropFilter(webview: Webview) {
+    private _updateHypothesesFilter(webview: Webview) {
         const config = workspace.getConfiguration("vsrocq.goals");
         webview.postMessage({
-            command: "updatePropFilter",
-            enabled: config.get<boolean>("showOnlyPropHypotheses", false),
+            command: "updateHypothesesFilter",
+            enabled: config.get<boolean>("filterHypotheses", false),
+            regex: config.get<string>(
+                "hypothesesFilterRegex",
+                "^(Prop|SProp)$",
+            ),
         });
     }
 
@@ -320,10 +326,19 @@ export default class GoalPanel {
                             "vsrocq.goals",
                         );
                         break;
-                    case "togglePropFilter":
+                    case "toggleHypothesesFilter":
                         commands.executeCommand(
-                            "extension.rocq.toggleShowOnlyPropHypotheses",
+                            "extension.rocq.toggleFilterHypotheses",
                         );
+                        break;
+                    case "updateHypothesesFilterRegex":
+                        workspace
+                            .getConfiguration("vsrocq.goals")
+                            .update(
+                                "hypothesesFilterRegex",
+                                message.regex,
+                                false,
+                            );
                         break;
                     case "pollGoals":
                         if (GoalPanel.currentPanel) {

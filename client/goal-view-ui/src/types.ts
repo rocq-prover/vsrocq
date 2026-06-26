@@ -15,6 +15,11 @@ export interface Hypothesis {
     universe: string;
 }
 
+export type HypothesesFilter = {
+    enabled: boolean;
+    regex: string;
+};
+
 export interface CollapsibleGoal extends Goal {
     isOpen: boolean;
     isContextHidden: boolean;
@@ -54,7 +59,11 @@ export type VSCodeMessage =
           command: "openGoalSettings";
       }
     | {
-          command: "togglePropFilter";
+          command: "toggleHypothesesFilter";
+      }
+    | {
+          command: "updateHypothesesFilterRegex";
+          regex: string;
       }
     | {
           command: "pollGoals";

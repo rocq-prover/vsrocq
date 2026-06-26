@@ -4,7 +4,7 @@ import GoalComponent from "../atoms/Goal";
 import Separator from "../atoms/Separator";
 import HypothesesBlock from "./HypothesesBlock";
 
-import { Goal } from "../../types";
+import { Goal, HypothesesFilter } from "../../types";
 import classes from "./GoalBlock.module.css";
 
 type GoalBlockProps = {
@@ -13,7 +13,7 @@ type GoalBlockProps = {
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
     displayHyps: boolean;
-    showOnlyPropHypotheses: boolean;
+    hypothesesFilter: HypothesesFilter;
 };
 
 const goalBlock: FunctionComponent<GoalBlockProps> = (props) => {
@@ -23,7 +23,7 @@ const goalBlock: FunctionComponent<GoalBlockProps> = (props) => {
         maxDepth,
         displayHyps,
         helpMessageHandler,
-        showOnlyPropHypotheses,
+        hypothesesFilter,
     } = props;
     const indicator = goalIndicator ? (
         <span className={classes.GoalIndex}>({goalIndicator})</span>
@@ -32,7 +32,7 @@ const goalBlock: FunctionComponent<GoalBlockProps> = (props) => {
         <HypothesesBlock
             hypotheses={goal.hypotheses}
             maxDepth={maxDepth}
-            showOnlyPropHypotheses={showOnlyPropHypotheses}
+            hypothesesFilter={hypothesesFilter}
         />
     ) : null;
 

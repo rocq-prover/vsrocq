@@ -2,7 +2,7 @@ import { FunctionComponent } from "react";
 
 import { VscEye, VscEyeClosed } from "react-icons/vsc";
 
-import { CollapsibleGoal } from "../../types";
+import { CollapsibleGoal, HypothesesFilter } from "../../types";
 import Accordion from "../atoms/Accordion";
 import GoalBlock from "./GoalBlock";
 
@@ -14,7 +14,7 @@ type CollapsibleGoalBlockProps = {
     goalIndicator: string;
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
-    showOnlyPropHypotheses: boolean;
+    hypothesesFilter: HypothesesFilter;
 };
 
 const collapsibleGoalBlock: FunctionComponent<CollapsibleGoalBlockProps> = (
@@ -28,7 +28,7 @@ const collapsibleGoalBlock: FunctionComponent<CollapsibleGoalBlockProps> = (
         toggleContextHandler,
         maxDepth,
         helpMessageHandler,
-        showOnlyPropHypotheses,
+        hypothesesFilter,
     } = props;
 
     const secondaryActionIcon = goal.isContextHidden ? (
@@ -55,7 +55,7 @@ const collapsibleGoalBlock: FunctionComponent<CollapsibleGoalBlockProps> = (
                 maxDepth={maxDepth}
                 helpMessageHandler={helpMessageHandler}
                 displayHyps={!goal.isContextHidden}
-                showOnlyPropHypotheses={showOnlyPropHypotheses}
+                hypothesesFilter={hypothesesFilter}
             />
         </Accordion>
     );

@@ -1,6 +1,6 @@
 import React, { FunctionComponent, useEffect, useRef } from "react";
 
-import { CollapsibleGoal } from "../../types";
+import { CollapsibleGoal, HypothesesFilter } from "../../types";
 import EmptyState from "../atoms/EmptyState";
 import GoalCollapsibleSection from "./GoalCollapsibles";
 import GoalTabSection from "./GoalTabs";
@@ -17,7 +17,7 @@ type GoalSectionProps = {
     unfocusedGoals?: CollapsibleGoal[];
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
-    showOnlyPropHypotheses: boolean;
+    hypothesesFilter: HypothesesFilter;
 };
 
 const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
@@ -31,7 +31,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
         emptyIcon,
         maxDepth,
         helpMessageHandler,
-        showOnlyPropHypotheses,
+        hypothesesFilter,
     } = props;
     const emptyMessageRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +65,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                         toggleContextHandler={toggleContextHandler}
                         maxDepth={maxDepth}
                         helpMessageHandler={helpMessageHandler}
-                        showOnlyPropHypotheses={showOnlyPropHypotheses}
+                        hypothesesFilter={hypothesesFilter}
                     />
                 </div>
             ) : (
@@ -79,7 +79,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                 goals={goals}
                 maxDepth={maxDepth}
                 helpMessageHandler={helpMessageHandler}
-                showOnlyPropHypotheses={showOnlyPropHypotheses}
+                hypothesesFilter={hypothesesFilter}
             />
         ) : (
             <GoalCollapsibleSection
@@ -88,7 +88,7 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                 maxDepth={maxDepth}
                 helpMessageHandler={helpMessageHandler}
                 toggleContextHandler={toggleContextHandler}
-                showOnlyPropHypotheses={showOnlyPropHypotheses}
+                hypothesesFilter={hypothesesFilter}
             />
         );
 

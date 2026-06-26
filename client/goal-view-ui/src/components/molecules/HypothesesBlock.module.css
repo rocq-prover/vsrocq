@@ -4,3 +4,10 @@
     padding-bottom: 1em;
     margin: 0;
 }
+
+.FilterMessage {
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+    list-style: none;
+    margin-bottom: 0.5em;
+}

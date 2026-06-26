@@ -4,6 +4,7 @@ import "./App.css";
 import ProofViewPage from "./components/templates/ProofViewPage";
 import {
     Goal,
+    HypothesesFilter,
     ProofViewGoals,
     ProofViewGoalsKey,
     ProofViewMessage,
@@ -19,8 +20,10 @@ const app = () => {
         useState<string>("List");
     const [goalDepth, setGoalDepth] = useState<number>(10);
     const [helpMessage, setHelpMessage] = useState<string>("");
-    const [showOnlyPropHypotheses, setShowOnlyPropHypotheses] =
-        useState<boolean>(false);
+    const [hypothesesFilter, setHypothesesFilter] = useState<HypothesesFilter>({
+        enabled: false,
+        regex: "^(Prop|SProp)$",
+    });
 
     const handleMessage = useCallback((msg: any) => {
         switch (msg.data.command) {
@@ -83,8 +86,11 @@ const app = () => {
                 setMessages([]);
                 setGoals(null);
                 break;
-            case "updatePropFilter":
-                setShowOnlyPropHypotheses(msg.data.enabled);
+            case "updateHypothesesFilter":
+                setHypothesesFilter({
+                    enabled: msg.data.enabled,
+                    regex: msg.data.regex,
+                });
                 break;
         }
     }, []);
@@ -129,9 +135,20 @@ const app = () => {
         });
     };
 
-    const propFilterClickHandler = () => {
+    const hypothesesFilterClickHandler = () => {
         vscode.postMessage({
-            command: "togglePropFilter",
+            command: "toggleHypothesesFilter",
+        });
+    };
+
+    const hypothesesFilterRegexHandler = (regex: string) => {
+        setHypothesesFilter((filter) => ({
+            ...filter,
+            regex,
+        }));
+        vscode.postMessage({
+            command: "updateHypothesesFilterRegex",
+            regex,
         });
     };
 
@@ -149,8 +166,9 @@ const app = () => {
                     setHelpMessage(message)
                 }
                 toggleContextHandler={toggleContext}
-                showOnlyPropHypotheses={showOnlyPropHypotheses}
-                propFilterClickHandler={propFilterClickHandler}
+                hypothesesFilter={hypothesesFilter}
+                hypothesesFilterClickHandler={hypothesesFilterClickHandler}
+                hypothesesFilterRegexHandler={hypothesesFilterRegexHandler}
             />
         </main>
     );

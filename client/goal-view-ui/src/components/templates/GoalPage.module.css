@@ -43,3 +43,12 @@
 .filterActive {
     color: var(--vscode-textLink-foreground);
 }
+
+.RegexButton {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 12px;
+}
+
+.RegexInput {
+    width: min(260px, 35vw);
+}
