@@ -5,7 +5,7 @@ import {
 } from "@vscode/webview-ui-toolkit/react";
 import { FunctionComponent, useLayoutEffect, useRef } from "react";
 
-import { Goal, HypothesesFilter } from "../../types";
+import { Goal } from "../../types";
 import GoalBlock from "../molecules/GoalBlock";
 
 import classes from "./GoalTabs.module.css";
@@ -14,11 +14,10 @@ type GoalSectionProps = {
     goals: Goal[];
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
-    hypothesesFilter: HypothesesFilter;
 };
 
 const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
-    const { goals, maxDepth, helpMessageHandler, hypothesesFilter } = props;
+    const { goals, maxDepth, helpMessageHandler } = props;
     const goalRefs = useRef<Array<HTMLDivElement | null>>([]);
     useLayoutEffect(() => {
         goalRefs.current = goalRefs.current.slice(0, goals.length);
@@ -62,7 +61,6 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                     maxDepth={maxDepth}
                     helpMessageHandler={helpMessageHandler}
                     displayHyps={true}
-                    hypothesesFilter={hypothesesFilter}
                 />
                 <div
                     ref={(el) => {

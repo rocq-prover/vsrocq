@@ -2,18 +2,19 @@ import { FunctionComponent } from "react";
 
 import Hypothesis from "../atoms/Hypothesis";
 
-import { HypothesesFilter, Hypothesis as HypothesisType } from "../../types";
+import { useHypothesesFilter } from "../../contexts/HypothesesFilterContext";
+import { Hypothesis as HypothesisType } from "../../types";
 import { isVisibleWithHypothesesFilter } from "../../utilities/proofViewCompat";
 import classes from "./HypothesesBlock.module.css";
 
 type HypothesesBlockProps = {
     hypotheses: HypothesisType[];
     maxDepth: number;
-    hypothesesFilter: HypothesesFilter;
 };
 
 const hypothesesBlock: FunctionComponent<HypothesesBlockProps> = (props) => {
-    const { hypotheses, maxDepth, hypothesesFilter } = props;
+    const { hypotheses, maxDepth } = props;
+    const hypothesesFilter = useHypothesesFilter();
     let filterRegex: RegExp | null = null;
     let hasInvalidRegex = false;
 

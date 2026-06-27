@@ -1,6 +1,6 @@
 import { FunctionComponent, useEffect, useRef } from "react";
 
-import { CollapsibleGoal, HypothesesFilter } from "../../types";
+import { CollapsibleGoal } from "../../types";
 import CollapsibleGoalBlock from "../molecules/CollapsibleGoalBlock";
 
 import classes from "./GoalCollapsibles.module.css";
@@ -11,7 +11,6 @@ type GoalSectionProps = {
     toggleContextHandler: (id: string) => void;
     maxDepth: number;
     helpMessageHandler: (message: string) => void;
-    hypothesesFilter: HypothesesFilter;
 };
 
 const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
@@ -21,7 +20,6 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
         toggleContextHandler,
         maxDepth,
         helpMessageHandler,
-        hypothesesFilter,
     } = props;
     const firstGoalRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +49,6 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                         toggleContextHandler={toggleContextHandler}
                         helpMessageHandler={helpMessageHandler}
                         maxDepth={maxDepth}
-                        hypothesesFilter={hypothesesFilter}
                     />
                     <div ref={firstGoalRef} />
                 </>
@@ -67,7 +64,6 @@ const goalSection: FunctionComponent<GoalSectionProps> = (props) => {
                 toggleContextHandler={toggleContextHandler}
                 maxDepth={maxDepth}
                 helpMessageHandler={helpMessageHandler}
-                hypothesesFilter={hypothesesFilter}
             />
         );
     });
