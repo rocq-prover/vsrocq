@@ -68,9 +68,8 @@ export const isVisibleWithHypothesesFilter = (
     hypothesis: Hypothesis,
     filterRegex: RegExp,
 ) => {
-    // Legacy hypotheses have no universe metadata; match them through their type.
+    // Legacy hypotheses have no universe metadata -> always display them
     return (
-        filterRegex.test(hypothesis.universe) ||
-        filterRegex.test(stringOfPpString(hypothesis._type))
+        filterRegex.test(hypothesis.universe) || hypothesis.universe === ""
     );
 };
