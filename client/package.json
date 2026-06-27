@@ -187,12 +187,12 @@
           "vsrocq.goals.filterHypotheses": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "When enabled, only shows hypotheses whose sort or type matches `vsrocq.goals.hypothesesFilterRegex`."
+            "markdownDescription": "When enabled, only shows hypotheses whose universe name matches `vsrocq.goals.hypothesesFilterRegex`."
           },
           "vsrocq.goals.hypothesesFilterRegex": {
             "type": "string",
             "default": "^(Prop|SProp)$",
-            "markdownDescription": "Regular expression matched against a hypothesis sort and type when hypothesis filtering is enabled."
+            "markdownDescription": "Regular expression matched against a hypothesis universe name when hypothesis universe name filtering is enabled."
           }
         }
       },
@@ -441,7 +441,7 @@
       {
         "command": "extension.rocq.toggleFilterHypotheses",
         "category": "Rocq",
-        "title": "Toggle: Filter Hypotheses"
+        "title": "Toggle: Filter Hypotheses by Universe Name"
       }
     ],
     "menus": {

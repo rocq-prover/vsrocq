@@ -179,14 +179,14 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                         onMouseOver={() => {
                             helpMessageHandler(
                                 hypothesesFilter.enabled
-                                    ? "Show all hypotheses."
-                                    : "Filter hypotheses by regex.",
+                                    ? "Disable universe name filter and show all hypotheses."
+                                    : "Filter hypotheses by universe name regex.",
                             );
                         }}
                         onMouseOut={() => {
                             helpMessageHandler("");
                         }}
-                        aria-label="Toggle hypotheses filter"
+                        aria-label="Toggle hypotheses filter by universe name"
                     >
                         <span
                             className={
@@ -205,13 +205,13 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                         }
                         onMouseOver={() => {
                             helpMessageHandler(
-                                "Show or hide the hypothesis filter regex.",
+                                "Show or hide the hypothesis universe name filter regex.",
                             );
                         }}
                         onMouseOut={() => {
                             helpMessageHandler("");
                         }}
-                        aria-label="Configure hypotheses filter regex"
+                        aria-label="Configure hypotheses universe name filter regex"
                     >
                         <span className={classes.RegexButton}>.*</span>
                     </VSCodeButton>
@@ -219,7 +219,7 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
                         <VSCodeTextField
                             className={classes.RegexInput}
                             value={hypothesesFilter.regex}
-                            placeholder="Hypothesis filter regex"
+                            placeholder="Hypothesis universe name filter regex"
                             onInput={(event: any) =>
                                 hypothesesFilterRegexHandler(event.target.value)
                             }

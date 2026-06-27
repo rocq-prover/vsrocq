@@ -47,13 +47,14 @@ const hypothesesBlock: FunctionComponent<HypothesesBlockProps> = (props) => {
     });
     const hiddenMessage = hasInvalidRegex ? (
         <li className={classes.FilterMessage}>
-            Invalid hypothesis filter regex; showing all hypotheses.
+            Invalid hypothesis universe name filter regex; showing all
+            hypotheses.
         </li>
     ) : hiddenCount > 0 ? (
         <li className={classes.FilterMessage}>
             {hiddenCount}{" "}
             {hiddenCount === 1 ? "hypothesis is" : "hypotheses are"} hidden by
-            filter.
+            universe name filter.
         </li>
     ) : null;
 
