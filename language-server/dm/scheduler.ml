@@ -50,7 +50,7 @@ type task =
 type proof_block = {
   proof_sentences : executable_sentence list;
   opener_id : sentence_id;
-  opener_type: Vernacextend.vernac_start option;
+  opener_type: Vernacextend.vernac_start;
 }
 
 type state = {
@@ -103,7 +103,7 @@ let base_id st =
 
 let open_proof_block ex_sentence opener_type st =
   let st = push_ex_sentence ex_sentence st in
-  let block = { proof_sentences = []; opener_id = ex_sentence.id; opener_type = (Some opener_type) } in
+  let block = { proof_sentences = []; opener_id = ex_sentence.id; opener_type } in
   { st with proof_blocks = block :: st.proof_blocks }
 
 let extrude_side_effect ex_sentence st =
@@ -164,10 +164,9 @@ let find_proof_using_annotation { proof_sentences } =
   | ex_sentence :: _ -> find_proof_using ex_sentence.ast
   | _ -> None
 
-(* TODO: clean it up and add tests *)
-let vernac_start_with_no_opacity_guarantee = function
-  | Some (Vernacextend.Doesn'tGuaranteeOpacity, _) -> true
-  | _ -> false
+let proof_opener_guarantees_opacity = function
+  | Vernacextend.GuaranteesOpacity, _ -> true
+  | Vernacextend.Doesn'tGuaranteeOpacity, _ -> false
 
 let is_opaque_flat_proof terminator section_depth block =
   let open Vernacextend in
@@ -175,8 +174,8 @@ let is_opaque_flat_proof terminator section_depth block =
     | VtStartProof _ | VtSideff _ | VtQed _ | VtProofMode _ | VtMeta -> true
     | VtProofStep _ | VtQuery -> false
   in
-  if List.exists has_side_effect block.proof_sentences then None
-  else if vernac_start_with_no_opacity_guarantee block.opener_type then None
+  if List.exists has_side_effect block.proof_sentences
+    || not (proof_opener_guarantees_opacity block.opener_type) then None
   else match terminator with
   | VtDrop -> Some Vernacexpr.SsEmpty
   | VtKeep VtKeepDefined -> None
