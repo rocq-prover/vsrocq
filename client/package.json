@@ -1022,7 +1022,7 @@
     "tmp-promise": "^3.0.3",
     "ts-loader": "^9.4.1",
     "typescript": "^6.0.2",
-    "vite": "^8.0.8",
+    "vite": "^8.0.16",
     "vscode-ext-gen": "^1.6.0"
   }
 }
