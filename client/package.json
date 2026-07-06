@@ -311,6 +311,11 @@
         }
       }
     ],
+    "configurationDefaults": {
+      "[rocq]": {
+          "editor.unicodeHighlight.ambiguousCharacters": false
+      }
+    },
     "commands": [
       {
         "command": "extension.rocq.showManual",
