@@ -51,13 +51,13 @@ let %test_unit "schedule: transparent lemma" =
   ()
 
 let %test_unit "schedule: opener without opacity guarantee" =
-  let st = dm_init_and_parse_test_doc ()~text:"Polymorphic Lemma a : True. Proof. idtac. Qed." in
-  let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
-  let init, e = task st s4.id Exec in
-  [%test_eq: sentence_id option] (Some s3.id) init;
-  [%test_eq: sentence_id] e s4.id;
+  let st = dm_init_and_parse_test_doc ()~text:"From Stdlib Require Import Derive. Derive x in (x = 1) as a. Proof. subst x; reflexivity. Qed." in
+  let st, (s1, (s2, (s3, (s4, (s5, ()))))) = dm_parse st (P(P(P(P(P O))))) in
+  let init, e = task st s5.id Exec in
+  [%test_eq: sentence_id option] (Some s4.id) init;
+  [%test_eq: sentence_id] e s5.id;
   ()
- 
+
 let %test_unit "schedule: section with proof using" =
   let st = dm_init_and_parse_test_doc ()~text:"Section A. Variable x : Prop. Lemma a : True. Proof. idtac. Qed." in
   let st, (s1, (s2, (s3, (s4, (s5, (s6, ())))))) = dm_parse st (P(P(P(P(P(P O)))))) in
@@ -65,7 +65,7 @@ let %test_unit "schedule: section with proof using" =
   [%test_eq: sentence_id option] (Some s5.id) init;
   [%test_eq: sentence_id] q s6.id;
   ()
-  
+
 let %test_unit "schedule: section closed" =
   let st = dm_init_and_parse_test_doc ()~text:"Section A. End A. Lemma a : True. Proof. idtac. Qed." in
   let st, (s1, (s2, (s3, (s4, (s5, (s6, ())))))) = dm_parse st (P(P(P(P(P(P O)))))) in
