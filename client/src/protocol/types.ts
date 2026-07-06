@@ -36,7 +36,14 @@ export interface Goal {
     id: integer;
     name?: Nullable<string>;
     goal: PpString;
-    hypotheses: PpString[];
+    hypotheses: Hypothesis[];
+}
+
+export interface Hypothesis {
+    ids: string[];
+    body?: Nullable<PpString>;
+    _type: PpString;
+    universe: string;
 }
 
 export interface ProofViewGoals {

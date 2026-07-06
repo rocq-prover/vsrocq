@@ -494,7 +494,8 @@ module Internal = struct
           
   let document st = st.document
 
-  let get_proof st id = CheckingManager.Internal.get_proof st.document st.checking_state id
+  let get_proof st id =
+    CheckingManager.Internal.get_proof st.document st.checking_state id
           
   let raw_document st = 
     Document.raw_document st.document

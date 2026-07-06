@@ -3,12 +3,18 @@ import "./App.css";
 
 import ProofViewPage from "./components/templates/ProofViewPage";
 import {
+    defaultHypothesesFilter,
+    HypothesesFilterContext,
+} from "./contexts/HypothesesFilterContext";
+import {
     Goal,
+    HypothesesFilter,
     ProofViewGoals,
     ProofViewGoalsKey,
     ProofViewMessage,
 } from "./types";
 
+import { normalizeProofPayload } from "./utilities/proofViewCompat";
 import { vscode } from "./utilities/vscode";
 
 const app = () => {
@@ -18,6 +24,8 @@ const app = () => {
         useState<string>("List");
     const [goalDepth, setGoalDepth] = useState<number>(10);
     const [helpMessage, setHelpMessage] = useState<string>("");
+    const [hypothesesFilter, setHypothesesFilter] =
+        useState<HypothesesFilter>(defaultHypothesesFilter);
 
     const handleMessage = useCallback((msg: any) => {
         switch (msg.data.command) {
@@ -28,7 +36,9 @@ const app = () => {
                 setGoalDepth(msg.data.text);
                 break;
             case "renderProofView":
-                const allGoals = msg.data.proofView.proof;
+                const allGoals = normalizeProofPayload(
+                    msg.data.proofView.proof,
+                );
                 const messages = msg.data.proofView.messages;
                 setMessages(messages);
                 setGoals(
@@ -78,6 +88,12 @@ const app = () => {
                 setMessages([]);
                 setGoals(null);
                 break;
+            case "updateHypothesesFilter":
+                setHypothesesFilter({
+                    enabled: msg.data.enabled,
+                    regex: msg.data.regex,
+                });
+                break;
         }
     }, []);
 
@@ -121,21 +137,43 @@ const app = () => {
         });
     };
 
+    const hypothesesFilterClickHandler = () => {
+        vscode.postMessage({
+            command: "toggleHypothesesFilter",
+        });
+    };
+
+    const hypothesesFilterRegexHandler = (regex: string) => {
+        setHypothesesFilter((filter) => ({
+            ...filter,
+            regex,
+        }));
+        vscode.postMessage({
+            command: "updateHypothesesFilterRegex",
+            regex,
+        });
+    };
+
     return (
         <main>
-            <ProofViewPage
-                goals={goals}
-                messages={messages}
-                collapseGoalHandler={collapseGoalHandler}
-                displaySetting={goalDisplaySetting}
-                maxDepth={goalDepth}
-                settingsClickHandler={settingsClickHandler}
-                helpMessage={helpMessage}
-                helpMessageHandler={(message: string) =>
-                    setHelpMessage(message)
-                }
-                toggleContextHandler={toggleContext}
-            />
+            <HypothesesFilterContext.Provider value={hypothesesFilter}>
+                <ProofViewPage
+                    goals={goals}
+                    messages={messages}
+                    collapseGoalHandler={collapseGoalHandler}
+                    displaySetting={goalDisplaySetting}
+                    maxDepth={goalDepth}
+                    settingsClickHandler={settingsClickHandler}
+                    helpMessage={helpMessage}
+                    helpMessageHandler={(message: string) =>
+                        setHelpMessage(message)
+                    }
+                    toggleContextHandler={toggleContext}
+                    hypothesesFilter={hypothesesFilter}
+                    hypothesesFilterClickHandler={hypothesesFilterClickHandler}
+                    hypothesesFilterRegexHandler={hypothesesFilterRegexHandler}
+                />
+            </HypothesesFilterContext.Provider>
         </main>
     );
 };

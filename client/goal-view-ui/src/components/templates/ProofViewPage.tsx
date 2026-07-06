@@ -1,4 +1,4 @@
-import { FunctionComponent } from "react";
+import { FunctionComponent, useState } from "react";
 
 import {
     VSCodeBadge,
@@ -6,11 +6,13 @@ import {
     VSCodePanels,
     VSCodePanelTab,
     VSCodePanelView,
+    VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react";
 
-import { VscGear } from "react-icons/vsc";
+import { VscFilter, VscGear } from "react-icons/vsc";
 
 import {
+    HypothesesFilter,
     ProofViewGoals,
     ProofViewGoalsKey,
     ProofViewMessage,
@@ -33,6 +35,9 @@ type ProofViewPageProps = {
     settingsClickHandler: () => void;
     helpMessage: string;
     helpMessageHandler: (message: string) => void;
+    hypothesesFilter: HypothesesFilter;
+    hypothesesFilterClickHandler: () => void;
+    hypothesesFilterRegexHandler: (regex: string) => void;
 };
 
 const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
@@ -46,7 +51,11 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
         helpMessage,
         helpMessageHandler,
         toggleContextHandler,
+        hypothesesFilter,
+        hypothesesFilterClickHandler,
+        hypothesesFilterRegexHandler,
     } = props;
+    const [isFilterRegexVisible, setIsFilterRegexVisible] = useState(false);
 
     const renderGoals = () => {
         const goalBadge = <VSCodeBadge>{goals!.main.length}</VSCodeBadge>;
@@ -160,19 +169,75 @@ const proofViewPage: FunctionComponent<ProofViewPageProps> = (props) => {
         <div className={classes.Page}>
             <div className={classes.ButtonContainer}>
                 <div className={classes.HelpMessage}>{helpMessage}</div>
-                <VSCodeButton
-                    appearance={"icon"}
-                    onClick={settingsClickHandler}
-                    onMouseOver={() => {
-                        helpMessageHandler("Open proof view panel settings.");
-                    }}
-                    onMouseOut={() => {
-                        helpMessageHandler("");
-                    }}
-                    aria-label="Settings"
-                >
-                    <VscGear />
-                </VSCodeButton>
+                <div className={classes.ButtonGroup}>
+                    <VSCodeButton
+                        appearance={"icon"}
+                        onClick={hypothesesFilterClickHandler}
+                        onMouseOver={() => {
+                            helpMessageHandler(
+                                hypothesesFilter.enabled
+                                    ? "Disable universe name filter and show all hypotheses."
+                                    : "Filter hypotheses by universe name regex.",
+                            );
+                        }}
+                        onMouseOut={() => {
+                            helpMessageHandler("");
+                        }}
+                        aria-label="Toggle hypotheses filter by universe name"
+                    >
+                        <span
+                            className={
+                                hypothesesFilter.enabled
+                                    ? classes.filterActive
+                                    : undefined
+                            }
+                        >
+                            <VscFilter />
+                        </span>
+                    </VSCodeButton>
+                    <VSCodeButton
+                        appearance={"icon"}
+                        onClick={() =>
+                            setIsFilterRegexVisible(!isFilterRegexVisible)
+                        }
+                        onMouseOver={() => {
+                            helpMessageHandler(
+                                "Show or hide the hypothesis universe name filter regex.",
+                            );
+                        }}
+                        onMouseOut={() => {
+                            helpMessageHandler("");
+                        }}
+                        aria-label="Configure hypotheses universe name filter regex"
+                    >
+                        <span className={classes.RegexButton}>.*</span>
+                    </VSCodeButton>
+                    {isFilterRegexVisible ? (
+                        <VSCodeTextField
+                            className={classes.RegexInput}
+                            value={hypothesesFilter.regex}
+                            placeholder="Hypothesis universe name filter regex"
+                            onInput={(event: any) =>
+                                hypothesesFilterRegexHandler(event.target.value)
+                            }
+                        />
+                    ) : null}
+                    <VSCodeButton
+                        appearance={"icon"}
+                        onClick={settingsClickHandler}
+                        onMouseOver={() => {
+                            helpMessageHandler(
+                                "Open proof view panel settings.",
+                            );
+                        }}
+                        onMouseOut={() => {
+                            helpMessageHandler("");
+                        }}
+                        aria-label="Settings"
+                    >
+                        <VscGear />
+                    </VSCodeButton>
+                </div>
             </div>
             <Accordion title={"Proof"} collapsed={false}>
                 {collapsibleGoalsDisplay}

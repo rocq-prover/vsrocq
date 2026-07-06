@@ -48,6 +48,22 @@
     color: var(--vscode-rocq-hypothesisIdent);
 }
 
+.IdentifierSProp {
+    color: var(--vscode-rocq-termKeyword);
+}
+
+.IdentifierProp {
+    color: var(--vscode-rocq-hypothesisIdent);
+}
+
+.IdentifierSet {
+    color: var(--vscode-rocq-termType);
+}
+
+.IdentifierType {
+    color: var(--vscode-rocq-termVariable);
+}
+
 .Separator {
     color: var(--vscode-rocq-hypothesisSeparator);
     margin-right: 1ex;
@@ -56,6 +72,11 @@
 
 .Content {
     color: var(--vscode-editor-foreground);
+    min-width: 0;
+}
+
+.Hypothesis > .Content:last-child {
+    flex: 1 1 auto;
 }
 
 .constr-notation {

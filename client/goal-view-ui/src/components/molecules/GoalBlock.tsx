@@ -16,13 +16,21 @@ type GoalBlockProps = {
 };
 
 const goalBlock: FunctionComponent<GoalBlockProps> = (props) => {
-    const { goal, goalIndicator, maxDepth, displayHyps, helpMessageHandler } =
-        props;
+    const {
+        goal,
+        goalIndicator,
+        maxDepth,
+        displayHyps,
+        helpMessageHandler,
+    } = props;
     const indicator = goalIndicator ? (
         <span className={classes.GoalIndex}>({goalIndicator})</span>
     ) : null;
     const hyps = displayHyps ? (
-        <HypothesesBlock hypotheses={goal.hypotheses} maxDepth={maxDepth} />
+        <HypothesesBlock
+            hypotheses={goal.hypotheses}
+            maxDepth={maxDepth}
+        />
     ) : null;
 
     return (

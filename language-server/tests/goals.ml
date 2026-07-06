@@ -17,6 +17,7 @@ open Dm
 open Common
 open Protocol
 open LspWrapper
+open Yojson.Safe.Util
 
 let%test_unit "goals: encoding after replay from top" =
   let st = dm_init_and_parse_test_doc () ~text:"Lemma foo : forall x y, x + y = y + x." in
@@ -65,7 +66,25 @@ let%test_unit "goals: hypotheses are listed oldest-first" =
   [%test_eq: string list] [ "hyp_b"; "hyp_n" ] pp_names;
 
   let proof = get (Protocol.ProofState.get_proof
-                     ~previous:None Protocol.Settings.Goals.Diff.Mode.Off vstate) in
+                      ~previous:None Protocol.Settings.Goals.Diff.Mode.Off
+                      vstate) in
   let dump = Yojson.Safe.to_string (Protocol.ProofState.yojson_of_t proof) in
   let idx pattern = String.substr_index_exn dump ~pattern in
   [%test_eq: bool] true (idx "\"hyp_b\"" < idx "\"hyp_n\"")
+
+let%test_unit "goals: hypotheses include universe metadata" =
+  let st = dm_init_and_parse_test_doc ()
+    ~text:"Lemma foo (n : nat) (H : n = 0) : n = 0." in
+  let st, _ = dm_parse st (P O) in
+  let exec_events = DocumentManager.interpret_to_next () in
+  let todo = Sel.Todo.(add empty exec_events) in
+  let st = handle_dm_events todo st in
+  let proof = Stdlib.Option.get (DocumentManager.Internal.get_proof st None) in
+  let hyps =
+    proof |> Protocol.ProofState.yojson_of_t |> member "goals" |> to_list
+    |> List.hd_exn |> member "hypotheses" |> to_list in
+  let universes = List.map hyps ~f:(fun hyp -> hyp |> member "universe" |> to_string) in
+  let ids = List.map hyps ~f:(fun hyp -> hyp |> member "ids" |> to_list |> List.map ~f:to_string) in
+  [%test_eq: int] 2 (List.length hyps);
+  [%test_eq: string list list] [ [ "n" ]; [ "H" ] ] ids;
+  [%test_eq: string list] [ "Set"; "Prop" ] universes

@@ -237,7 +237,8 @@ let update_view uri st =
     publish_diagnostics uri st;
   )
 
-let replace_state path st visible = Hashtbl.replace states path { st; visible}
+let replace_state path st visible =
+  Hashtbl.replace states path { st; visible }
 
 let run_documents () =
   let interpret_doc_in_bg path { st : Dm.DocumentManager.state ; visible } events =
@@ -281,7 +282,7 @@ let open_new_document uri text =
   let st, events = try Dm.DocumentManager.init vst ~opts:(Coqargs.injection_commands local_args) uri ~text with
     e -> raise e
   in
-  Hashtbl.add states (DocumentUri.to_path uri) { st ; visible = true; };
+  Hashtbl.add states (DocumentUri.to_path uri) { st ; visible = true };
   update_view uri st;
   inject_dm_events (uri, events)
 
@@ -450,7 +451,7 @@ let rocqtopResetRocq id params =
   let Request.Client.ResetParams.{ textDocument = { uri } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[resetRocq] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st; visible } -> 
+  | Some { st; visible } ->
     let st, events = Dm.DocumentManager.reset st in
     replace_state (DocumentUri.to_path uri) st visible;
     update_view uri st;

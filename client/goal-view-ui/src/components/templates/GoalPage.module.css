@@ -32,3 +32,23 @@
 .View {
     width: 100%;
 }
+
+.ButtonGroup {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.filterActive {
+    color: var(--vscode-textLink-foreground);
+}
+
+.RegexButton {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 12px;
+}
+
+.RegexInput {
+    width: min(260px, 35vw);
+}

@@ -5,8 +5,20 @@ export interface Goal {
     id: string;
     name?: Nullable<string>;
     goal: PpString;
-    hypotheses: PpString[];
+    hypotheses: Hypothesis[];
 }
+
+export interface Hypothesis {
+    ids: string[];
+    body?: Nullable<PpString>;
+    _type: PpString;
+    universe: string;
+}
+
+export type HypothesesFilter = {
+    enabled: boolean;
+    regex: string;
+};
 
 export interface CollapsibleGoal extends Goal {
     isOpen: boolean;
@@ -45,6 +57,13 @@ export type ProofViewGoals = Nullable<ProofViewGoalsType>;
 export type VSCodeMessage =
     | {
           command: "openGoalSettings";
+      }
+    | {
+          command: "toggleHypothesesFilter";
+      }
+    | {
+          command: "updateHypothesesFilterRegex";
+          regex: string;
       }
     | {
           command: "pollGoals";

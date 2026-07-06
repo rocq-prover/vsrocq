@@ -183,6 +183,16 @@
             "type": "number",
             "default": 17,
             "markdownDescription": "The maximum depth in goals over which an ellipsis will be displayed (instead of the sub-terms)."
+          },
+          "vsrocq.goals.filterHypotheses": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "When enabled, only shows hypotheses whose universe name matches `vsrocq.goals.hypothesesFilterRegex`."
+          },
+          "vsrocq.goals.hypothesesFilterRegex": {
+            "type": "string",
+            "default": "^(Prop|SProp)$",
+            "markdownDescription": "Regular expression matched against a hypothesis universe name when hypothesis universe name filtering is enabled."
           }
         }
       },
@@ -427,6 +437,11 @@
         "title": "Interrupt",
         "category": "Rocq",
         "icon": "$(stop-circle)"
+      },
+      {
+        "command": "extension.rocq.toggleFilterHypotheses",
+        "category": "Rocq",
+        "title": "Toggle: Filter Hypotheses by Universe Name"
       }
     ],
     "menus": {
@@ -641,6 +656,12 @@
         "key": "ctrl+alt+p",
         "mac": "cmd+ctrl+p",
         "command": "extension.rocq.query.print",
+        "when": "editorTextFocus && editorLangId == rocq"
+      },
+      {
+        "key": "ctrl+alt+h",
+        "mac": "cmd+ctrl+h",
+        "command": "extension.rocq.toggleFilterHypotheses",
         "when": "editorTextFocus && editorLangId == rocq"
       }
     ],
