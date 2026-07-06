@@ -51,7 +51,7 @@ let %test_unit "schedule: transparent lemma" =
   ()
 
 let %test_unit "schedule: opener without opacity guarantee" =
-  let st = dm_init_and_parse_test_doc ()~text:"From Stdlib Require Import Derive. Derive x in (x = 1) as a. Proof. subst x; reflexivity. Qed." in
+  let st = dm_init_and_parse_test_doc ()~text:"From Corelib Require Import Derive. Derive x in (x = 1) as a. Proof. subst x; reflexivity. Qed." in
   let st, (s1, (s2, (s3, (s4, (s5, ()))))) = dm_parse st (P(P(P(P(P O))))) in
   let init, e = task st s5.id Exec in
   [%test_eq: sentence_id option] (Some s4.id) init;
