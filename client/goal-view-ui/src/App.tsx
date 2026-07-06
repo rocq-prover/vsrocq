@@ -7,6 +7,7 @@ import {
     ProofViewGoals,
     ProofViewGoalsKey,
     ProofViewMessage,
+    VSCodeMessage,
 } from "./types";
 
 import { vscode } from "./utilities/vscode";
@@ -14,18 +15,19 @@ import { vscode } from "./utilities/vscode";
 const app = () => {
     const [goals, setGoals] = useState<ProofViewGoals>(null);
     const [messages, setMessages] = useState<ProofViewMessage[]>([]);
-    const [goalDisplaySetting, setGoalDisplaySetting] =
-        useState<string>("List");
+    const [goalDisplaySetting, setGoalDisplaySetting] = useState<
+        "List" | "Tabs"
+    >("List");
     const [goalDepth, setGoalDepth] = useState<number>(10);
     const [helpMessage, setHelpMessage] = useState<string>("");
 
-    const handleMessage = useCallback((msg: any) => {
+    const handleMessage = useCallback((msg: { data: VSCodeMessage }) => {
         switch (msg.data.command) {
             case "updateDisplaySettings":
-                setGoalDisplaySetting(msg.data.text);
+                setGoalDisplaySetting(msg.data.display);
                 break;
             case "updateGoalDepth":
-                setGoalDepth(msg.data.text);
+                setGoalDepth(msg.data.maxDepth);
                 break;
             case "renderProofView":
                 const allGoals = msg.data.proofView.proof;
@@ -84,6 +86,7 @@ const app = () => {
     useEffect(() => {
         window.addEventListener("message", handleMessage);
         vscode.postMessage({ command: "pollGoals" });
+        vscode.postMessage({ command: "pollDisplaySettings" });
         return () => {
             window.removeEventListener("message", handleMessage);
         };

@@ -27,7 +27,10 @@ import {
 } from "vscode-languageclient/node";
 
 import Client from "./client";
-import { updateServerOnConfigurationChange } from "./configuration";
+import {
+    getConfigurationOption,
+    updateServerOnConfigurationChange,
+} from "./configuration";
 import { initializeDecorations } from "./Decorations";
 import {
     sendInterpretToEnd,
@@ -36,6 +39,7 @@ import {
     sendStepBackward,
     sendStepForward,
 } from "./manualChecking";
+import { CommandKey } from "./package-json";
 import { DocumentStateViewProvider } from "./panels/DocumentStateViewProvider";
 import GoalPanel from "./panels/GoalPanel";
 import SearchViewProvider from "./panels/SearchViewProvider";
@@ -192,8 +196,8 @@ export function activate(context: ExtensionContext) {
 `;
     };
 
-    function registerVsrocqTextCommand(
-        command: string,
+    function registerVsrocqTextCommand<C extends string>(
+        command: `extension.rocq.${C}` extends CommandKey ? C : never,
         callback: (textEditor: TextEditor, ...args: any[]) => void,
     ) {
         context.subscriptions.push(
@@ -205,7 +209,7 @@ export function activate(context: ExtensionContext) {
     }
 
     function intializeExtension(serverOptions: ServerOptions) {
-        const config = workspace.getConfiguration("vsrocq");
+        const config = getConfigurationOption();
 
         let clientOptions: LanguageClientOptions = {
             documentSelector: [{ scheme: "file", language: "rocq" }],
@@ -396,9 +400,9 @@ export function activate(context: ExtensionContext) {
                     return editor.document.uri.toString() === uri.toString();
                 });
                 if (
-                    workspace.getConfiguration("vsrocq.proof.cursor").sticky ===
+                    getConfigurationOption("proof", "cursor", "sticky") ===
                         true ||
-                    workspace.getConfiguration("vsrocq.proof").mode === 1
+                    getConfigurationOption("proof", "mode") === 1
                 ) {
                     editors.map((editor) => {
                         editor.selections = [
@@ -423,8 +427,7 @@ export function activate(context: ExtensionContext) {
                 const editor = window.activeTextEditor
                     ? window.activeTextEditor
                     : window.visibleTextEditors[0];
-                const autoDisplay =
-                    workspace.getConfiguration("vsrocq.goals").auto;
+                const autoDisplay = getConfigurationOption("goals", "auto");
                 GoalPanel.proofViewNotification(
                     context.extensionUri,
                     editor,
@@ -493,20 +496,14 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
             // I think vscode should handle this automatically, TODO: try again after implemeting client capabilities
             context.subscriptions.push(
                 workspace.onDidChangeConfiguration((event) => {
-                    updateServerOnConfigurationChange(event, context, client);
+                    updateServerOnConfigurationChange(event, client);
 
                     if (event.affectsConfiguration("vsrocq.proof.mode")) {
                         client.resetHighlights();
                         client.updateHightlights();
                     }
 
-                    if (event.affectsConfiguration("vsrocq.goals.display")) {
-                        GoalPanel.toggleGoalDisplaySettings();
-                    }
-
-                    if (event.affectsConfiguration("vsrocq.goals.maxDepth")) {
-                        GoalPanel.changeGoalDisplayDepth();
-                    }
+                    GoalPanel.configurationChanged();
                 }),
             );
 
@@ -514,7 +511,7 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
                 (evt: TextEditorSelectionChangeEvent) => {
                     if (
                         evt.textEditor.document.languageId === "rocq" &&
-                        workspace.getConfiguration("vsrocq.proof").mode === 1
+                        getConfigurationOption("proof", "mode") === 1
                     ) {
                         sendInterpretToPoint(evt.textEditor, client);
                     }

@@ -1,6 +1,7 @@
-import type { VSCodeMessage } from "goal-view-ui/src/types";
+import type { VSCodeMessage, WebviewMessage } from "goal-view-ui/src/types";
 import {
     Disposable,
+    EventEmitter,
     TextEditor,
     Uri,
     ViewColumn,
@@ -8,10 +9,9 @@ import {
     WebviewPanel,
     commands,
     window,
-    workspace,
 } from "vscode";
 import Client from "../client";
-import { EventEmitter } from "vscode";
+import { getConfigurationOption } from "../configuration";
 import { ProofViewNotification } from "../protocol/types";
 import { getNonce } from "../utilities/getNonce";
 import { getUri } from "../utilities/getUri";
@@ -33,8 +33,10 @@ import { getUri } from "../utilities/getUri";
 export default class GoalPanel {
     public static currentPanel: GoalPanel | undefined;
     public static currentPv: ProofViewNotification | undefined;
-    public static readonly _onProofStateChanged = new EventEmitter<ProofViewNotification>();
-    public static readonly onProofStateChanged = GoalPanel._onProofStateChanged.event;
+    public static readonly _onProofStateChanged =
+        new EventEmitter<ProofViewNotification>();
+    public static readonly onProofStateChanged =
+        GoalPanel._onProofStateChanged.event;
     private readonly _panel: WebviewPanel;
     private _disposables: Disposable[] = [];
 
@@ -59,10 +61,6 @@ export default class GoalPanel {
 
         // Set an event listener to listen for messages passed from the webview context
         this._setWebviewMessageListener(this._panel.webview);
-
-        //init the app settings
-        this._updateDisplaySettings(this._panel.webview);
-        this._updateGoalDepth(this._panel.webview);
     }
 
     /**
@@ -132,30 +130,6 @@ export default class GoalPanel {
     }
 
     // /////////////////////////////////////////////////////////////////////////////
-    // Change the goal display settings (gets triggered if the user changes
-    // his settings)
-    // /////////////////////////////////////////////////////////////////////////////
-    public static toggleGoalDisplaySettings() {
-        if (GoalPanel.currentPanel) {
-            Client.writeToVsrocqChannel(
-                "[GoalPanel] Toggling display settings",
-            );
-            GoalPanel.currentPanel._updateDisplaySettings(
-                GoalPanel.currentPanel._panel.webview,
-            );
-        }
-    }
-
-    public static changeGoalDisplayDepth() {
-        if (GoalPanel.currentPanel) {
-            Client.writeToVsrocqChannel("[GoalPanel] Changing goal depth");
-            GoalPanel.currentPanel._updateGoalDepth(
-                GoalPanel.currentPanel._panel.webview,
-            );
-        }
-    }
-
-    // /////////////////////////////////////////////////////////////////////////////
     // Reset the goal panel
     //
     // /////////////////////////////////////////////////////////////////////////////
@@ -206,13 +180,17 @@ export default class GoalPanel {
         }
     }
 
+    private _postMessage(message: VSCodeMessage) {
+        this._panel.webview.postMessage(message);
+    }
+
     private _reset() {
-        this._panel.webview.postMessage({ command: "reset" });
+        this._postMessage({ command: "reset" });
     }
 
     private _sendCurrentProofView() {
         if (GoalPanel.currentPv) {
-            this._panel.webview.postMessage({
+            this._postMessage({
                 command: "renderProofView",
                 proofView: GoalPanel.currentPv,
             });
@@ -269,19 +247,21 @@ export default class GoalPanel {
     `;
     }
 
-    private _updateDisplaySettings(webview: Webview) {
-        const config = workspace.getConfiguration("vsrocq.goals");
-        webview.postMessage({
-            command: "updateDisplaySettings",
-            text: config.display,
-        });
+    static configurationChanged() {
+        if (GoalPanel.currentPanel) {
+            GoalPanel.currentPanel._sendCurrentConfiguration();
+        }
     }
 
-    private _updateGoalDepth(webview: Webview) {
-        const config = workspace.getConfiguration("vsrocq.goals");
-        webview.postMessage({
+    private _sendCurrentConfiguration() {
+        const goals = getConfigurationOption("goals");
+        this._postMessage({
+            command: "updateDisplaySettings",
+            display: goals.display,
+        });
+        this._postMessage({
             command: "updateGoalDepth",
-            text: config.maxDepth,
+            maxDepth: goals.maxDepth,
         });
     }
 
@@ -293,7 +273,7 @@ export default class GoalPanel {
      */
     private _setWebviewMessageListener(webview: Webview) {
         webview.onDidReceiveMessage(
-            (message: VSCodeMessage) => {
+            (message: WebviewMessage) => {
                 const command = message.command;
 
                 switch (command) {
@@ -311,6 +291,9 @@ export default class GoalPanel {
                                 "[GoalPanel] No panel to send proof view to",
                             );
                         }
+                        break;
+                    case "pollDisplaySettings":
+                        this._sendCurrentConfiguration();
                         break;
                 }
             },

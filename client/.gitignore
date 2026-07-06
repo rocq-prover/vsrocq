@@ -3,3 +3,4 @@ dist/
 out/
 .vscode-test/*
 testFixture/
+src/package-json.ts

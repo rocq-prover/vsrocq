@@ -42,10 +42,32 @@ export type GoalArrayOrNull = Nullable<Goal[]>;
 
 export type ProofViewGoals = Nullable<ProofViewGoalsType>;
 
-export type VSCodeMessage =
+// Messages sent from the webview to the extension
+export type WebviewMessage =
     | {
           command: "openGoalSettings";
       }
     | {
           command: "pollGoals";
+      }
+    | {
+          command: "pollDisplaySettings";
+      };
+
+// Messages sent from the extension to the webview
+export type VSCodeMessage =
+    | {
+          command: "updateDisplaySettings";
+          display: "List" | "Tabs";
+      }
+    | {
+          command: "updateGoalDepth";
+          maxDepth: number;
+      }
+    | {
+          command: "renderProofView";
+          proofView: any;
+      }
+    | {
+          command: "reset";
       };

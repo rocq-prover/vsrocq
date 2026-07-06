@@ -4,6 +4,7 @@ import { Disposable } from "vscode-languageclient";
 import { ServerOptions } from "vscode-languageclient/node";
 import which from "which";
 import Client from "../client";
+import { getConfigurationOption } from "../configuration";
 
 export enum ToolChainErrorCode {
     notFound = 1,
@@ -57,10 +58,10 @@ export default class VsRocqToolchainManager implements Disposable {
     }
 
     public getServerConfiguration(): ServerOptions {
-        const config = workspace.getConfiguration("vsrocq");
+        const args = getConfigurationOption("args") as string[];
         const serverOptions: ServerOptions = {
             command: this._vsrocqtopPath,
-            args: config.args,
+            args,
             options: {
                 cwd: workspace.rootPath,
                 shell: true,
@@ -86,9 +87,7 @@ export default class VsRocqToolchainManager implements Disposable {
     }
 
     private async vsrocqtopPath(): Promise<string> {
-        const vsrocqtopPath = workspace
-            .getConfiguration("vsrocq")
-            .get("path") as string;
+        const vsrocqtopPath = getConfigurationOption("path");
         if (vsrocqtopPath) {
             Client.writeToVsrocqChannel(
                 "[Toolchain] Path set in user settings",
@@ -105,13 +104,11 @@ export default class VsRocqToolchainManager implements Disposable {
 
     // Launch the vsrocqtop -where command with the found exec and provided args
     private vsrocqtopWhere(): Promise<void> {
-        const config = workspace
-            .getConfiguration("vsrocq")
-            .get("args") as string[];
-        const options = ["-without-project-file", "-where"].concat(config);
+        const args = getConfigurationOption("args") as string[];
+        const options = ["-without-project-file", "-where"].concat(args);
         const cmd = [this._vsrocqtopPath].concat(options).join(" ");
         // fallback for < 2.4.0
-        const pre240options = ["-where"].concat(config);
+        const pre240options = ["-where"].concat(args);
         const pre240cmd = [this._vsrocqtopPath].concat(pre240options).join(" ");
 
         return new Promise(
@@ -165,10 +162,8 @@ export default class VsRocqToolchainManager implements Disposable {
     }
 
     private rocqVersion(): Promise<void> {
-        const config = workspace
-            .getConfiguration("vsrocq")
-            .get("args") as string[];
-        const options = ["-v"].concat(config);
+        const args = getConfigurationOption("args") as string[];
+        const options = ["-v"].concat(args);
         const cmd = [this._vsrocqtopPath].concat(options).join(" ");
 
         return new Promise((resolve, reject: (reason: string) => void) => {

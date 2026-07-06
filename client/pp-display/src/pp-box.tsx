@@ -1,4 +1,4 @@
-import { FunctionComponent, useState } from "react";
+import { FunctionComponent, useEffect, useState } from "react";
 import PpBreak from "./pp-break";
 import classes from "./Pp.module.css";
 import { Box, BreakInfo, DisplayType, HideStates } from "./types";
@@ -39,12 +39,15 @@ const PpBox: FunctionComponent<PpBoxProps> = (props) => {
         maxDepth,
         addedDepth,
     } = props;
-    const [selfHide, setSelfHide] = useState<HideStates>(
-        ComputeHideState(
-            depth >= maxDepth ? HideStates.HIDE : HideStates.UNHIDE,
-            parentHide,
-        ),
+    const shouldHide = ComputeHideState(
+        depth >= maxDepth ? HideStates.HIDE : HideStates.UNHIDE,
+        parentHide,
     );
+    const [selfHide, setSelfHide] = useState<HideStates>(shouldHide);
+    useEffect(() => {
+        setSelfHide(shouldHide);
+    }, [shouldHide]);
+
     const [depthOpen, setDepthOpen] = useState<number>(addedDepth);
 
     const ellpisis = <span className={classes.Ellipsis}>[...]</span>;
