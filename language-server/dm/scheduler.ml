@@ -50,6 +50,7 @@ type task =
 type proof_block = {
   proof_sentences : executable_sentence list;
   opener_id : sentence_id;
+  opener_type: Vernacextend.vernac_start option;
 }
 
 type state = {
@@ -100,9 +101,9 @@ let base_id st =
   in
   aux st.proof_blocks
 
-let open_proof_block ex_sentence st =
+let open_proof_block ex_sentence opener_type st =
   let st = push_ex_sentence ex_sentence st in
-  let block = { proof_sentences = []; opener_id = ex_sentence.id } in
+  let block = { proof_sentences = []; opener_id = ex_sentence.id; opener_type = (Some opener_type) } in
   { st with proof_blocks = block :: st.proof_blocks }
 
 let extrude_side_effect ex_sentence st =
@@ -163,7 +164,10 @@ let find_proof_using_annotation { proof_sentences } =
   | ex_sentence :: _ -> find_proof_using ex_sentence.ast
   | _ -> None
 
-
+(* TODO: clean it up and add tests *)
+let vernac_start_with_no_opacity_guarantee = function
+  | Some (Vernacextend.Doesn'tGuaranteeOpacity, _) -> true
+  | _ -> false
 
 let is_opaque_flat_proof terminator section_depth block =
   let open Vernacextend in
@@ -172,6 +176,7 @@ let is_opaque_flat_proof terminator section_depth block =
     | VtProofStep _ | VtQuery -> false
   in
   if List.exists has_side_effect block.proof_sentences then None
+  else if vernac_start_with_no_opacity_guarantee block.opener_type then None
   else match terminator with
   | VtDrop -> Some Vernacexpr.SsEmpty
   | VtKeep VtKeepDefined -> None
@@ -183,8 +188,8 @@ let push_state id ast synterp classif st =
   let open Vernacextend in
   let ex_sentence = { id; ast; classif; synterp; error_recovery = RSkip } in
   match classif with
-  | VtStartProof _ ->
-    base_id st, open_proof_block ex_sentence st, Exec ex_sentence
+  | VtStartProof opener_type ->
+    base_id st, open_proof_block ex_sentence opener_type st, Exec ex_sentence
   | VtQed terminator_type ->
     log (fun () -> "scheduling a qed");
     begin match st.proof_blocks with

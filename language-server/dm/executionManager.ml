@@ -233,9 +233,9 @@ let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
   let control = [] (* FIXME *) in
   let opaque = Vernacexpr.Opaque in
   let pending = CAst.make @@ Vernacexpr.Proved (opaque, None) in
-  (*log fun () -> "calling interp_qed_delayed done";*)
+  log (fun () -> "calling interp_qed_delayed done");
   let interp = Vernacinterp.interp_qed_delayed_proof ~proof ~st ~control pending in
-  (*log fun () -> "interp_qed_delayed done";*)
+  log (fun () -> "interp_qed_delayed done");
   let st = { st with interp } in
   st, success st, assign) 
   |> Result.fold ~ok:(fun x -> x) ~error:(fun x -> CErrors.user_err x)
