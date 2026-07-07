@@ -218,6 +218,13 @@ let%test_unit "exec.insert" =
   [%test_eq: int list] positions [ 0; 22 ]
   *)
 
+let%test_unit "parse.feedback_attached_before_execution" =
+  let st, _init_events = em_init_test_doc ~text:"Require Coq.Vectors.Vector." in
+  let st, (s1, ()) = dm_parse st (P O) in
+  check_diag st [
+    D (s1.id,Warning,".*deprecated-from-Coq.*")
+  ]
+
 let%test_unit "edit.shift_warning_in_sentence" =
   let st, init_events = em_init_test_doc ~text:"#[deprecated(note = \"foo\", since = \"foo\")] Definition x := true. Definition y := x." in
   let st, (s1, (s2, ())) = dm_parse st (P(P O)) in

@@ -40,6 +40,7 @@ type state = {
   document : Document.document;
   document_state: document_state;
   feedback_pipe : feedback_pipe;
+  pending_feedback : feedback_data list;
   checking_state : CheckingManager.state;
 }
 type event =
@@ -350,7 +351,7 @@ let init init_vs ~opts uri ~text =
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in
   let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
-  let state = { uri; opts; init_vs; document; document_state = Parsing; feedback_pipe; checking_state } in
+  let state = { uri; opts; init_vs; document; document_state = Parsing; feedback_pipe; pending_feedback = []; checking_state } in
   state, [parsebegin_event;feedback_event]
 
 let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
@@ -360,7 +361,7 @@ let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
   let document = Document.create_document ~doc_id init_vs.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.reset checking_state init_vs ~feedback_pipe in
-  let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; feedback_pipe } in
+  let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; feedback_pipe; pending_feedback = [] } in
   let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
   state, [parsebegin_event;feedback_event]
 
@@ -376,7 +377,7 @@ let apply_text_edits state edits =
     let offset = String.length new_text - edit_length in
     let document = Document.shift_feedbacks_and_checking_errors ~start ~offset document in
     let checking_state = CheckingManager.shift_overview state.checking_state ~before:state.document ~after:document ~start:edit_stop ~offset:(String.length new_text - edit_length) in
-    {state with checking_state; document}
+    {state with checking_state; document; document_state = Parsing; pending_feedback = []}
   in
   let state = List.fold_left apply_edit_and_shift_diagnostics_locs_and_overview state edits in
   let priority = Some PriorityManager.launch_parsing in
@@ -386,14 +387,19 @@ let apply_text_edits state edits =
 let handle_feedback_event state (_, id, msg) =
   { state with document = Document.append_feedback state.document id msg }
 
+let handle_feedback_events state feedback =
+  match state.document_state with
+  | Parsing -> { state with pending_feedback = state.pending_feedback @ feedback }
+  | Parsed -> List.fold_left handle_feedback_event state feedback
+
 let handle_event ev st =
   match ev with
   | LocalFeedback l ->
-     let state = List.fold_left handle_feedback_event st l in
+     let state = handle_feedback_events st l in
      make_handled_event ~state ~update_view:true ~events:[local_feedback state.feedback_pipe.sel_feedback_queue] ()
   | ParseBegin ->
     let document, events = Document.validate_document st.document in
-    let state = {st with document} in
+    let state = {st with document; document_state = Parsing} in
     let events = inject_doc_events events in
     make_handled_event ~state ~update_view:true ~events ()
   | DocumentEvent ev ->
@@ -406,7 +412,8 @@ let handle_event ev st =
     | Some parsing_end_info ->
       let st = validate_document st parsing_end_info in
       let checking_state, events = CheckingManager.validate_document st.document st.checking_state in
-      make_handled_event ~state:{st with checking_state} ~events:(inject_im_events events) ~update_view:true ()
+      let state = handle_feedback_events { st with checking_state; pending_feedback = [] } st.pending_feedback in
+      make_handled_event ~state ~events:(inject_im_events events) ~update_view:true ()
     end
   | InteractionManagerEvent ev ->
     let updates, he = CheckingManager.handle_event ~uri:st.uri st.document st.checking_state ev in
