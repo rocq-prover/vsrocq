@@ -208,5 +208,4 @@ Unless mentioned otherwise, files in this repository are [distributed under the 
 The following files are also distributed under the MIT License, Copyright (c) Christian J. Bell and contributors:
 * `client/syntax/coq.tmLanguage.json`
 * `client/syntax/rocq.tmLanguage.json`
-* `client/coq.language-configuration.json`
-* `client/rocq.language-configuration.json`
+* `client/syntax/rocq.language-configuration.json`
