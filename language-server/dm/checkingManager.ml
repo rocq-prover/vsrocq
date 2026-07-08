@@ -431,7 +431,7 @@ let real_interpret_to_position document st pos check_mode ~point_interp_mode =
   match point_interp_mode with
   | Settings.PointInterpretationMode.Cursor -> begin
       match Document.find_sentence_before_pos document pos with
-      | None -> (st, []) (* document is empty *)
+      | None -> ({ st with observe_id = Top }, [ mk_proof_view_event_empty ])
       | Some { id } -> interpret_to document st id check_mode
     end
   | Settings.PointInterpretationMode.NextCommand -> interpret_to_next_position document st pos check_mode
