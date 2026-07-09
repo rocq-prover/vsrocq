@@ -20,9 +20,9 @@
     "."
   ],
   "dependencies": {
-    "compare-versions": "^6.0.0-rc.1",
+    "compare-versions": "^6.1.1",
     "vscode-languageclient": "^9.0.1",
-    "which": "^6.0.1"
+    "which": "^7.0.0"
   },
   "categories": [
     "Programming Languages"
@@ -1008,22 +1008,22 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.1",
-    "@types/node": "22.x",
-    "@types/tmp": "^0.2.3",
-    "@types/vscode": "^1.74.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.1",
+    "@types/tmp": "^0.2.6",
+    "@types/vscode": "~1.74.0",
     "@types/which": "^3.0.4",
-    "@vscode/test-electron": "^2.2.0",
-    "@vscode/vsce": "^3.8.1",
-    "expect": "^30.3.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.9.2",
+    "expect": "^30.4.1",
     "glob": "^13.0.6",
-    "mocha": "^11.7.0",
-    "prettier": "3.8.3",
-    "prettier-plugin-organize-imports": "^4.0.0",
+    "mocha": "^11.7.6",
+    "prettier": "^3.9.4",
+    "prettier-plugin-organize-imports": "^4.3.0",
     "tmp-promise": "^3.0.3",
-    "ts-loader": "^9.4.1",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.8",
+    "ts-loader": "^9.6.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.4",
     "vscode-ext-gen": "^1.6.0"
   }
 }
