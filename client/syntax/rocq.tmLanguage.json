@@ -106,6 +106,21 @@
       }
     },
     {
+      "match": "\\b(Ltac2)\\s+(mutable\\s+)?(rec\\s+)?((\\p{L}|[_\\u00A0])(\\p{L}|[0-9_\\u00A0'])*)",
+      "comment": "Ltac2 declarations",
+      "captures": {
+        "1": {
+          "name": "keyword.source.rocq"
+        },
+        "2": {
+          "name": "keyword.source.rocq"
+        },
+        "3": {
+          "name": "entity.name.function.ltac"
+        }
+      }
+    },
+    {
       "match": "\\b(Hint(\\s+Mode)?|Create\\s+HintDb|Constructors|Resolve|Rewrite|Ltac|Ltac2|Implicit(\\s+Types)?|Set|Unset|Remove\\s+Printing|Arguments|((Tactic|Reserved)\\s+)?Notation|Infix|Section|Module(\\s+Type)?|End|Check|Print(\\s+All)?|Eval|Compute|Search|Universe|Coercions|Generalizable(\\s+(All|Variable))?|Existing(\\s+(Class|Instance))?|Canonical|About|Locate|Collection|Typeclasses\\s+(Opaque|Transparent))\\b",
       "comment": "Vernacular keywords",
       "name": "keyword.source.rocq"

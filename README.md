@@ -206,6 +206,5 @@ This extension is currently developed and maintained by
 Unless mentioned otherwise, files in this repository are [distributed under the MIT License](LICENSE).
 
 The following files are also distributed under the MIT License, Copyright (c) Christian J. Bell and contributors:
-* `client/syntax/coq.tmLanguage.json`
 * `client/syntax/rocq.tmLanguage.json`
 * `client/syntax/rocq.language-configuration.json`
