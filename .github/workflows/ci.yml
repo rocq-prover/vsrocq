@@ -48,17 +48,6 @@ jobs:
     - uses: cachix/install-nix-action@v31
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - name: Check each yarn.nix up to date
-      if: false
-      run: |
-        cd client && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix"
-        cd goal-view-ui && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix"
-        cd ../search-ui && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix" && cd ..
-        nix fmt new_yarn.nix goal-view-ui/new_yarn.nix search-ui/new_yarn.nix
-        nix fmt yarn.nix goal-view-ui/yarn.nix search-ui/yarn.nix
-        diff new_yarn.nix yarn.nix
-        diff goal-view-ui/new_yarn.nix goal-view-ui/yarn.nix
-        diff search-ui/new_yarn.nix search-ui/yarn.nix
     - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
       if: ${{matrix.coq != 9}}
     - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
