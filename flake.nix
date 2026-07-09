@@ -52,7 +52,7 @@
                 ++ (with coq.ocamlPackages; [
                   ocaml
                   findlib
-                  yojson
+                  yojson_2
                   ppx_inline_test
                   ppx_assert
                   ppx_sexp_conv
@@ -60,7 +60,11 @@
                   ppx_optcomp
                   ppx_import
                   sexplib
-                  ppx_yojson_conv
+                  (ppx_yojson_conv.override {
+                    ppx_yojson_conv_lib = ppx_yojson_conv_lib.override {
+                      yojson = yojson_2;
+                    };
+                  })
                   lsp
                   sel
                   memprof-limits
@@ -94,7 +98,7 @@
                 ]
                 ++ (with coq.ocamlPackages; [
                   ocaml
-                  yojson
+                  yojson_2
                   findlib
                   ppx_inline_test
                   ppx_assert
@@ -103,7 +107,11 @@
                   ppx_optcomp
                   ppx_import
                   sexplib
-                  ppx_yojson_conv
+                  (ppx_yojson_conv.override {
+                    ppx_yojson_conv_lib = ppx_yojson_conv_lib.override {
+                      yojson = yojson_2;
+                    };
+                  })
                   lsp
                   sel
                   memprof-limits
@@ -137,7 +145,7 @@
                 ]
                 ++ (with coq.ocamlPackages; [
                   ocaml
-                  yojson
+                  yojson_2
                   findlib
                   ppx_inline_test
                   ppx_assert
@@ -146,7 +154,11 @@
                   ppx_optcomp
                   ppx_import
                   sexplib
-                  ppx_yojson_conv
+                  (ppx_yojson_conv.override {
+                    ppx_yojson_conv_lib = ppx_yojson_conv_lib.override {
+                      yojson = yojson_2;
+                    };
+                  })
                   lsp
                   sel
                   memprof-limits
@@ -180,7 +192,7 @@
                 ]
                 ++ (with coq.ocamlPackages; [
                   ocaml
-                  yojson
+                  yojson_2
                   findlib
                   ppx_inline_test
                   ppx_assert
@@ -189,7 +201,11 @@
                   ppx_optcomp
                   ppx_import
                   sexplib
-                  ppx_yojson_conv
+                  (ppx_yojson_conv.override {
+                    ppx_yojson_conv_lib = ppx_yojson_conv_lib.override {
+                      yojson = yojson_2;
+                    };
+                  })
                   lsp
                   sel
                   memprof-limits
@@ -223,7 +239,7 @@
                 ]
                 ++ (with coq.ocamlPackages; [
                   ocaml
-                  yojson
+                  yojson_2
                   findlib
                   ppx_inline_test
                   ppx_assert
@@ -232,7 +248,11 @@
                   ppx_optcomp
                   ppx_import
                   sexplib
-                  ppx_yojson_conv
+                  (ppx_yojson_conv.override {
+                    ppx_yojson_conv_lib = ppx_yojson_conv_lib.override {
+                      yojson = yojson_2;
+                    };
+                  })
                   lsp
                   sel
                   memprof-limits
@@ -248,7 +268,7 @@
 
         vsrocq-language-server-coq-master =
           # Notice the reference to nixpkgs here.
-          with import nixpkgs {inherit system;}; let
+          with import nixpkgs-unstable {inherit system;}; let
             ocamlPackages = ocaml-ng.ocamlPackages_4_14;
           in
             ocamlPackages.buildDunePackage {
@@ -266,7 +286,7 @@
                 ]
                 ++ (with coq.ocamlPackages; [
                   ocaml
-                  yojson
+                  yojson_2
                   findlib
                   ppx_inline_test
                   ppx_assert
@@ -275,7 +295,11 @@
                   ppx_optcomp
                   ppx_import
                   sexplib
-                  ppx_yojson_conv
+                  (ppx_yojson_conv.override {
+                    ppx_yojson_conv_lib = ppx_yojson_conv_lib.override {
+                      yojson = yojson_2;
+                    };
+                  })
                   lsp
                   sel
                   memprof-limits
