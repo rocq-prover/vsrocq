@@ -34,6 +34,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-26-05": {
+      "locked": {
+        "lastModified": 1783389287,
+        "narHash": "sha256-0xIy4dVLqq47rA+mRy0hXDfjhQd4E5PoIns/RmB7nR4=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "0ad6f47ea4fe188f4bc8f0380f93ae8523337c6c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs-unstable": {
       "locked": {
         "lastModified": 1760596604,
@@ -60,17 +76,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1774356043,
-        "narHash": "sha256-trmMEiUNdrkgUGcbWR+eTUkjTFgZM6yswVnJfLv3ri8=",
+        "lastModified": 1783515064,
+        "narHash": "sha256-Mwc18CfeXmU7OSH5Pw1Rig7Y8Ut2aJe2Lo8Y/M8Hdeg=",
         "owner": "rocq-prover",
         "repo": "rocq",
-        "rev": "f5272dea10768c74e5a83a17ea594a48057359c4",
+        "rev": "5358976838128ff6125ee64e3b3d08dac45fc2f3",
         "type": "github"
       },
       "original": {
         "owner": "rocq-prover",
         "repo": "rocq",
-        "rev": "f5272dea10768c74e5a83a17ea594a48057359c4",
+        "rev": "5358976838128ff6125ee64e3b3d08dac45fc2f3",
         "type": "github"
       }
     },
@@ -78,6 +94,7 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs",
+        "nixpkgs-26-05": "nixpkgs-26-05",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "rocq-master": "rocq-master"
       }

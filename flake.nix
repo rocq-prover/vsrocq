@@ -4,9 +4,10 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs-26-05.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    rocq-master = { url = "github:rocq-prover/rocq/eebacb3bb172082ca7403525483510ab85212a08"; }; # Should be kept in sync with PIN_COQ in CI workflow
+    rocq-master = { url = "github:rocq-prover/rocq/5358976838128ff6125ee64e3b3d08dac45fc2f3"; }; # Should be kept in sync with PIN_COQ in CI workflow
     rocq-master.inputs.nixpkgs.follows = "nixpkgs";
     rocq-master.inputs.flake-utils.follows = "flake-utils";
   };
@@ -14,6 +15,7 @@
   outputs = {
     self,
     nixpkgs,
+    nixpkgs-26-05,
     nixpkgs-unstable,
     flake-utils,
     rocq-master,
@@ -24,7 +26,13 @@
       vscodeExtName = "vsrocq";
       vscodeExtUniqueId = "rocq-prover.vsrocq";
       vsrocq_version = "2.4.3";
-      rocq = (import nixpkgs {inherit system;}).rocq-core.override { version = rocq-master.outPath; };
+      rocq = let
+        pkgs = import nixpkgs-26-05 {inherit system;};
+      in
+        pkgs.rocq-core.override {
+          version = rocq-master.outPath;
+          customOCamlPackages = pkgs.ocaml-ng.ocamlPackages_4_14;
+        };
     in rec {
       formatter = nixpkgs.legacyPackages.${system}.alejandra;
 
@@ -248,8 +256,8 @@
 
         vsrocq-language-server-coq-master =
           # Notice the reference to nixpkgs here.
-          with import nixpkgs {inherit system;}; let
-            ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+          with import nixpkgs-26-05 {inherit system;}; let
+            ocamlPackages = rocq.ocamlPackages;
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
@@ -264,9 +272,9 @@
                   rocq
                   dune_3
                 ]
-                ++ (with coq.ocamlPackages; [
+                ++ (with ocamlPackages; [
                   ocaml
-                  yojson
+                  yojson_2
                   findlib
                   ppx_inline_test
                   ppx_assert
@@ -275,12 +283,16 @@
                   ppx_optcomp
                   ppx_import
                   sexplib
-                  ppx_yojson_conv
+                  (ppx_yojson_conv.override {
+                    ppx_yojson_conv_lib = ppx_yojson_conv_lib.override {
+                      yojson = yojson_2;
+                    };
+                  })
                   lsp
                   sel
                   memprof-limits
                 ]);
-              propagatedBuildInputs= (with coq.ocamlPackages;
+              propagatedBuildInputs= (with ocamlPackages;
                 [
                   zarith
                 ]);
@@ -437,16 +449,13 @@
             '';
           };
 
-        vsrocq-master = with import nixpkgs {inherit system;}; let
-          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+        vsrocq-master = with import nixpkgs-26-05 {inherit system;}; let
+          ocamlPackages = rocq.ocamlPackages;
         in
           mkShell {
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-coq-master.buildInputs
-              ++ (with ocamlPackages; [
-                ocaml-lsp
-              ])
               ++ ([git]);
           };
 
