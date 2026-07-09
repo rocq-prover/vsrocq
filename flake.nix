@@ -3,7 +3,7 @@
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     rocq-master = { url = "github:rocq-prover/rocq/5358976838128ff6125ee64e3b3d08dac45fc2f3"; }; # Should be kept in sync with PIN_COQ in CI workflow
@@ -205,7 +205,7 @@
 
         vsrocq-language-server-rocq-9-1 =
           # Notice the reference to nixpkgs here.
-          with import nixpkgs-unstable {inherit system;}; let
+          with import nixpkgs {inherit system;}; let
             ocamlPackages = ocaml-ng.ocamlPackages_4_14;
           in
             ocamlPackages.buildDunePackage {
