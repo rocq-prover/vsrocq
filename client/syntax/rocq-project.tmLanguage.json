@@ -1,0 +1,33 @@
+{
+  "fileTypes": [
+    "_CoqProject",
+    "_RocqProject"
+  ],
+  "name": "Rocq Project",
+  "scopeName": "source.rocq-project",
+  "patterns": [
+    {
+      "name": "comment.line.rocq-project",
+      "match": "#.*$"
+    },
+    {
+      "name": "string.quoted.double.rocq-project",
+      "begin": "\"",
+      "end": "\""
+    },
+    {
+      "name": "keyword.other.rocq-project",
+      "match": "(-arg|-generate-meta-for-package|-docroot|-Q|-R|-I)"
+    },
+    {
+      "name": "entity.name.file.rocq-project",
+      "match": "(.*(\\|/))?(\\S+\\.v)"
+    },
+    {
+      "name": "entity.name.folder.rocq-project",
+      "match": "(.*(\\|/))?(\\S+)"
+    }
+  ],
+  "repository": {},
+  "uuid": "94440acd-57c4-46ad-b59b-d05ab6902361"
+}

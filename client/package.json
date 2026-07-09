@@ -57,15 +57,16 @@
         }
       },
       {
-        "id": "coq-project",
+        "id": "rocq-project",
         "aliases": [
-          "Coq Project",
-          "coq-project"
+          "Rocq Project",
+          "rocq-project"
         ],
-        "extensions": [
+        "filenames": [
+          "_RocqProject",
           "_CoqProject"
         ],
-        "configuration": "./syntax/coq-project.language-configuration.json",
+        "configuration": "./syntax/rocq-project.language-configuration.json",
         "icon": {
           "light": "./assets/icon-rocq-orange.png",
           "dark": "./assets/icon-rocq-orange.png"
@@ -79,9 +80,9 @@
         "path": "./syntax/rocq.tmLanguage.json"
       },
       {
-        "language": "coq-project",
-        "scopeName": "source.coq-project",
-        "path": "./syntax/coq-project.tmLanguage.json"
+        "language": "rocq-project",
+        "scopeName": "source.rocq-project",
+        "path": "./syntax/rocq-project.tmLanguage.json"
       }
     ],
     "viewsContainers": {

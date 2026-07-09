@@ -124,7 +124,7 @@ to add more in the future.
 We also support inline queries which then trigger messages in the goal panel.
 ![](gif/messages.gif)
 
-* Supports \_CoqProject
+* Supports \_RocqProject/\_CoqProject
 
 ### Since version 2.1.7
 
