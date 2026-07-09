@@ -79,7 +79,7 @@ let%test_unit "parse.error_recovery" =
 let%test_unit "parse.extensions" =
                                               (*          1         2         3         4         5         6         7*)
                                               (*01234567890123456789012345678901234567890123456789012345678901234567890*)
-  let st, init_events = em_init_test_doc ~text:"Notation \"## x\" := x (at level 0). Definition f (x : nat) := ##xx." in
+  let st, init_events = em_init_test_doc ~text:"Notation \"## x\" := x (at level 1). Definition f (x : nat) := ##xx." in
   let sentences = Document.sentences @@ DocumentManager.Internal.document st in
   let start_positions = Stdlib.List.map (fun (s : Document.sentence) -> s.Document.start) sentences in
   [%test_eq: int list] start_positions [ 0; 35 ];
@@ -217,6 +217,13 @@ let%test_unit "exec.insert" =
   check_no_diag st;
   [%test_eq: int list] positions [ 0; 22 ]
   *)
+
+let%test_unit "parse.feedback_attached_before_execution" =
+  let st, _init_events = em_init_test_doc ~text:"Notation \"## x\" := x (at level 0)." in
+  let st, (s1, ()) = dm_parse st (P O) in
+  check_diag st [
+    D (s1.id,Warning,".*level-0-notation-not-closed*")
+  ]
 
 let%test_unit "edit.shift_warning_in_sentence" =
   let st, init_events = em_init_test_doc ~text:"#[deprecated(note = \"foo\", since = \"foo\")] Definition x := true. Definition y := x." in

@@ -73,6 +73,7 @@ type sentence_state =
   | Parsed of parsed_ast
 
 type pre_sentence = {
+  id : sentence_id;
   parsing_start : int;
   start : int;
   stop : int;
@@ -268,8 +269,7 @@ let outline doc = compute_outline doc
 let parse_errors parsed =
   List.map snd (LM.bindings parsed.parsing_errors_by_end)
 
-let add_sentence parsed parsing_start start stop (ast: sentence_state) synterp_state scheduler_state_before =
-  let id = Stateid.fresh () in
+let add_sentence parsed id parsing_start start stop (ast: sentence_state) synterp_state scheduler_state_before =
   let scheduler_state_after, schedule = 
     match ast with
     | Error {msg} ->
@@ -705,12 +705,12 @@ let get_entry ast =
 [%%endif]
 
 
-let rec handle_parse_error start parsing_start msg qf ({stream; errors; parsed;} as parse_state) synterp_state =
+let rec handle_parse_error id start parsing_start msg qf ({stream; errors; parsed;} as parse_state) synterp_state =
   log (fun () -> "handling parse error at " ^ string_of_int start);
   let stop = Stream.count stream in
   let str = String.sub (RawDocument.text parse_state.raw) parsing_start (stop - parsing_start) in
   let parsing_error = { msg; start; stop; qf; str} in
-  let sentence = { parsing_start; ast = Error parsing_error; start; stop; synterp_state } in
+  let sentence = { id; parsing_start; ast = Error parsing_error; start; stop; synterp_state } in
   let parsed = sentence :: parsed in
   let errors = parsing_error :: errors in
   let parse_state = {parse_state with errors; parsed} in
@@ -725,6 +725,7 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
     match parse_one_sentence ?loc stream ~st:synterp_state with
     | None, _ (* EOI *) -> false, parse_state
     | Some ast, comments ->
+      let id = Stateid.fresh () in
       let stop = Stream.count stream in
       let begin_line, begin_char, end_char =
               match ast.loc with
@@ -738,11 +739,12 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
       begin
         try
           log (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
+          Feedback.set_id_for_feedback parse_state.previous_document.doc_id id;
           let entry = get_entry ast in
           let classification = Vernac_classifier.classify_vernac ast in
           let synterp_state = Vernacstate.Synterp.freeze () in
           let parsed_ast = Parsed { ast = entry; classification; tokens } in
-          let sentence = { parsing_start = start; ast = parsed_ast; start = begin_char; stop; synterp_state } in
+          let sentence = { id; parsing_start = start; ast = parsed_ast; start = begin_char; stop; synterp_state } in
           let parsed = sentence :: parsed in
           let comments = List.map (fun ((start, stop), content) -> {start; stop; content}) comments in
           let parsed_comments = List.append comments parsed_comments in
@@ -753,26 +755,29 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
           let e, info = Exninfo.capture exn in
           let loc = get_loc_from_info_or_exn e info in
           let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
-          handle_parse_error start begin_char (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
+          handle_parse_error id start begin_char (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
         end
     | exception (E _ as exn) ->
+      let id = Stateid.fresh () in
       let e, info = Exninfo.capture exn in
       let loc = get_loc_from_info_or_exn e info in
       let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
       junk_sentence_end stream;
-      handle_parse_error start start (loc, CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
+      handle_parse_error id start start (loc, CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
     | exception (CLexer.Error.E _ as exn) -> (* May be more problematic to handle for the diff *)
+      let id = Stateid.fresh () in
       let e, info = Exninfo.capture exn in
       let loc = get_loc_from_info_or_exn e info in
       let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
       junk_sentence_end stream;
-      handle_parse_error start start (loc,CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
+      handle_parse_error id start start (loc,CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
     | exception exn ->
+      let id = Stateid.fresh () in
       let e, info = Exninfo.capture exn in
       let loc = Loc.get_loc @@ info in
       let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
       junk_sentence_end stream;
-      handle_parse_error start start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state
+      handle_parse_error id start start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state
   end
 and create_parse_event ~doc_id parse_state =
   let priority = Some PriorityManager.parsing in
@@ -802,8 +807,8 @@ let invalidate top_edit top_id parsed_doc new_sentences =
       add_new_or_patch parsed_doc scheduler_state diffs
     | Added new_sentences :: diffs ->
     (* FIXME could have side effect on the following, unchanged sentences *)
-      let add_sentence (parsed_doc,scheduler_state) ({ parsing_start; start; stop; ast; synterp_state } : pre_sentence) =
-        add_sentence parsed_doc parsing_start start stop ast synterp_state scheduler_state
+      let add_sentence (parsed_doc,scheduler_state) ({ id; parsing_start; start; stop; ast; synterp_state } : pre_sentence) =
+        add_sentence parsed_doc id parsing_start start stop ast synterp_state scheduler_state
       in
       let parsed_doc, scheduler_state = List.fold_left add_sentence (parsed_doc,scheduler_state) new_sentences in
       add_new_or_patch parsed_doc scheduler_state diffs
