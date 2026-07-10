@@ -4,5 +4,5 @@ open Lsp.Types
 val folding_ranges : Document.document -> FoldingRange.t list
 
 (** Computes LSP document symbols using the same internal entry tree as folding
-    ranges.  This is not wired into DocumentManager yet. *)
+    ranges. *)
 val document_symbols : Document.document -> DocumentSymbol.t list
