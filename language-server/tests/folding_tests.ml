@@ -20,8 +20,8 @@ let folding_ranges_of text =
   DocumentManager.get_folding_ranges st
 
 let document_symbols_of text =
-  let Document.{ parsed_document; _ } = init_and_parse_test_doc ~text () in
-  Folding.document_symbols parsed_document
+  let st, _init_events = em_init_test_doc ~text in
+  DocumentManager.get_document_symbols st
 
 let children_of_symbol (symbol: Lsp.Types.DocumentSymbol.t) =
   match symbol.children with
