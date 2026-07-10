@@ -214,64 +214,13 @@ let get_document_proofs st =
   List.map mk_proof_block proofs)
   |> get_interruptible_result
 
-let to_document_symbol elem =
-  let Document.{name; statement; range; type_} = elem in
-  let kind = begin match type_ with
-  | TheoremKind -> SymbolKind.Function
-  | DefinitionType -> SymbolKind.Variable
-  | InductiveType -> SymbolKind.Struct
-  | Other -> SymbolKind.Null
-  | BeginSection | BeginModule -> SymbolKind.Class
-  | End -> SymbolKind.Null
-  end in
-  DocumentSymbol.{name; detail=(Some statement); kind; range; selectionRange=range; children=None; deprecated=None; tags=None;}
-
-let rec get_document_symbols outline (sec_or_m: DocumentSymbol.t list) symbols =
-  let add_child (s_father: DocumentSymbol.t) s_child =
-    let children = match s_father.children with
-      | None -> Some [s_child]
-      | Some l -> Some (l @ [s_child])
-    in
-    {s_father with children} 
-  in
-  let record_in_outline outline symbol sec_or_m =
-    match sec_or_m with
-    | [] ->
-      let symbols = symbols @ [symbol] in
-      get_document_symbols outline sec_or_m symbols
-    | s :: l ->
-      let s = add_child s symbol in
-      get_document_symbols outline (s::l) symbols
-  in
-  match outline with
-  | [] -> symbols
-  | e :: l ->
-    let Document.{type_} = e in
-    match type_ with
-    | TheoremKind | DefinitionType | InductiveType  | Other ->
-      let symbol = to_document_symbol e in
-      record_in_outline l symbol sec_or_m
-    | BeginSection ->
-      let symbol = to_document_symbol e in
-      get_document_symbols l (symbol :: sec_or_m) symbols
-    | BeginModule ->
-      let symbol = to_document_symbol e in
-      get_document_symbols l (symbol :: sec_or_m) symbols
-    | End ->
-      match sec_or_m with
-      | [] -> log(fun () -> "Trying to end a module or section with no begin"); get_document_symbols l [] symbols
-      | symbol :: s_l ->
-        match s_l with
-        | [] ->
-          get_document_symbols l s_l (symbols @ [symbol])
-        | s_parent :: s_l ->
-          let s = add_child s_parent symbol in
-          get_document_symbols l (s :: s_l) symbols
-          
-
 let get_document_symbols st =
-  let outline = List.rev @@ Document.outline st.document in
-  get_document_symbols outline [] []
+  Folding.document_symbols st.document
+
+let get_folding_ranges st =
+  let folding_ranges = Folding.folding_ranges st.document in
+  log (fun () -> "Folding ranges: " ^ (string_of_int @@ List.length folding_ranges));
+  folding_ranges
 
 let get_next_range st pos =
   match Document.find_sentence_before_pos st.document pos with

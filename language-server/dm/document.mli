@@ -139,6 +139,7 @@ type code_line =
   | Comment of comment
 
 val sentences : document -> sentence list
+val comments : document -> comment list
 val code_lines_sorted_by_loc : document -> code_line list
 val code_lines_by_end_sorted_by_loc : document -> code_line list
 val sentences_sorted_by_loc : document -> sentence list

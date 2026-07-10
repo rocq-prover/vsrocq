@@ -66,3 +66,134 @@ let vernacstate_synterp_parsing x = x.Vernacstate.synterp.Vernacstate.Synterp.pa
 [%%else]
 let vernacstate_synterp_parsing x = Vernacstate.(Synterp.parsing x.synterp)
 [%%endif]
+
+let option_to_list = function
+  | None -> []
+  | Some x -> [x]
+
+[%%if rocq = "8.18" || rocq = "8.19"]
+let constrs_of_local_binder = function
+  | Constrexpr.CLocalAssum (_, _, ty) -> [ty]
+  | Constrexpr.CLocalDef (_, e, e_opt) -> e :: option_to_list e_opt
+  | Constrexpr.CLocalPattern _ -> []
+[%%else]
+let constrs_of_local_binder = function
+  | Constrexpr.CLocalAssum (_, _, _, ty) -> [ty]
+  | Constrexpr.CLocalDef (_, _, e, e_opt) -> e :: option_to_list e_opt
+  | Constrexpr.CLocalPattern _ -> []
+[%%endif]
+
+[%%if rocq = "8.18" || rocq = "8.19"]
+let fold_fix fold_constr f walk_binders acc fixes =
+  List.fold_left (fun acc (_name, _order, binders, rtype, body) ->
+    let acc = walk_binders acc binders in
+    let acc = fold_constr f acc rtype in
+    fold_constr f acc body
+  ) acc fixes
+
+let fold_cofix fold_constr f walk_binders acc cofixes =
+  List.fold_left (fun acc (_name, binders, rtype, body) ->
+    let acc = walk_binders acc binders in
+    let acc = fold_constr f acc rtype in
+    fold_constr f acc body
+  ) acc cofixes
+
+[%%else]
+let fold_fix fold_constr f walk_binders acc fixes =
+  List.fold_left (fun acc (_name, _rel, _order, binders, rtype, body) ->
+    let acc = walk_binders acc binders in
+    let acc = fold_constr f acc rtype in
+    fold_constr f acc body
+  ) acc fixes
+
+let fold_cofix fold_constr f walk_binders acc cofixes =
+  List.fold_left (fun acc (_name, _rel, binders, rtype, body) ->
+    let acc = walk_binders acc binders in
+    let acc = fold_constr f acc rtype in
+    fold_constr f acc body
+  ) acc cofixes
+
+[%%endif]
+
+[%%if rocq = "8.18"]
+let fold_delimiters fold_constr f acc e =
+  match e.CAst.v with
+  | Constrexpr.CDelimiters (_scope, e) -> fold_constr f acc e
+  | _ -> acc
+[%%else]
+let fold_delimiters fold_constr f acc e =
+  match e.CAst.v with
+  | Constrexpr.CDelimiters (_depth, _scope, e) -> fold_constr f acc e
+  | _ -> acc
+[%%endif]
+
+let rec fold_constr (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'acc) (e : Constrexpr.constr_expr) : 'acc =
+  let acc = f acc e in
+  fold_constr_children f acc e
+
+and fold_constr_children (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'acc) (e : Constrexpr.constr_expr) : 'acc =
+  let open Constrexpr in
+  let rec walk acc = function
+    | [] -> acc
+    | e :: rest ->
+      let acc = fold_constr f acc e in
+      walk acc rest
+  in
+  let walk_opt acc = function
+    | None -> acc
+    | Some e -> fold_constr f acc e
+  in
+  let walk_binders acc binders =
+    List.fold_left (fun acc b -> walk acc (constrs_of_local_binder b)) acc binders
+  in
+  let walk_branches acc branches =
+    List.fold_left (fun acc (b : branch_expr) ->
+      let (_pats, body) = b.v in
+      fold_constr f acc body
+    ) acc branches
+  in
+  match e.v with
+  | CRef _ | CPatVar _ | CEvar _ | CSort _ | CPrim _
+  | CGenarg _ | CGenargGlob _ ->
+    acc
+  | CNotation (_, _, (terms, recursive_terms, _, recursive_binders)) ->
+    let acc = walk acc terms in
+    let acc = List.fold_left walk acc recursive_terms in
+    List.fold_left walk_binders acc recursive_binders
+  | CFix (_, fixes) -> fold_fix fold_constr f walk_binders acc fixes
+  | CCoFix (_, cofixes) -> fold_cofix fold_constr f walk_binders acc cofixes
+  | CProdN (binders, body) | CLambdaN (binders, body) ->
+    let acc = walk_binders acc binders in
+    fold_constr f acc body
+  | CLetIn (_, e1, e2_opt, e3) ->
+    let acc = fold_constr f acc e1 in
+    let acc = walk_opt acc e2_opt in
+    fold_constr f acc e3
+  | CAppExpl (_, args) -> walk acc args
+  | CApp (fn, args) ->
+    let acc = fold_constr f acc fn in
+    walk acc (List.map fst args)
+  | CProj (_, _, args, e) ->
+    let acc = walk acc (List.map fst args) in
+    fold_constr f acc e
+  | CRecord fields -> walk acc (List.map snd fields)
+  | CCases (_style, ret, scrutinees, branches) ->
+    let acc = walk_opt acc ret in
+    let acc = walk acc (List.map (fun (e, _, _) -> e) scrutinees) in
+    walk_branches acc branches
+  | CLetTuple (_, _, e1, e2) ->
+    let acc = fold_constr f acc e1 in
+    fold_constr f acc e2
+  | CIf (cond, (_, ret_opt), then_br, else_br) ->
+    let acc = fold_constr f acc cond in
+    let acc = walk_opt acc ret_opt in
+    let acc = fold_constr f acc then_br in
+    fold_constr f acc else_br
+  | CCast (e1, _, e2) ->
+    let acc = fold_constr f acc e1 in
+    fold_constr f acc e2
+  | CGeneralization (_, e) -> fold_constr f acc e
+  | CArray (_, elems, _, default) ->
+    let acc = walk acc (Array.to_list elems) in
+    fold_constr f acc default
+  | _ -> fold_delimiters fold_constr f acc e
