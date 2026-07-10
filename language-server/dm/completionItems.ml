@@ -130,9 +130,11 @@ type builtin_item = {
 }
 
 
-[%%if rocq = "9.2"]
-let doc_version = "V9.2.0"
+(* The doc version should agree with what indices we have loaded *)
+[%%if rocq = "9.3"]
+let doc_version = "V9.3"
 [%%else]
+(* TODO: Until 9.3 is not released in the refman, we point to 9.2 *)
 let doc_version = "V9.2.0"
 [%%endif]
 
@@ -160,17 +162,17 @@ module BuiltinIndices = struct
       }
     ) pairs
 
-  [%%if rocq = "9.2"]
+  [%%if rocq = "9.3"]
   let v: t = {
-    commands = load_builtin_index Command [%blob "indices/9.2/cmdindex.json"];
+    commands = load_builtin_index Command [%blob "indices/9.3/cmdindex.json"];
   }
   [%%else]
-  (* For version for which we do not have JSON indices, we load the v9.2 indices. *)
+  (* For version for which we do not have JSON indices, we load the v9.3 indices. *)
   (* This will of course lead to situations where we suggest to the user something *)
   (* that is potentially non-existent or outdated, but this experience is better *)
   (* than giving the user nothing. *)
   let v: t = {
-    commands = load_builtin_index Command [%blob "indices/9.2/cmdindex.json"];
+    commands = load_builtin_index Command [%blob "indices/9.3/cmdindex.json"];
   }
   [%%endif]
 end

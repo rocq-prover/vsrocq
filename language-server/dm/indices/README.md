@@ -8,11 +8,9 @@ The documentation and grammar for these builtins cannot be queried from `rocq-ru
 
 ## Generating indices
 
-We modify the Sphinx Rocq domain python generator to not only output the final HTML/PDF files of the entire documentation, but to additionally output those JSON indices. By directly inspecting the source documentation RST files, we can extract the grammar and documentation of builtins. This generator should be run and the indices stored in `indices/VERSION/*.json` for each Rocq version separately.
+We modified the Sphinx Rocq domain python generator to not only output the final HTML/PDF files of the entire documentation, but to additionally output those JSON indices. By directly inspecting the source documentation RST files, we can extract the grammar and documentation of builtins. This generator should be run and the indices stored in `./VERSION/*.json` for each Rocq version separately.
 
-At the moment, this generator is implemented in a fork: https://github.com/shilangyu/rocq/tree/mw/computer-indices. Ideally this would be merged to the official Rocq repository.
-
-To generate indices, simply run `make refman-indices`.
+The generator has been initially implemented in this Rocq PR: https://github.com/rocq-prover/rocq/pull/22044. To generate these indices, simply run `make refman-indices` in the Rocq repo and get the JSONs from `doc/refman-indices/*.json`.
 
 ## Usage by `vsrocqtop`
 
