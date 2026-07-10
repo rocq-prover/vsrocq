@@ -116,12 +116,12 @@ let fold_cofix fold_constr f walk_binders acc cofixes =
 [%%endif]
 
 [%%if rocq = "8.18"]
-let try_fold_delimiters fold_constr f acc e =
+let fold_delimiters fold_constr f acc e =
   match e.CAst.v with
   | Constrexpr.CDelimiters (_scope, e) -> fold_constr f acc e
   | _ -> acc
 [%%else]
-let try_fold_delimiters fold_constr f acc e =
+let fold_delimiters fold_constr f acc e =
   match e.CAst.v with
   | Constrexpr.CDelimiters (_depth, _scope, e) -> fold_constr f acc e
   | _ -> acc
@@ -196,4 +196,4 @@ and fold_constr_children (f : 'acc -> Constrexpr.constr_expr -> 'acc) (acc : 'ac
   | CArray (_, elems, _, default) ->
     let acc = walk acc (Array.to_list elems) in
     fold_constr f acc default
-  | _ -> try_fold_delimiters fold_constr f acc e
+  | _ -> fold_delimiters fold_constr f acc e

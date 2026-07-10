@@ -51,6 +51,18 @@ let has_folding_range ?kind ~startLine ~endLine ranges =
     range.startLine = startLine && range.endLine = endLine && matches_kind range
   ) ranges
 
+let count_folding_ranges ?kind ~startLine ~endLine ranges =
+  let matches_kind (range: Lsp.Types.FoldingRange.t) =
+    match kind with
+    | None -> true
+    | Some kind -> Stdlib.(=) range.kind (Some kind)
+  in
+  ranges
+  |> Stdlib.List.filter (fun (range: Lsp.Types.FoldingRange.t) ->
+    range.startLine = startLine && range.endLine = endLine && matches_kind range
+  )
+  |> Stdlib.List.length
+
 let string_of_folding_range (range: Lsp.Types.FoldingRange.t) =
   let character = function
     | None -> "?"
@@ -318,6 +330,13 @@ let%test_unit "folding.notation_multiline" =
   x
   (at level 0).|}
   |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:2
+
+let%test_unit "folding.extension_tab_indentation" =
+  let ranges = folding_ranges_of "Ltac foo :=\n\tmatch goal with\n\t| |- True => exact I\n\tend." in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:3 ranges;
+  [%test_eq: int]
+    (count_folding_ranges ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:3 ranges)
+    1
 
 let%test_unit "folding.definition_multiline_body" =
   let ranges = folding_ranges_of {|Definition f :=

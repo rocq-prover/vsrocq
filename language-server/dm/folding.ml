@@ -273,15 +273,15 @@ let entries_of_binders (raw: RawDocument.t) binders : entry list =
   |> List.concat_map (entries_of_constr raw)
 
 let count_indent (s: string) : int option =
-  let rec loop i =
-    if i >= String.length s then None
-    else match s.[i] with
-      | ' ' -> loop (i + 1)
-      | '\t' -> loop (i + 2)
+  let rec loop offset indent =
+    if offset >= String.length s then None
+    else match s.[offset] with
+      | ' ' -> loop (offset + 1) (indent + 1)
+      | '\t' -> loop (offset + 1) (indent + 2)
       | '\r' | '\n' -> None
-      | _ -> Some i
+      | _ -> Some indent
   in
-  loop 0
+  loop 0 0
 
 (** Uses indentation runs as a fallback for extension sentences whose AST does
     not expose more precise foldable structure. *)
@@ -398,8 +398,6 @@ let entries_of_vernac_ast (document: Document.document) (sentence: Document.sent
   | Vernacexpr.VernacSynterp (Synterp.EVernacRequire _)
   | Vernacexpr.VernacSynterp (Synterp.EVernacNotation _) ->
     Utilities.option_to_list (entry_of_sentence document sentence)
-  | Vernacexpr.VernacSynterp (Synterp.EVernacExtend _) ->
-    indentation_entries_of_sentence document sentence
   | _ -> []
 
 (** Adds whole-sentence folds *)
