@@ -428,7 +428,6 @@ let rocqtopStepForward params =
         ~kind:(match item.kind with
                | Dm.CompletionItems.Command -> CompletionItemKind.Property)
         ~documentation:(`MarkupContent {
-          (* it is not actually markdown, but using this mode leads to better rendering *)
           kind = MarkupKind.Markdown;
           value = Printf.sprintf "<%s>\n\n%s" item.documentation_url item.raw.documentation})
         ~insertTextFormat:InsertTextFormat.Snippet
