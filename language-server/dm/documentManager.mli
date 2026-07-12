@@ -57,6 +57,9 @@ val get_next_range : state -> Position.t -> Range.t option
 val get_previous_range : state -> Position.t -> Range.t option
 (** [get_previous_pos st pos] get the range of the previous sentence relative to pos *)
 
+val get_current_line_range : state -> Position.t -> Range.t
+(** [get_current_line_range st pos] get the range of the current line starting from the first non-whitespace character and ending at `pos` *)
+
 val interpret_to_position : Position.t -> events
 (** [interpret_to_position pos] navigates to the 
     last sentence ending before or at [pos] and returns the resulting state, events that need to take place, and a possible blocking error. *)

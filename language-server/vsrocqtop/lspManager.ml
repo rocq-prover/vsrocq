@@ -407,16 +407,31 @@ let rocqtopStepForward params =
       let events = Dm.DocumentManager.interpret_to_next () in
       inject_dm_events (uri,events) 
 
-  let make_CompletionItem i item : CompletionItem.t = 
-    let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item item in
-    CompletionItem.create
-      ~label
-      ~insertText
-      ~detail:typ
-      ~documentation:(`String ("Path: " ^ path))
-      ~sortText:(Printf.sprintf "%5d" i)
-      ?filterText:(if label == insertText then None else Some (insertText))
-      ()
+  let make_CompletionItem line_range i item : CompletionItem.t =
+    match item with
+    | Dm.CompletionItems.Library item ->
+      let (label, insertText, typ, path, debug_info) = Dm.CompletionItems.pp_completion_item_lib item in
+      CompletionItem.create
+        ~label
+        ~labelDetails:(CompletionItemLabelDetails.create ~detail:(" " ^ typ) ~description:path ())
+        ~insertText
+        ~documentation:(`String debug_info)
+        ~sortText:(Printf.sprintf "%5d" i)
+        ?filterText:(if label == insertText then None else Some (insertText))
+        ()
+    | Dm.CompletionItems.Builtin item ->
+      CompletionItem.create
+        ~label:item.label
+        ~textEdit:(`TextEdit (TextEdit.create ~newText:item.snippet ~range:line_range))
+        ~detail:(match item.kind with
+                | Dm.CompletionItems.Command -> "Command")
+        ~kind:(match item.kind with
+               | Dm.CompletionItems.Command -> CompletionItemKind.Property)
+        ~documentation:(`MarkupContent {
+          kind = MarkupKind.Markdown;
+          value = Printf.sprintf "<%s>\n\n%s" item.documentation_url item.raw.documentation})
+        ~insertTextFormat:InsertTextFormat.Snippet
+        ()
 
 let textDocumentCompletion id params =
   let return_completion ~isIncomplete ~items =
@@ -428,9 +443,12 @@ let textDocumentCompletion id params =
   let Lsp.Types.CompletionParams.{ textDocument = { uri }; position } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[textDocumentCompletion]ignoring event on non existent document"); Error( {message="Document does not exist"; code=None} ), []
-  | Some { st } -> 
-    let items = List.mapi make_CompletionItem (Dm.DocumentManager.get_completions st position) in
-    return_completion ~isIncomplete:false ~items, []
+  | Some { st } ->
+    (* for some completions, we want to replace more than just the current word *)
+    let line_range = Dm.DocumentManager.get_current_line_range st position in
+    let items = List.mapi (make_CompletionItem line_range) (Dm.DocumentManager.get_completions st position) in
+    (* if we have no completions, we mark the list as incomplete to let the client query us again *)
+    return_completion ~isIncomplete:(List.length items = 0) ~items, []
 
 let documentSymbol id params =
   let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get ssupport for partialResult and workDone*)

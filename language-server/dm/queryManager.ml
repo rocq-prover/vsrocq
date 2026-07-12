@@ -231,11 +231,7 @@ let print ~vs ~pattern =
 
 let get_completions ~vs =
   let settings = ExecutionManager.get_options () in
-  match CompletionSuggester.get_completions settings.completion_options vs with
-  | None -> 
-      log (fun () -> "No completions available");
-      []
-  | Some lemmas -> lemmas
+  CompletionSuggester.get_completions settings.completion_options vs
 
 (**************************************************************************)
 
