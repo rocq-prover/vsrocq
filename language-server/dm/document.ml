@@ -51,7 +51,7 @@ type outline = outline_element list
 type parsed_ast = {
   ast: Synterp.vernac_control_entry;
   classification: Vernacextend.vernac_classification;
-  tokens: Tok.t list
+  tokens: (Loc.t * Tok.t) list
 }
 
 type comment = {
@@ -160,6 +160,16 @@ let range_of_sentence_with_blank_space raw (sentence : sentence) =
   let start = RawDocument.position_of_loc raw sentence.parsing_start in
   let end_ = RawDocument.position_of_loc raw sentence.stop in
   Range.{ start; end_ }
+
+let tokens_of_sentence (sentence: sentence) =
+  match sentence.ast with
+  (* TODO: we could collect (best-effort) tokens for failed parsing too *)
+  | Error _ -> []
+  | Parsed { tokens } -> tokens
+
+let token_at_loc sentence loc =
+  let contains (Loc.{ bp; ep }) = bp <= loc && loc <= ep in
+  List.find_opt (fun (token_loc, _) -> contains token_loc) (tokens_of_sentence sentence) |> Option.map snd
 
 let string_of_id document id =
   match SM.find_opt id document.sentences_by_id with
@@ -362,7 +372,6 @@ let find_sentence_before parsed loc =
   | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
   | _ -> None
 
-(* moved here from DM, maybe can be simplified / use find_sentence_after *)
 let find_sentence_before_pos document pos =
   let loc = RawDocument.loc_of_position (raw_document document) pos in
   find_sentence_before document loc
@@ -515,9 +524,9 @@ let shift_sentence ~start ~offset s =
 let shift_feedbacks_and_checking_errors ~start ~offset parsed =
   { parsed with sentences_by_id = SM.map (shift_sentence ~start ~offset) parsed.sentences_by_id }
 
-let string_of_parsed_ast { tokens } = 
+let string_of_parsed_ast { tokens } =
   (* TODO implement printer for vernac_entry *)
-  "[" ^ String.concat "--" (List.map (Tok.extract_string false) tokens) ^ "]"
+  "[" ^ String.concat "--" (List.map (fun (_, tok) -> Tok.extract_string false tok) tokens) ^ "]"
 
 let string_of_parsed_ast = function
 | Error e -> "[errored sentence]: " ^ (e.str)
@@ -570,7 +579,7 @@ let same_tokens (s1 : sentence) (s2 : pre_sentence) =
   match s1.ast, s2.ast with
   | Error e1, Error e2 -> same_errors e1 e2
   | Parsed ast1, Parsed ast2 ->
-    CList.equal tok_equal ast1.tokens ast2.tokens
+    CList.equal tok_equal (List.map snd ast1.tokens) (List.map snd ast2.tokens)
   | _, _ -> false
   
 (* TODO improve diff strategy (insertions,etc) *)
@@ -608,21 +617,25 @@ let string_of_diff doc l =
 [%%endif]
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
-let rec stream_tok n_tok acc str begin_line begin_char =
+let rec stream_tok n_tok acc str (start_loc: Loc.t) =
   let e = LStream.next (get_keyword_state ()) str in
   match e with
   | Tok.EOI ->
     List.rev acc
   | _ ->
-    stream_tok (n_tok+1) (e::acc) str begin_line begin_char
+    let tok_loc = LStream.get_loc n_tok str in
+    let loc = Loc.shift_loc start_loc.bp start_loc.bp tok_loc in
+    stream_tok (n_tok+1) ((loc, e)::acc) str start_loc
 [%%else]
-let rec stream_tok n_tok acc str begin_line begin_char =
+let rec stream_tok n_tok acc str (start_loc: Loc.t) =
   let e = LStream.next (get_keyword_state ()) str in
   match e with
   | Some Tok.EOI ->
     List.rev acc
   | Some e ->
-    stream_tok (n_tok+1) (e::acc) str begin_line begin_char
+    let tok_loc = LStream.get_loc n_tok str in
+    let loc = Loc.shift_loc start_loc.bp start_loc.bp tok_loc in
+    stream_tok (n_tok+1) ((loc, e)::acc) str start_loc
   | None -> assert false (* should get EOI before None *)
 [%%endif]
     (*
@@ -727,15 +740,15 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
     | Some ast, comments ->
       let id = Stateid.fresh () in
       let stop = Stream.count stream in
-      let begin_line, begin_char, end_char =
-              match ast.loc with
-              | Some lc -> lc.line_nb, lc.bp, lc.ep
-              | None -> assert false
+      let ast_loc = match ast.loc with
+        | Some lc -> lc
+        | None -> assert false
       in
+      let begin_char, end_char = ast_loc.bp, ast_loc.ep in
       let str = String.sub (RawDocument.text raw) begin_char (end_char - begin_char) in
       let sstr = Stream.of_string str in
       let lex = CLexer.Lexer.tok_func sstr in
-      let tokens = stream_tok 0 [] lex begin_line begin_char in
+      let tokens = stream_tok 0 [] lex ast_loc in
       begin
         try
           log (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
