@@ -82,10 +82,10 @@ let lsp : event Sel.Event.t =
 
 
 let output_json obj =
-  let msg  = Yojson.Safe.pretty_to_string ~std:true obj in
+  let msg  = Yojson.Safe.to_string ~std:true obj in
   let size = String.length msg in
   let s = Printf.sprintf "Content-Length: %d\r\n\r\n%s" size msg in
-  log (fun () -> "sent: " ^ msg);
+  log (fun () -> "sent: " ^ Yojson.Safe.pretty_to_string ~std:true obj);
   ignore(Unix.write_substring Unix.stdout s 0 (String.length s)) (* TODO ERROR *)
 
 let output_notification notif =
@@ -611,8 +611,7 @@ let handle_lsp_event = function
     lsp :: (* the event is recurrent *)
     begin try
       let json = Jsonrpc.Packet.yojson_of_t rpc in
-      let msg = Yojson.Safe.pretty_to_string ~std:true json in
-      log (fun () -> "received: " ^ msg);
+      log (fun () -> "received: " ^ Yojson.Safe.pretty_to_string ~std:true json);
       begin match rpc with
       | Request req ->
           log (fun () -> "ui request: " ^ req.method_);
