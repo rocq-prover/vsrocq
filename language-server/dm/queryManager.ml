@@ -164,7 +164,7 @@ let hover document pos =
         hover_of_sentence pattern (Document.find_next_qed_pos document pos)
       | _ -> None
 
-(* Within a list of tokens, find all that are an identifier whose name is `ident` *)
+(* Within a list of tokens, find all that are identifiers whose name is `ident` *)
 let find_all_ident (tokens: (Loc.t * Tok.t) list) (ident: string) : Loc.t list =
   List.filter_map (fun (loc, tok) ->
     match tok with
@@ -172,7 +172,7 @@ let find_all_ident (tokens: (Loc.t * Tok.t) list) (ident: string) : Loc.t list =
     | Tok.FIELD s when s = ident -> Some loc
     | _ -> None) tokens
 
-(* We perform syntactic highlight of all identifiers that the same as the word at `pos` *)
+(* We perform syntactic highlight of all identifiers that are the same as the word at `pos` *)
 let highlight document pos =
   let raw = Document.raw_document document in
   let loc = RawDocument.loc_of_position raw pos in
