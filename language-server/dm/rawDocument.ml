@@ -86,10 +86,10 @@ let range_of_loc raw loc =
     end_ = position_of_loc raw loc.Loc.ep;
   }
 
-let word_at_position raw pos : string option =
+let word_at_loc raw loc : string option =
   try
     let back_reg = Str.regexp {|[^a-zA-Z_0-9.']|} in
-    let start_ind = loc_of_position raw pos in
+    let start_ind = loc in
     (* Search backwards until we find a character that cannot be part of a word *)
     let first_non_word_ind = Str.search_backward back_reg raw.text start_ind in
     let first_word_ind = first_non_word_ind + 1 in
