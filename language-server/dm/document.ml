@@ -617,25 +617,25 @@ let string_of_diff doc l =
 [%%endif]
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
-let rec stream_tok n_tok acc str (start_loc: Loc.t) =
+let rec stream_tok acc str (start_loc: Loc.t) =
   let e = LStream.next (get_keyword_state ()) str in
   match e with
   | Tok.EOI ->
     List.rev acc
   | _ ->
-    let tok_loc = LStream.get_loc n_tok str in
+    let tok_loc = LStream.current_loc str in
     let loc = Loc.shift_loc start_loc.bp start_loc.bp tok_loc in
-    stream_tok (n_tok+1) ((loc, e)::acc) str start_loc
+    stream_tok ((loc, e)::acc) str start_loc
 [%%else]
-let rec stream_tok n_tok acc str (start_loc: Loc.t) =
+let rec stream_tok acc str (start_loc: Loc.t) =
   let e = LStream.next (get_keyword_state ()) str in
   match e with
   | Some Tok.EOI ->
     List.rev acc
   | Some e ->
-    let tok_loc = LStream.get_loc n_tok str in
+    let tok_loc = LStream.current_loc str in
     let loc = Loc.shift_loc start_loc.bp start_loc.bp tok_loc in
-    stream_tok (n_tok+1) ((loc, e)::acc) str start_loc
+    stream_tok ((loc, e)::acc) str start_loc
   | None -> assert false (* should get EOI before None *)
 [%%endif]
     (*
@@ -748,7 +748,7 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
       let str = String.sub (RawDocument.text raw) begin_char (end_char - begin_char) in
       let sstr = Stream.of_string str in
       let lex = CLexer.Lexer.tok_func sstr in
-      let tokens = stream_tok 0 [] lex ast_loc in
+      let tokens = stream_tok [] lex ast_loc in
       begin
         try
           log (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
