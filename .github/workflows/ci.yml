@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        coq: [8-18, 8-19, 8-20, 9, 9-1, master]
+        coq: [8-18, 8-19, 8-20, 9, 9-1, 9-3, master]
         profile: [dev]
         include:
           - profile: fatalwarnings
