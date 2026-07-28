@@ -206,6 +206,24 @@ Proof.
   assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:6 ranges;
   assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:5 ~endLine:6 ranges
 
+let%test_unit "folding.proof_bullets_follow_semantic_nesting" =
+  let ranges = folding_ranges_of {|Lemma foo : (True /\ True) /\ (True /\ True).
+Proof.
+- split.
++ split.
++ exact I.
++ exact I.
+- split.
++ exact I.
++ exact I.
+Qed.|} in
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:9 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:2 ~endLine:5 ranges;
+  assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:6 ~endLine:8 ranges;
+  [%test_eq: int]
+    (count_folding_ranges ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:2 ~endLine:8 ranges)
+    0
+
 let%test_unit "folding.section" =
   folding_ranges_of {|Section S.
 Definition x := true.
@@ -222,6 +240,22 @@ let%test_unit "folding.module" =
 Definition x := true.
 End M.|}
   |> assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:0 ~endLine:2
+
+let%test_unit "folding.atomic_module_does_not_capture_following_definition" =
+  let text = {|Module A.
+End A.
+Module B := A.
+Definition x := 0.|} in
+  let ranges = folding_ranges_of text in
+  [%test_eq: bool]
+    (has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:2 ~endLine:3 ranges)
+    false;
+  let symbols = document_symbols_of text in
+  let b = assert_symbol ~kind:Lsp.Types.SymbolKind.Class "B" symbols in
+  [%test_eq: int] b.range.start.line 2;
+  [%test_eq: int] b.range.end_.line 2;
+  [%test_eq: int] (Stdlib.List.length (children_of_symbol b)) 0;
+  ignore (assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "x" symbols)
 
 let%test_unit "folding.nested_section_module" =
   let ranges = folding_ranges_of {|Module M.
@@ -247,6 +281,13 @@ let%test_unit "folding_symbols.single_line_definition" =
   let symbols = document_symbols_of "Definition x := true." in
   let symbol = assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "x" symbols in
   [%test_eq: int] symbol.range.start.line 0;
+  [%test_eq: int] symbol.selectionRange.start.line 0
+
+let%test_unit "folding_symbols.incomplete_pending_proof" =
+  let symbols = document_symbols_of "Lemma foo : True." in
+  let symbol = assert_symbol ~kind:Lsp.Types.SymbolKind.Function "foo" symbols in
+  [%test_eq: int] symbol.range.start.line 0;
+  [%test_eq: int] symbol.range.end_.line 0;
   [%test_eq: int] symbol.selectionRange.start.line 0
 
 let%test_unit "folding_symbols.nested_module_section_ranges" =

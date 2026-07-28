@@ -11,7 +11,7 @@ type region_type =
   | ProofRegion
   | SectionRegion
   | ModuleRegion
-  | BulletRegion of Proof_bullet.t * int
+  | BulletRegion of Proof_bullet.t
   | SubproofRegion
 
 (** Internal classification (later projected to LSP specific classifications) *)
@@ -105,7 +105,7 @@ let close_top_region (state: state) (pred: open_region -> bool) (end_: Position.
     } in
     add_entry { state with stack } entry
   | region :: stack when pred region ->
-    { state with stack }
+    add_entries { state with stack } (List.rev region.children)
   | _ -> state
 
 (** Marks the first pending proof region as starting at the first proof command. *)
@@ -153,14 +153,21 @@ let rec close_subproof_region (raw: RawDocument.t) (state: state) (end_: Positio
     close_subproof state end_
   | _ -> state
 
-let rec close_bullet_regions_for (raw: RawDocument.t) (bullet: Proof_bullet.t) (indent: int) (state: state) (end_: Position.t) : state =
+let bullet_is_open (bullet: Proof_bullet.t) (state: state) : bool =
+  let rec aux = function
+    | { region_type = BulletRegion open_bullet; _ } :: rest ->
+      if Stdlib.(=) open_bullet bullet then true else aux rest
+    | _ -> false
+  in
+  aux state.stack
+
+let rec close_bullet_regions_for (raw: RawDocument.t) (bullet: Proof_bullet.t) (state: state) (end_: Position.t) : state =
   let excluded_end = end_of_previous_line raw end_ in
   match state.stack with
-  | { region_type = BulletRegion (_, open_indent); _ } :: _ when open_indent > indent ->
-    close_bullet_regions_for raw bullet indent (close_bullet state excluded_end) end_
-  | { region_type = BulletRegion (open_bullet, open_indent); _ } :: _
-      when open_indent = indent && Stdlib.(=) open_bullet bullet ->
-    close_bullet_regions_for raw bullet indent (close_bullet state excluded_end) end_
+  | { region_type = BulletRegion open_bullet; _ } :: _ when Stdlib.(=) open_bullet bullet ->
+    close_bullet state excluded_end
+  | { region_type = BulletRegion _; _ } :: _ ->
+    close_bullet_regions_for raw bullet (close_bullet state excluded_end) end_
   | _ -> state
 
 let close_segment (state: state) (name: string) (end_: Position.t) : state =
@@ -183,8 +190,8 @@ let finalize_open_regions (state: state) (end_: Position.t) : state =
         children = List.rev region.children;
       } in
       loop (add_entry { state with stack } entry)
-    | _ :: stack ->
-      loop { state with stack }
+    | { children; _ } :: stack ->
+      loop (add_entries { state with stack } (List.rev children))
   in
   loop state
 
@@ -218,12 +225,18 @@ let open_segment (document: Document.document) (sentence: Document.sentence) (li
   let outline_info = { outline_name = name; detail = Some ""; selection_range = range } in
   open_region state { entry_kind; close_name = Some name; outline_info = Some outline_info; region_type; start = Some range.start; children = [] }
 
+let atomic_module_entry (document: Document.document) (sentence: Document.sentence) (lident: Names.lident) : entry =
+  let range = Document.range_of_id document sentence.id in
+  let name = Names.Id.to_string lident.CAst.v in
+  let outline_info = { outline_name = name; detail = Some ""; selection_range = range } in
+  make_entry ~outline_info Module range
+
 (** Opens a proof region whose start will be set by the first proof command. *)
 let open_proof (names: Names.variable list) (state: state) : state =
   open_region state { entry_kind = Proof; close_name = name_of_variables names; outline_info = None; region_type = ProofRegion; start = None; children = [] }
 
-let open_bullet_region (bullet: Proof_bullet.t) (indent: int) (start: Position.t) (state: state) : state =
-  open_region state { entry_kind = Proof; close_name = None; outline_info = None; region_type = BulletRegion (bullet, indent); start = Some start; children = [] }
+let open_bullet_region (bullet: Proof_bullet.t) (start: Position.t) (state: state) : state =
+  open_region state { entry_kind = Proof; close_name = None; outline_info = None; region_type = BulletRegion bullet; start = Some start; children = [] }
 
 let open_subproof_region (start: Position.t) (state: state) : state =
   open_region state { entry_kind = Proof; close_name = None; outline_info = None; region_type = SubproofRegion; start = Some start; children = [] }
@@ -449,8 +462,13 @@ let apply_classification (document: Document.document) (sentence: Document.sente
     let state = begin_proof state range.start in
     begin match proof_delimiter_of_ast ast with
     | Some (ProofBullet bullet) ->
-      let state = close_bullet_regions_for raw bullet range.start.character state range.start in
-      open_bullet_region bullet range.start.character range.start state
+      let state =
+        if bullet_is_open bullet state then
+          close_bullet_regions_for raw bullet state range.start
+        else
+          state
+      in
+      open_bullet_region bullet range.start state
     | Some ProofSubproofStart ->
       open_subproof_region range.start state
     | Some ProofSubproofEnd ->
@@ -467,12 +485,16 @@ let apply_classification (document: Document.document) (sentence: Document.sente
     begin match ast.v.expr with
     | Vernacexpr.VernacSynterp (Synterp.EVernacBeginSection lident) ->
       open_segment document sentence lident SectionRegion state
+    | Vernacexpr.VernacSynterp (Synterp.EVernacDeclareModuleType (lident, _, _, _, [])) ->
+      open_segment document sentence lident ModuleRegion state
     | Vernacexpr.VernacSynterp (Synterp.EVernacDeclareModuleType (lident, _, _, _, _)) ->
+      add_entry state (atomic_module_entry document sentence lident)
+    | Vernacexpr.VernacSynterp (Synterp.EVernacDefineModule (_, lident, _, _, _, [])) ->
       open_segment document sentence lident ModuleRegion state
     | Vernacexpr.VernacSynterp (Synterp.EVernacDefineModule (_, lident, _, _, _, _)) ->
-      open_segment document sentence lident ModuleRegion state
+      add_entry state (atomic_module_entry document sentence lident)
     | Vernacexpr.VernacSynterp (Synterp.EVernacDeclareModule (_, lident, _, _)) ->
-      open_segment document sentence lident ModuleRegion state
+      add_entry state (atomic_module_entry document sentence lident)
     | Vernacexpr.VernacSynterp (Synterp.EVernacEndSegment lident) ->
       let range = Document.range_of_id document sentence.id in
       close_segment state (Names.Id.to_string lident.CAst.v) range.end_
