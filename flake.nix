@@ -254,6 +254,49 @@
               '';
             };
 
+          vsrocq-language-server-rocq-9-2 =
+          # Notice the reference to nixpkgs here.
+          with import nixpkgs-unstable {inherit system;}; let
+            ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+          in
+            ocamlPackages.buildDunePackage {
+              duneVersion = "3";
+              pname = "vsrocq-language-server";
+              version = vsrocq_version;
+              src = ./language-server;
+              nativeBuildInputs = [
+                coq_9_2
+              ];
+              buildInputs =
+                [
+                  coq_9_2
+                  dune_3
+                ]
+                ++ (with coq.ocamlPackages; [
+                  ocaml
+                  yojson
+                  findlib
+                  ppx_inline_test
+                  ppx_assert
+                  ppx_sexp_conv
+                  ppx_deriving
+                  ppx_optcomp
+                  ppx_import
+                  sexplib
+                  ppx_yojson_conv
+                  lsp
+                  sel
+                  memprof-limits
+                ]);
+              propagatedBuildInputs= (with coq.ocamlPackages;
+                [
+                  zarith
+                ]);
+              preBuild = ''
+                make dune-files
+              '';
+            };
+
         vsrocq-language-server-coq-master =
           # Notice the reference to nixpkgs here.
           with import nixpkgs-26-05 {inherit system;}; let
@@ -440,6 +483,22 @@
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-rocq-9-1.buildInputs
+              ++ (with ocamlPackages; [
+                ocaml-lsp
+              ])
+              ++ ([git]);
+            shellHook = ''
+              export PATH="$PWD/language-server/.wrappers:$PATH"
+            '';
+          };
+
+        vsrocq-9-2 = with import nixpkgs {inherit system;}; let
+          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+        in
+          mkShell {
+            buildInputs =
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-rocq-9-2.buildInputs
               ++ (with ocamlPackages; [
                 ocaml-lsp
               ])
