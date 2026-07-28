@@ -42,6 +42,8 @@ type entry = {
   children: entry list;
 }
 
+type entries = entry list
+
 (** Region currently open in the sentence traversal.  Proof regions start with
     no [start] and are claimed by the first proof step. *)
 type open_region = {
@@ -519,7 +521,7 @@ let comment_entries (document: Document.document) : entry list =
     Some (make_entry Comment range))
 
 (** Get the structured outline of the documents *)
-let document_entries (document: Document.document) : entry list =
+let entries (document: Document.document) : entries =
   let state =
     List.fold_left (fun state (sentence: Document.sentence) ->
       match sentence.ast with
@@ -611,10 +613,10 @@ let rec document_symbols_of_entry (entry: entry) : DocumentSymbol.t list =
   | _ -> children
 
 (** Computes all LSP folding ranges for a parsed document. *)
-let folding_ranges (document: Document.document) : FoldingRange.t list =
-  List.map folding_range_of_entry (normalize_entries (document_entries document))
+let folding_ranges (entries: entries) : FoldingRange.t list =
+  List.map folding_range_of_entry (normalize_entries entries)
 
 (** Computes document symbols from the folding entry tree. *)
-let document_symbols (document: Document.document) : DocumentSymbol.t list =
-  document_entries document
+let document_symbols (entries: entries) : DocumentSymbol.t list =
+  entries
   |> List.concat_map document_symbols_of_entry

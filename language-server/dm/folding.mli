@@ -1,8 +1,12 @@
 open Lsp.Types
 
-(** Computes LSP folding ranges for the parsed Rocq document. *)
-val folding_ranges : Document.document -> FoldingRange.t list
+type entries
 
-(** Computes LSP document symbols using the same internal entry tree as folding
-    ranges. *)
-val document_symbols : Document.document -> DocumentSymbol.t list
+(** Computes the shared folding and document-symbol entry tree. *)
+val entries : Document.document -> entries
+
+(** Projects entries into LSP folding ranges. *)
+val folding_ranges : entries -> FoldingRange.t list
+
+(** Projects entries into LSP document symbols. *)
+val document_symbols : entries -> DocumentSymbol.t list

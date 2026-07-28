@@ -23,6 +23,36 @@ let document_symbols_of text =
   let st, _init_events = em_init_test_doc ~text in
   DocumentManager.get_document_symbols st
 
+let cached_folding_entries st =
+  DocumentManager.Internal.folding_entries st
+
+let cached_folding_entries_exn st =
+  match cached_folding_entries st with
+  | Some entries -> entries
+  | None -> failwith "expected cached folding entries"
+
+let assert_no_cached_folding_entries st =
+  [%test_eq: bool] (Option.is_none (cached_folding_entries st)) true
+
+let assert_same_cached_folding_entries first second =
+  match cached_folding_entries first, cached_folding_entries second with
+  | Some first, Some second -> [%test_eq: bool] (phys_equal first second) true
+  | _ -> failwith "expected cached folding entries"
+
+let handle_events st events =
+  handle_dm_events (Sel.Todo.add Sel.Todo.empty events) st
+
+let first_sentence doc =
+  match Document.sentences_sorted_by_loc doc with
+  | sentence :: _ -> sentence
+  | [] -> failwith "expected a parsed sentence"
+
+let revalidate_same_raw st =
+  let document = DocumentManager.Internal.document st in
+  let document, events = Document.validate_document document in
+  let update = handle_d_events (Sel.Todo.add Sel.Todo.empty events) document in
+  DocumentManager.Internal.validate_document st update
+
 let children_of_symbol (symbol: Lsp.Types.DocumentSymbol.t) =
   match symbol.children with
   | None -> []
@@ -282,6 +312,70 @@ let%test_unit "folding_symbols.single_line_definition" =
   let symbol = assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "x" symbols in
   [%test_eq: int] symbol.range.start.line 0;
   [%test_eq: int] symbol.selectionRange.start.line 0
+
+let%test_unit "folding.cache_shared_by_projections" =
+  let st, _events = em_init_test_doc ~text:"Definition x := 0." in
+  assert_no_cached_folding_entries st;
+  ignore (DocumentManager.get_document_symbols st);
+  let entries_after_symbols = cached_folding_entries_exn st in
+  ignore (DocumentManager.get_folding_ranges st);
+  let entries_after_ranges = cached_folding_entries_exn st in
+  [%test_eq: bool] (phys_equal entries_after_symbols entries_after_ranges) true
+
+let%test_unit "folding.cache_edit_invalidates_and_recomputes" =
+  let st, _events = em_init_test_doc ~text:"Definition x := 0." in
+  ignore (DocumentManager.get_document_symbols st);
+  let entries_before_edit = cached_folding_entries_exn st in
+  let document = DocumentManager.Internal.document st in
+  let sentence = first_sentence document in
+  let range = Document.range_of_id document sentence.id in
+  let parsing_st, events = DocumentManager.apply_text_edits st [(range, "Definition y := 0.")] in
+  assert_no_cached_folding_entries parsing_st;
+  ignore (DocumentManager.get_document_symbols parsing_st);
+  assert_no_cached_folding_entries parsing_st;
+  let st = handle_events parsing_st events in
+  assert_no_cached_folding_entries st;
+  let symbols = DocumentManager.get_document_symbols st in
+  let entries_after_edit = cached_folding_entries_exn st in
+  ignore (assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "y" symbols);
+  [%test_eq: bool] (Option.is_none (find_symbol "x" symbols)) true;
+  [%test_eq: bool]
+    (phys_equal entries_before_edit entries_after_edit)
+    false
+
+let%test_unit "folding.cache_reset_invalidates_unchanged_text" =
+  let st, _events = em_init_test_doc ~text:"Definition x := 0." in
+  ignore (DocumentManager.get_document_symbols st);
+  let entries_before_reset = cached_folding_entries_exn st in
+  let reset_st, events = DocumentManager.reset st in
+  assert_no_cached_folding_entries reset_st;
+  let st = handle_events reset_st events in
+  assert_no_cached_folding_entries st;
+  ignore (assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "x"
+    (DocumentManager.get_document_symbols st));
+  [%test_eq: bool]
+    (phys_equal entries_before_reset (cached_folding_entries_exn st))
+    false
+
+let%test_unit "folding.cache_parse_commit_invalidates_same_raw" =
+  let st, _events = em_init_test_doc ~text:"Definition x := 0." in
+  ignore (DocumentManager.get_document_symbols st);
+  let entries_before_revalidation = cached_folding_entries_exn st in
+  let st = revalidate_same_raw st in
+  assert_no_cached_folding_entries st;
+  ignore (assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "x"
+    (DocumentManager.get_document_symbols st));
+  [%test_eq: bool]
+    (phys_equal entries_before_revalidation (cached_folding_entries_exn st))
+    false
+
+let%test_unit "folding.cache_survives_checking_update" =
+  let st, _events = em_init_test_doc ~text:"Definition x := 0." in
+  ignore (DocumentManager.get_document_symbols st);
+  let checking_st = DocumentManager.reset_to_top st in
+  assert_same_cached_folding_entries st checking_st;
+  ignore (DocumentManager.get_folding_ranges checking_st);
+  assert_same_cached_folding_entries st checking_st
 
 let%test_unit "folding_symbols.incomplete_pending_proof" =
   let symbols = document_symbols_of "Lemma foo : True." in
