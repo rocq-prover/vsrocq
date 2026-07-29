@@ -206,10 +206,50 @@ let names_or_default names =
   | [] -> ["default"]
   | _ -> List.map Names.Id.to_string names
 
+let declaration_detail (raw: RawDocument.t) start stop : string =
+  let source = RawDocument.string_in_range raw start stop in
+  let max_characters = 100 in
+  let ellipsis = "..." in
+  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String source) in
+  let rec find_prefix count =
+    let byte_start = Uutf.decoder_byte_count decoder in
+    match Uutf.decode decoder with
+    | `Uchar uchar when Uchar.to_int uchar = 0x0A || Uchar.to_int uchar = 0x0D ->
+      byte_start, count, true
+    | `Uchar _ when count >= max_characters ->
+      byte_start, count, true
+    | `Uchar _ ->
+      find_prefix (count + 1)
+    | `Malformed _ ->
+      byte_start, count, true
+    | `End ->
+      String.length source, count, false
+    | `Await ->
+      assert false
+  in
+  let prefix_end, prefix_characters, truncated = find_prefix 0 in
+  if not truncated then
+    Stdlib.String.sub source 0 prefix_end
+  else
+    let kept_characters = min prefix_characters (max_characters - String.length ellipsis) in
+    let decoder = Uutf.decoder ~encoding:`UTF_8 (`String source) in
+    let rec byte_end_for_characters count =
+      if count >= kept_characters then
+        Uutf.decoder_byte_count decoder
+      else
+        let byte_start = Uutf.decoder_byte_count decoder in
+        match Uutf.decode decoder with
+        | `Uchar _ -> byte_end_for_characters (count + 1)
+        | `Malformed _ -> byte_start
+        | `End -> Uutf.decoder_byte_count decoder
+        | `Await -> assert false
+    in
+    Stdlib.String.sub source 0 (byte_end_for_characters 0) ^ ellipsis
+
 let declaration_entries (document: Document.document) (sentence: Document.sentence) entry_kind names : entry list =
   let range = Document.range_of_id document sentence.id in
   let raw = Document.raw_document document in
-  let detail = RawDocument.string_in_range raw sentence.start sentence.stop in
+  let detail = declaration_detail raw sentence.start sentence.stop in
   names_or_default names
   |> List.map (fun name ->
     let outline_info = { outline_name = name; detail = Some detail; selection_range = range } in
