@@ -39,7 +39,7 @@ type state = {
   opts : Coqargs.injection_command list;
   document : Document.document;
   document_state: document_state;
-  folding_entries_cache : Folding.entries option ref;
+  folding_entries_cache : DocumentEntries.entries option ref;
   feedback_pipe : feedback_pipe;
   pending_feedback : feedback_data list;
   checking_state : CheckingManager.state;
@@ -217,20 +217,20 @@ let get_document_proofs st =
 
 let entries_for_request st =
   if is_parsing st then
-    Folding.entries st.document
+    DocumentEntries.entries st.document
   else
     match !(st.folding_entries_cache) with
     | Some entries -> entries
     | None ->
-      let entries = Folding.entries st.document in
+      let entries = DocumentEntries.entries st.document in
       st.folding_entries_cache := Some entries;
       entries
 
 let get_document_symbols st =
-  Folding.document_symbols (entries_for_request st)
+  DocumentEntries.document_symbols (entries_for_request st)
 
 let get_folding_ranges st =
-  let folding_ranges = Folding.folding_ranges (entries_for_request st) in
+  let folding_ranges = DocumentEntries.folding_ranges (entries_for_request st) in
   log (fun () -> "Folding ranges: " ^ (string_of_int @@ List.length folding_ranges));
   folding_ranges
 

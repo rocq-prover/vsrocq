@@ -141,7 +141,7 @@ module Internal : sig
   val is_locally_executed : state -> sentence_id -> bool
   val string_of_state : state -> string
   val observe_id : state -> sentence_id option
-  val folding_entries : state -> Folding.entries option
+  val folding_entries : state -> DocumentEntries.entries option
   val inject_doc_events : Document.event Sel.Event.t list -> event Sel.Event.t list
   val get_proof : state -> sentence_id option -> ProofState.t option
   val validate_document : state -> Document.parsing_end_info -> state
