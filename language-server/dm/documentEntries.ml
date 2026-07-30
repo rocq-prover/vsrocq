@@ -310,13 +310,17 @@ let entries_of_whole_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : e
     fold points. *)
 let entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
   let open Constrexpr in
-  Utilities.fold_constr (fun entries e ->
-    match e.CAst.v with
-    | CCases _ | CIf _ | CLambdaN _ | CLetIn _ ->
-      List.rev_append (loc_entries_of_constr raw e) entries
-    | _ -> entries
-  ) [] e
-  |> List.rev
+  let open Constrexpr_ops in
+  let rec collect () acc e =
+    let acc = match e.CAst.v with
+      | CCases _ | CIf _ | CLambdaN _ | CLetIn _ ->
+        List.rev_append (loc_entries_of_constr raw e) acc
+      | _ -> acc
+    in
+    fold_constr_expr_with_binders skip_binder collect () acc e
+  and skip_binder _ acc = acc
+  in
+  List.rev (collect () [] e)
 
 let entries_of_constr_opt (raw: RawDocument.t) : Constrexpr.constr_expr option -> entry list = function
   | None -> []

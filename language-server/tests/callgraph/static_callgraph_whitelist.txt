@@ -28,6 +28,8 @@ Names\.Id\.
 Loc\.
 CAst\.make
 Future\.create_delegate
+Constrexpr_ops\.fold_constr_expr_with_binders
+Constrexpr_ops\.fold_constr_expr_with_binders\..*
 
 # Ours #######################
 Protocol\.LspWrapper\.
@@ -38,7 +40,6 @@ Dm\.Log\.
 Dm\.RawDocument\.get_character_loc\.loop
 Dm\.RawDocument\.get_character_pos\.loop
 Dm\.DocumentEntries\.
-Dm\.Utilities\.fold_constr
 Dm\.Types\.
 get_document_symbols\.
 Internal\.string_of_state\.string_of_state
