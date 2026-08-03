@@ -392,11 +392,11 @@ let%test_unit "folding_symbols.multiline_declaration_detail_preview" =
   document_symbols_of {|Definition multi (x : nat) :
   nat :=
   x.|}
-  |> assert_symbol_detail "multi" "Definition multi (x : nat) :..."
+  |> assert_symbol_detail "multi" "Definition multi (x : nat) :…"
 
 let%test_unit "folding_symbols.long_declaration_detail_preview" =
   let text = "Definition long (*" ^ Stdlib.String.make 120 'x' ^ "*) := 0." in
-  let expected = Stdlib.String.sub text 0 97 ^ "..." in
+  let expected = Stdlib.String.sub text 0 97 ^ "…" in
   document_symbols_of text
   |> assert_symbol_detail "long" expected
 
@@ -406,14 +406,14 @@ let%test_unit "folding_symbols.short_declaration_detail_unchanged" =
 
 let%test_unit "folding_symbols.crlf_declaration_detail_preview" =
   document_symbols_of "Definition crlf :\r\n  nat := 0."
-  |> assert_symbol_detail "crlf" "Definition crlf :..."
+  |> assert_symbol_detail "crlf" "Definition crlf :…"
 
 let%test_unit "folding_symbols.unicode_boundary_detail_preview" =
   let header = "Definition unicode (*" in
   let ascii_count = 97 - Stdlib.String.length header - 1 in
   let text = header ^ Stdlib.String.make ascii_count 'x' ^ "é" ^
     Stdlib.String.make 20 'y' ^ "*) := 0." in
-  let expected = header ^ Stdlib.String.make ascii_count 'x' ^ "é..." in
+  let expected = header ^ Stdlib.String.make ascii_count 'x' ^ "é…" in
   document_symbols_of text
   |> assert_symbol_detail "unicode" expected
 

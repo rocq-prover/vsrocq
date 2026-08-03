@@ -29,7 +29,6 @@ Loc\.
 CAst\.make
 Future\.create_delegate
 Constrexpr_ops\.fold_constr_expr_with_binders
-Constrexpr_ops\.fold_constr_expr_with_binders\..*
 
 # Ours #######################
 Protocol\.LspWrapper\.
