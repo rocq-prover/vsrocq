@@ -15,7 +15,6 @@
 [%%import "vsrocq_config.mlh"]
 
 open Lsp.Types
-open Protocol
 open Protocol.LspWrapper
 open Protocol.Printing
 open Types
@@ -189,32 +188,6 @@ let get_info_messages st pos =
     List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, pp_of_rocqpp msg) feedback
 
 
-let get_document_proofs st =
-  ProverThread.try_run ~doc_id:st.feedback_pipe.doc_id ~name:"get_document_proofs" ~timeout:10.0 (fun () ->
-  let outline = Document.outline st.document in
-  let is_theorem Document.{ type_ } =
-    match type_ with
-    | TheoremKind -> true
-    | _ -> false
-    in
-  let mk_proof_block Document.{statement; proof; range } =
-    let statement = ProofState.mk_proof_statement statement range in
-    match proof with
-    | [] ->
-      let steps = [] in
-      ProofState.mk_proof_block statement steps range
-    | _ ->
-      let last_step = List.hd proof in
-      let proof = List.rev proof in
-      let fst_step = List.hd proof in
-      let range = Range.create ~start:fst_step.range.start ~end_:last_step.range.end_ in
-      let steps = List.map (fun Document.{tactic; range} -> ProofState.mk_proof_step tactic range) proof in
-      ProofState.mk_proof_block statement steps range
-  in
-  let proofs, _  = List.partition is_theorem outline in
-  List.map mk_proof_block proofs)
-  |> get_interruptible_result
-
 let entries_for_request st =
   if is_parsing st then
     DocumentEntries.entries st.document
@@ -225,6 +198,11 @@ let entries_for_request st =
       let entries = DocumentEntries.entries st.document in
       st.folding_entries_cache := Some entries;
       entries
+
+let get_document_proofs st =
+  ProverThread.try_run ~doc_id:st.feedback_pipe.doc_id ~name:"get_document_proofs" ~timeout:10.0 (fun () ->
+    DocumentEntries.proof_blocks st.document (entries_for_request st))
+  |> get_interruptible_result
 
 let get_document_symbols st =
   DocumentEntries.document_symbols (entries_for_request st)
