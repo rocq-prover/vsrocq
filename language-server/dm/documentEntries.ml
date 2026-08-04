@@ -4,6 +4,7 @@
 *)
 
 open Lsp.Types
+open Protocol
 
 (** Classifies stack-managed regions whose end is discovered by a later
     vernacular sentence. *)
@@ -664,3 +665,89 @@ let folding_ranges (entries: entries) : FoldingRange.t list =
 let document_symbols (entries: entries) : DocumentSymbol.t list =
   entries
   |> List.concat_map document_symbols_of_entry
+
+(** Projects entries into source-ordered theorem ranges. *)
+let rec theorem_ranges_of_entry (entry: entry) : Range.t list =
+  let current =
+    match entry.entry_kind with
+    | Theorem -> [entry.range]
+    | _ -> []
+  in
+  current @ List.concat_map theorem_ranges_of_entry entry.children
+
+let theorem_ranges (entries: entries) : Range.t list =
+  List.concat_map theorem_ranges_of_entry entries
+
+let sentence_range (document: Document.document) (sentence: Document.sentence) : Range.t =
+  Document.range_of_id document sentence.id
+
+let sentence_text (raw: RawDocument.t) (sentence: Document.sentence) : string =
+  RawDocument.string_in_range raw sentence.start sentence.stop
+
+let sentence_classification (sentence: Document.sentence) =
+  match sentence.ast with
+  | Document.Error _ -> None
+  | Document.Parsed { classification; _ } -> Some classification
+
+let is_proof_sentence = function
+  | Some (Vernacextend.VtProofStep _ | Vernacextend.VtQed _) -> true
+  | _ -> false
+
+let is_proof_end = function
+  | Some (Vernacextend.VtQed _) -> true
+  | _ -> false
+
+let sentences_after (theorem: Document.sentence) (sentences: Document.sentence list) : Document.sentence list =
+  let rec drop_until_theorem = function
+    | [] -> []
+    | (sentence : Document.sentence) :: rest when Stateid.equal sentence.id theorem.id -> rest
+    | _ :: rest -> drop_until_theorem rest
+  in
+  drop_until_theorem sentences
+
+let proof_sentences (theorem: Document.sentence) (sentences: Document.sentence list) : Document.sentence list =
+  let rec collect acc = function
+    | [] -> List.rev acc
+    | sentence :: rest ->
+      let classification = sentence_classification sentence in
+      let acc = if is_proof_sentence classification then sentence :: acc else acc in
+      if is_proof_end classification then List.rev acc else collect acc rest
+  in
+  collect [] (sentences_after theorem sentences)
+
+let sentence_for_range (document: Document.document) (sentences: Document.sentence list) range =
+  List.find_opt (fun sentence -> sentence_range document sentence = range) sentences
+
+let proof_statement (document: Document.document) (raw: RawDocument.t) (theorem: Document.sentence) =
+  ProofState.mk_proof_statement
+    (sentence_text raw theorem)
+    (sentence_range document theorem)
+
+let proof_step (document: Document.document) (raw: RawDocument.t)
+    (sentence: Document.sentence): ProofState.proof_step =
+  ProofState.mk_proof_step
+    (sentence_text raw sentence)
+    (sentence_range document sentence)
+
+let proof_block_for_theorem (document: Document.document) (raw: RawDocument.t)
+    (sentences: Document.sentence list) (theorem: Document.sentence): ProofState.proof_block =
+  let statement = proof_statement document raw theorem in
+  let statement_range = sentence_range document theorem in
+  match proof_sentences theorem sentences with
+  | [] -> ProofState.mk_proof_block statement [] statement_range
+  | first :: rest ->
+    let proof = first :: rest in
+    let last = List.fold_left (fun _ sentence -> sentence) first rest in
+    let range = Range.create
+      ~start:(sentence_range document first).start
+      ~end_:(sentence_range document last).end_
+    in
+    let steps = List.map (proof_step document raw) proof in
+    ProofState.mk_proof_block statement steps range
+
+let proof_blocks (document: Document.document) (entries: entries) : ProofState.proof_block list =
+  let raw = Document.raw_document document in
+  let sentences = Document.sentences_sorted_by_loc document in
+  theorem_ranges entries
+  |> List.filter_map (sentence_for_range document sentences)
+  |> List.map (proof_block_for_theorem document raw sentences)
