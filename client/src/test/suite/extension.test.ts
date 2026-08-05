@@ -14,9 +14,10 @@ suite("Should get diagnostics", function () {
 
         const doc = await common.openTextFile("basic.v");
 
-        await common.sleep(10000); // Wait for server initialization
-
-        const diagnostics = vscode.languages.getDiagnostics(doc);
+        const diagnostics = await common.waitForDiagnostics(
+            doc,
+            common.anyDiagnostic,
+        );
 
         expect(diagnostics.length).toBe(1);
 
@@ -35,10 +36,10 @@ suite("Should get diagnostics", function () {
         const doc1 = await common.openTextFile("basic.v");
         const doc2 = await common.openTextFile("warn.v");
 
-        await common.sleep(10000); // Wait for server initialization
-
-        const diagnostics1 = vscode.languages.getDiagnostics(doc1);
-        const diagnostics2 = vscode.languages.getDiagnostics(doc2);
+        const [diagnostics1, diagnostics2] = await Promise.all([
+            common.waitForDiagnostics(doc1, common.anyDiagnostic),
+            common.waitForDiagnostics(doc2, common.anyDiagnostic),
+        ]);
 
         expect(diagnostics1.length).toBe(1);
         expect(diagnostics2.length).toBe(1);

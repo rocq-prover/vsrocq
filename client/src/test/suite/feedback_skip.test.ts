@@ -4,6 +4,9 @@ import { expect } from "expect";
 import * as vscode from "vscode";
 import * as common from "./common";
 
+/** Zero-based line of `Qed.`, the last sentence of delegate_proof.v. */
+const QED_LINE = 5;
+
 suite("Should get diagnostics in the appropriate tab", function () {
     this.timeout(20000);
 
@@ -11,19 +14,25 @@ suite("Should get diagnostics in the appropriate tab", function () {
         const ext = vscode.extensions.getExtension("rocq-prover.vsrocq")!;
         await ext.activate();
 
-        vscode.workspace
+        // Awaited: an unawaited update leaves the server free to check the
+        // document under the previous delegation mode.
+        await vscode.workspace
             .getConfiguration()
             .update("vsrocq.proof.delegation", "Skip");
-        vscode.workspace.getConfiguration().update("vsrocq.proof.mode", 1);
+        await vscode.workspace
+            .getConfiguration()
+            .update("vsrocq.proof.mode", 1);
 
         const doc1 = await common.openTextFile("delegate_proof.v");
 
         const doc2 = await common.openTextFile("warn.v");
 
-        await common.sleep(10000); // Wait for server initialization
-
-        const diagnostics1 = vscode.languages.getDiagnostics(doc1);
-        const diagnostics2 = vscode.languages.getDiagnostics(doc2);
+        const [diagnostics1, diagnostics2] = await Promise.all([
+            // delegate_proof.v fails twice under a mode that checks the proof
+            // body, so wait on the Qed rather than on the first publication.
+            common.waitForDiagnostics(doc1, common.diagnosticOnLine(QED_LINE)),
+            common.waitForDiagnostics(doc2, common.anyDiagnostic),
+        ]);
 
         // on some setups diagnostics from a leftover tab are somehow here,
         // but on other setups they are not
