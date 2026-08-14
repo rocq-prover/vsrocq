@@ -309,6 +309,61 @@
               '';
             };
 
+          vsrocq-language-server-rocq-9-3 =
+          # Notice the reference to nixpkgs here.
+          with import nixpkgs-unstable {inherit system;}; let
+            ocamlPackages = coq_9_3.ocamlPackages;
+          in
+            ocamlPackages.buildDunePackage {
+              duneVersion = "3";
+              pname = "vsrocq-language-server";
+              version = vsrocq_version;
+              src = ./language-server;
+              nativeBuildInputs = [
+                coq_9_3
+              ];
+              buildInputs =
+                [
+                  coq_9_3
+                  dune_3
+                ]
+                ++ (with ocamlPackages; [
+                  ocaml
+                  yojson
+                  findlib
+                  ppx_inline_test
+                  ppx_assert
+                  ppx_sexp_conv
+                  ppx_yojson_conv
+                  ppx_deriving
+                  ppx_optcomp
+                  ppx_import
+                  sexplib
+                  lsp
+                  sel
+                  # nixpkgs pins memprof-limits to 0.2.1, which does not build
+                  # against OCaml >= 5 (Gc.Memprof API changes). 0.3.0 does.
+                  (memprof-limits.overrideAttrs (old: {
+                    version = "0.3.0";
+                    src = fetchFromGitLab {
+                      owner = "gadmm";
+                      repo = "memprof-limits";
+                      rev = "v0.3.0";
+                      hash = "sha256-k/uB1jDQtE/PkVPU8zg8cpOmlPttTWVpKerQ0HuWfuI=";
+                    };
+                    nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ cppo ];
+                    meta = old.meta // { broken = false; };
+                  }))
+                ]);
+              propagatedBuildInputs= (with ocamlPackages;
+                [
+                  zarith
+                ]);
+              preBuild = ''
+                make dune-files
+              '';
+            };
+
         vsrocq-language-server-coq-master =
           # Notice the reference to nixpkgs here.
           with import nixpkgs-26-05 {inherit system;}; let
@@ -509,6 +564,17 @@
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-rocq-9-2.buildInputs
+              ++ ([git]);
+            shellHook = ''
+              export PATH="$PWD/language-server/.wrappers:$PATH"
+            '';
+          };
+
+        vsrocq-9-3 = with import nixpkgs-unstable {inherit system;};
+          mkShell {
+            buildInputs =
+              self.packages.${system}.vsrocq-client.extension.buildInputs
+              ++ self.packages.${system}.vsrocq-language-server-rocq-9-3.buildInputs
               ++ ([git]);
             shellHook = ''
               export PATH="$PWD/language-server/.wrappers:$PATH"
