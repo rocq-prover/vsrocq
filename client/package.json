@@ -1013,7 +1013,7 @@
     "@types/tmp": "^0.2.6",
     "@types/vscode": "~1.74.0",
     "@types/which": "^3.0.4",
-    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
     "expect": "^30.4.1",
     "glob": "^13.0.6",
