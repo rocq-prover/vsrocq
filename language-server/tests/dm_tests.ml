@@ -45,6 +45,11 @@ let%test_unit "parse.init" =
   [%test_eq: int list] positions [ 0; 22 ];
   check_no_diag st
 
+let%test_unit "raw_document.line_count" =
+  [%test_eq: int] (RawDocument.line_count (RawDocument.create "")) 1;
+  [%test_eq: int] (RawDocument.line_count (RawDocument.create "first\nsecond\nthird")) 3;
+  [%test_eq: int] (RawDocument.line_count (RawDocument.create "first\nsecond\n")) 3
+
 let%test_unit "parse.insert" =
   let st, init_events = em_init_test_doc ~text:"Definition x := true. Definition y := false." in
   let st = insert_text st ~loc:0 ~text:"Definition z := 0. " in

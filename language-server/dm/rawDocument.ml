@@ -29,6 +29,9 @@ let create text = { text; lines = compute_lines text }
 
 let text t = t.text
 
+let line_count raw =
+  Array.length raw.lines
+
 let line_text raw i =
   if i + 1 < Array.length raw.lines then
     String.sub raw.text (raw.lines.(i)) (raw.lines.(i+1) - raw.lines.(i))

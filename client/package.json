@@ -303,11 +303,11 @@
         "title": "Folding",
         "type": "object",
         "properties": {
-          "vsrocq.folding.locCutOff": {
+          "vsrocq.folding.lineCountCutOff": {
             "scope": "window",
             "type": "number",
             "default": 3000,
-            "description": "Semantic folding ranges loc cut-off. Above this loc in the document, folding ranges fall back to the client-side support."
+            "description": "Semantic folding ranges line count cut-off. Above this number of lines, folding ranges fall back to the client-side support."
           }
         }
       },
