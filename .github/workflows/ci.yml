@@ -6,12 +6,20 @@ on:
   pull_request:
   workflow_dispatch:
 
+# One run per ref: a second push to a PR cancels the first instead of stacking
+# another ~40 jobs behind it. Deliberately not on main or on tags, where
+# cancelling would leave a commit without a run of its own.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-extension:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -35,6 +43,7 @@ jobs:
             coq: master
             os: ubuntu-latest
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -91,6 +100,7 @@ jobs:
         ocaml-compiler: [4.14.2]
         coq: [8.18.0, 8.19.0, 8.20.0, 9.0.0, 9.1.1, 9.2.0, 9.3.dev, dev]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -141,6 +151,7 @@ jobs:
   install-windows:
     if: false
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
     - name: Set git to use LF
       run: |
@@ -173,6 +184,7 @@ jobs:
         ocaml-compiler: [4.14.x]
         profile: [dev, fatalwarnings]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -220,6 +232,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [build-extension, nix-dev-build, install-opam, dev-setup-opam]
     steps:
       - name: Checkout
@@ -247,6 +260,7 @@ jobs:
   publish-extension:
     runs-on: ubuntu-latest
     if: success()
+    timeout-minutes: 10
     steps:
     - name: Checkout
       uses: actions/checkout@v6
