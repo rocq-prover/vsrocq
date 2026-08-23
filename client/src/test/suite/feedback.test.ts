@@ -16,10 +16,10 @@ suite("Should get diagnostics in the appropriate tab", function () {
         const doc1 = await common.openTextFile("basic.v");
         const doc2 = await common.openTextFile("warn.v");
 
-        await common.sleep(10000); // Wait for server initialization
-
-        const diagnostics1 = vscode.languages.getDiagnostics(doc1);
-        const diagnostics2 = vscode.languages.getDiagnostics(doc2);
+        const [diagnostics1, diagnostics2] = await Promise.all([
+            common.waitForDiagnostics(doc1, common.anyDiagnostic),
+            common.waitForDiagnostics(doc2, common.anyDiagnostic),
+        ]);
 
         expect(diagnostics1.length).toBe(1);
         expect(diagnostics1[0].message).toMatch(
