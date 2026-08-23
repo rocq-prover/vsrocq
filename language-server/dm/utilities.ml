@@ -66,3 +66,20 @@ let vernacstate_synterp_parsing x = x.Vernacstate.synterp.Vernacstate.Synterp.pa
 [%%else]
 let vernacstate_synterp_parsing x = Vernacstate.(Synterp.parsing x.synterp)
 [%%endif]
+
+let option_to_list = function
+  | None -> []
+  | Some x -> [x]
+
+[%%if rocq = "8.18" || rocq = "8.19"]
+let constrs_of_local_binder = function
+  | Constrexpr.CLocalAssum (_, _, ty) -> [ty]
+  | Constrexpr.CLocalDef (_, e, e_opt) -> e :: option_to_list e_opt
+  | Constrexpr.CLocalPattern _ -> []
+[%%else]
+let constrs_of_local_binder = function
+  | Constrexpr.CLocalAssum (_, _, _, ty) -> [ty]
+  | Constrexpr.CLocalDef (_, _, e, e_opt) -> e :: option_to_list e_opt
+  | Constrexpr.CLocalPattern _ -> []
+[%%endif]
+

@@ -1,3 +1,4 @@
+_opam
 .DS_Store
 result
-_opam
+*.local*

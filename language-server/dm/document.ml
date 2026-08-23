@@ -22,32 +22,6 @@ module LM = Map.Make (Int)
 
 module SM = Map.Make (Stateid)
 
-type proof_block_type =
-  | TheoremKind
-  | DefinitionType
-  | InductiveType
-  | BeginSection
-  | BeginModule
-  | End
-  | Other
-
-type proof_step = {
-  id: sentence_id;
-  tactic: string;
-  range: Range.t;
-}
-
-type outline_element = {
-  id: sentence_id;
-  name: string;
-  type_: proof_block_type;
-  statement: string;
-  proof: proof_step list;
-  range: Range.t
-}
-
-type outline = outline_element list
-
 type parsed_ast = {
   ast: Synterp.vernac_control_entry;
   classification: Vernacextend.vernac_classification;
@@ -152,10 +126,6 @@ let range_of_sentence raw (sentence : sentence) =
   let end_ = RawDocument.position_of_loc raw sentence.stop in
   Range.{ start; end_ }
 
-let string_of_sentence raw (sentence: sentence) =
-    let string = RawDocument.string_in_range raw sentence.start sentence.stop in
-    string
-
 let range_of_sentence_with_blank_space raw (sentence : sentence) =
   let start = RawDocument.position_of_loc raw sentence.parsing_start in
   let end_ = RawDocument.position_of_loc raw sentence.stop in
@@ -171,11 +141,6 @@ let token_at_loc sentence loc =
   let contains (Loc.{ bp; ep }) = bp <= loc && loc <= ep in
   List.find_opt (fun (token_loc, _) -> contains token_loc) (tokens_of_sentence sentence) |> Option.map snd
 
-let string_of_id document id =
-  match SM.find_opt id document.sentences_by_id with
-  | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
-  | Some sentence -> string_of_sentence document.raw_doc sentence
-
 let has_sentence document id =
   None <> SM.find_opt id document.sentences_by_id
 
@@ -189,93 +154,10 @@ let range_of_id_with_blank_space document id =
   | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
   | Some sentence -> range_of_sentence_with_blank_space document.raw_doc sentence
 
-let push_proof_step_in_outline document id (outline : outline_element list) =
-  let range = range_of_id document id in
-  let tactic = string_of_id document id in
-  let proof_step = {id; tactic; range} in
-  match outline with
-  | [] -> outline
-  | e :: l -> 
-    let proof = proof_step :: e.proof in
-    {e with proof} :: l
-
-let record_outline document id (ast : Synterp.vernac_control_entry) classif (outline : outline_element list) =
-  let open Vernacextend in
-  match classif with
-  | VtProofStep _ | VtQed _ -> push_proof_step_in_outline document id outline
-  | VtStartProof (_, names) ->
-    let vernac_gen_expr = ast.v.expr in
-    let type_ = match vernac_gen_expr with
-      | VernacSynterp _ -> None
-      | VernacSynPure pure -> 
-        match pure with
-        | Vernacexpr.VernacStartTheoremProof _ -> Some TheoremKind
-        | Vernacexpr.VernacDefinition _ -> Some DefinitionType
-        | Vernacexpr.VernacFixpoint _ -> Some DefinitionType
-        | Vernacexpr.VernacCoFixpoint _ -> Some DefinitionType
-        | _ -> None
-    in
-    let str_names =
-      match names with
-      | [] -> ["default"]
-      | _ -> List.map (fun n -> Names.Id.to_string n) names
-    in
-
-    begin match type_ with
-    | None -> outline
-    | Some type_ ->
-      let range = range_of_id document id in
-      let statement = string_of_id document id in
-      let elements = List.map (fun name -> {id; type_; name; statement; range; proof=[]}) str_names in
-      List.append elements outline
-    end
-  | VtSideff (names, _) ->
-    let vernac_gen_expr = ast.v.expr in
-    let type_, statement = match vernac_gen_expr with
-      | VernacSynterp (Synterp.EVernacExtend _) when names <> [] -> Some Other, "external"
-      | VernacSynterp (Synterp.EVernacBeginSection  _) -> log (fun () -> Format.sprintf "BEGIN SECTION %s" (string_of_id document id)); Some BeginSection, ""
-      | VernacSynterp (Synterp.EVernacDeclareModuleType  _) -> log (fun () -> Format.sprintf "BEGIN MODULE %s" (string_of_id document id)); Some BeginModule, ""
-      | VernacSynterp (Synterp.EVernacDefineModule  _) -> log (fun () -> Format.sprintf "BEGIN MODULE %s" (string_of_id document id)); Some BeginModule, ""
-      | VernacSynterp (Synterp.EVernacDeclareModule  _) -> log (fun () -> Format.sprintf "BEGIN MODULE %s" (string_of_id document id)); Some BeginModule, ""
-      | VernacSynterp (Synterp.EVernacEndSegment  _) -> log (fun () -> Format.sprintf "END SEGMENT"); Some End, ""
-      | VernacSynterp _ -> None, ""
-      | VernacSynPure pure -> 
-        match pure with
-        | Vernacexpr.VernacStartTheoremProof _ -> Some TheoremKind, string_of_id document id
-        | Vernacexpr.VernacDefinition _ -> Some DefinitionType, string_of_id document id
-        | Vernacexpr.VernacInductive _ -> Some InductiveType, string_of_id document id
-        | Vernacexpr.VernacFixpoint _ -> Some DefinitionType, string_of_id document id
-        | Vernacexpr.VernacCoFixpoint _ -> Some DefinitionType, string_of_id document id
-        | _ -> None, ""
-    in
-    let str_names =
-      match names with
-      | [] -> ["default"]
-      | _ -> List.map (fun n -> Names.Id.to_string n) names
-    in
-    begin match type_ with
-    | None -> outline
-    | Some type_ ->
-      let range = range_of_id document id in
-      let element = List.map (fun name -> {id; type_; name; statement; range; proof=[]}) str_names in
-      List.append element outline
-    end
-  | _ -> outline
-
-let record_outline document {id; ast} outline =
-  match ast with
-  | Error _ -> outline
-  | Parsed ast -> record_outline document id ast.ast ast.classification outline
-
-let compute_outline ({ sentences_by_end } as document) =
-    LM.fold (fun _ s -> record_outline document (sentence_of_id document s)) sentences_by_end []
-
-
 let schedule doc = doc.schedule
 
 let raw_document doc = doc.raw_doc
 
-let outline doc = compute_outline doc
 let parse_errors parsed =
   List.map snd (LM.bindings parsed.parsing_errors_by_end)
 
@@ -357,6 +239,10 @@ let parsing_errors_before parsed loc =
 
 let comments_before parsed loc =
   LM.filter (fun stop _v -> stop <= loc) parsed.comments_by_end
+
+let comments parsed =
+  List.map snd @@ LM.bindings parsed.comments_by_end
+
 let get_sentence parsed id =
   SM.find_opt id parsed.sentences_by_id
 

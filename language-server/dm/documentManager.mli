@@ -99,6 +99,8 @@ val get_info_messages : state -> Position.t option -> (DiagnosticSeverity.t * pp
 
 val get_document_symbols : state -> DocumentSymbol.t list
 
+val get_folding_ranges : state -> FoldingRange.t list
+
 val get_document_proofs : state -> ProofState.proof_block list
 
 val all_diagnostics : state -> Diagnostic.t list
@@ -139,6 +141,7 @@ module Internal : sig
   val is_locally_executed : state -> sentence_id -> bool
   val string_of_state : state -> string
   val observe_id : state -> sentence_id option
+  val folding_entries : state -> DocumentEntries.entries option
   val inject_doc_events : Document.event Sel.Event.t list -> event Sel.Event.t list
   val get_proof : state -> sentence_id option -> ProofState.t option
   val validate_document : state -> Document.parsing_end_info -> state

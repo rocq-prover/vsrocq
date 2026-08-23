@@ -43,6 +43,8 @@ let max_memory_usage  = ref 4000000000
 let full_diagnostics = ref false
 let full_messages = ref false
 
+let folding_line_count_cut_off = ref 3000
+
 
 let Dm.Types.Log log = Dm.Log.mk_log "lspManager"
 
@@ -125,6 +127,7 @@ let do_configuration settings =
   };
   full_diagnostics := settings.diagnostics.full;
   full_messages := settings.goals.messages.full;
+  folding_line_count_cut_off := settings.folding.lineCountCutOff;
   max_memory_usage := settings.memory.limit * 1000000000;
   Dm.CheckingManager.set_options {
     Dm.CheckingManager.check_mode = settings.proof.mode;
@@ -159,6 +162,7 @@ let do_initialize id params =
   let documentHighlightProvider = `Bool true in
   let hoverProvider = `Bool true in
   let definitionProvider = `Bool true in
+  let foldingRangeProvider = `Bool true in
   let capabilities = ServerCapabilities.create
     ~textDocumentSync
     ~completionProvider
@@ -166,6 +170,7 @@ let do_initialize id params =
     ~definitionProvider
     ~documentSymbolProvider
     ~documentHighlightProvider
+    ~foldingRangeProvider
   ()
   in
   let initialize_result = Lsp.Types.InitializeResult.{
@@ -440,8 +445,23 @@ let textDocumentCompletion id params =
     let items = List.mapi make_CompletionItem (Dm.DocumentManager.get_completions st position) in
     return_completion ~isIncomplete:false ~items, []
 
+let documentFoldingRange id params =
+  let Lsp.Types.FoldingRangeParams.{ textDocument = { uri } } = params in
+  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
+  | None -> log (fun () -> "[documentFoldingRange] ignoring event on non existent document"); Error({message="Document does not exist"; code=None})
+  | Some { st } ->
+    log (fun () -> "[documentFoldingRange] getting folding ranges");
+    let raw_document = Dm.DocumentManager.Internal.raw_document st in
+    if Dm.RawDocument.line_count raw_document > !folding_line_count_cut_off then
+      Ok None
+    else if Dm.DocumentManager.is_parsing st then
+      Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"}
+    else
+      let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
+      Ok(Some folding_ranges)
+
 let documentSymbol id params =
-  let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get ssupport for partialResult and workDone*)
+  let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get support for partialResult and workDone*)
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[documentSymbol] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
   | Some tab -> log (fun () -> "[documentSymbol] getting symbols");
@@ -562,6 +582,8 @@ let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a,
     textDocumentHighlight id params, []
   | DocumentSymbol params ->
     documentSymbol id params
+  | TextDocumentFoldingRange params ->
+    documentFoldingRange id params, []
   | UnknownRequest _ | _  -> Error ({message="Received unknown request"; code=None}), []
 
 let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) result * events =

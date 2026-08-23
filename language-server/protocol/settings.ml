@@ -183,6 +183,14 @@ module Completion = struct
 
 end
 
+module Folding = struct
+
+  type t = {
+    lineCountCutOff: int [@default 3000]; (** Semantic folding ranges line count cut-off: above this number of lines, folding ranges fall back to the client-side support. *)
+  } [@@deriving yojson] [@@yojson.allow_extra_fields]
+
+end
+
 module Diagnostics = struct
 
   type t = {
@@ -198,5 +206,6 @@ type t = {
   completion: Completion.t;
   diagnostics: Diagnostics.t;
   memory: Memory.t;
+  folding: Folding.t [@default { lineCountCutOff = 3000 }];
   interrupt: Interrupt.t [@default { preempt = false }];
 } [@@deriving yojson] [@@yojson.allow_extra_fields]

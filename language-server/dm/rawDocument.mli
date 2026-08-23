@@ -19,6 +19,7 @@ type t
 
 val create : string -> t
 val text : t -> string
+val line_count : t -> int
 
 val position_of_loc : t -> int -> Position.t
 val loc_of_position : t -> Position.t -> int

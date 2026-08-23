@@ -22,33 +22,6 @@ open Lsp.Types
     sentences *)
 type document
 
-type proof_block_type =
-  | TheoremKind
-  | DefinitionType
-  | InductiveType
-  | BeginSection
-  | BeginModule
-  | End
-  | Other
-
-type proof_step = {
-  id: sentence_id;
-  tactic: string;
-  range: Range.t;
-}
-
-type outline_element = {
-    id: sentence_id;
-    name: string;
-    type_: proof_block_type;
-    statement: string;
-    proof: proof_step list;
-    range: Range.t;
-  }
-
-type outline = outline_element list
-
-
 type parsing_end_info = {
     unchanged_id: sentence_id option;
     invalid_ids: sentence_id_set;
@@ -62,8 +35,6 @@ val pp_event : Format.formatter -> event -> unit
 type events = event Sel.Event.t list
 
 val raw_document : document -> RawDocument.t
-
-val outline : document -> outline
 
 val create_document : doc_id:document_id -> Vernacstate.Synterp.t -> string -> document
 (** [create_document init_synterp_state text] creates a fresh document with content defined by
@@ -140,6 +111,7 @@ type code_line =
   | Comment of comment
 
 val sentences : document -> sentence list
+val comments : document -> comment list
 val code_lines_sorted_by_loc : document -> code_line list
 val code_lines_by_end_sorted_by_loc : document -> code_line list
 val sentences_sorted_by_loc : document -> sentence list

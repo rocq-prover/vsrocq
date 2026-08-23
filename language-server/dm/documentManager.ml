@@ -15,7 +15,6 @@
 [%%import "vsrocq_config.mlh"]
 
 open Lsp.Types
-open Protocol
 open Protocol.LspWrapper
 open Protocol.Printing
 open Types
@@ -39,6 +38,7 @@ type state = {
   opts : Coqargs.injection_command list;
   document : Document.document;
   document_state: document_state;
+  folding_entries_cache : DocumentEntries.entries option ref;
   feedback_pipe : feedback_pipe;
   pending_feedback : feedback_data list;
   checking_state : CheckingManager.state;
@@ -188,90 +188,29 @@ let get_info_messages st pos =
     List.map (fun (lvl,_oloc,_,msg) -> DiagnosticSeverity.of_feedback_level lvl, pp_of_rocqpp msg) feedback
 
 
+let entries_for_request st =
+  if is_parsing st then
+    DocumentEntries.entries st.document
+  else
+    match !(st.folding_entries_cache) with
+    | Some entries -> entries
+    | None ->
+      let entries = DocumentEntries.entries st.document in
+      st.folding_entries_cache := Some entries;
+      entries
+
 let get_document_proofs st =
   ProverThread.try_run ~doc_id:st.feedback_pipe.doc_id ~name:"get_document_proofs" ~timeout:10.0 (fun () ->
-  let outline = Document.outline st.document in
-  let is_theorem Document.{ type_ } =
-    match type_ with
-    | TheoremKind -> true
-    | _ -> false
-    in
-  let mk_proof_block Document.{statement; proof; range } =
-    let statement = ProofState.mk_proof_statement statement range in
-    match proof with
-    | [] ->
-      let steps = [] in
-      ProofState.mk_proof_block statement steps range
-    | _ ->
-      let last_step = List.hd proof in
-      let proof = List.rev proof in
-      let fst_step = List.hd proof in
-      let range = Range.create ~start:fst_step.range.start ~end_:last_step.range.end_ in
-      let steps = List.map (fun Document.{tactic; range} -> ProofState.mk_proof_step tactic range) proof in
-      ProofState.mk_proof_block statement steps range
-  in
-  let proofs, _  = List.partition is_theorem outline in
-  List.map mk_proof_block proofs)
+    DocumentEntries.proof_blocks st.document (entries_for_request st))
   |> get_interruptible_result
 
-let to_document_symbol elem =
-  let Document.{name; statement; range; type_} = elem in
-  let kind = begin match type_ with
-  | TheoremKind -> SymbolKind.Function
-  | DefinitionType -> SymbolKind.Variable
-  | InductiveType -> SymbolKind.Struct
-  | Other -> SymbolKind.Null
-  | BeginSection | BeginModule -> SymbolKind.Class
-  | End -> SymbolKind.Null
-  end in
-  DocumentSymbol.{name; detail=(Some statement); kind; range; selectionRange=range; children=None; deprecated=None; tags=None;}
-
-let rec get_document_symbols outline (sec_or_m: DocumentSymbol.t list) symbols =
-  let add_child (s_father: DocumentSymbol.t) s_child =
-    let children = match s_father.children with
-      | None -> Some [s_child]
-      | Some l -> Some (l @ [s_child])
-    in
-    {s_father with children} 
-  in
-  let record_in_outline outline symbol sec_or_m =
-    match sec_or_m with
-    | [] ->
-      let symbols = symbols @ [symbol] in
-      get_document_symbols outline sec_or_m symbols
-    | s :: l ->
-      let s = add_child s symbol in
-      get_document_symbols outline (s::l) symbols
-  in
-  match outline with
-  | [] -> symbols
-  | e :: l ->
-    let Document.{type_} = e in
-    match type_ with
-    | TheoremKind | DefinitionType | InductiveType  | Other ->
-      let symbol = to_document_symbol e in
-      record_in_outline l symbol sec_or_m
-    | BeginSection ->
-      let symbol = to_document_symbol e in
-      get_document_symbols l (symbol :: sec_or_m) symbols
-    | BeginModule ->
-      let symbol = to_document_symbol e in
-      get_document_symbols l (symbol :: sec_or_m) symbols
-    | End ->
-      match sec_or_m with
-      | [] -> log(fun () -> "Trying to end a module or section with no begin"); get_document_symbols l [] symbols
-      | symbol :: s_l ->
-        match s_l with
-        | [] ->
-          get_document_symbols l s_l (symbols @ [symbol])
-        | s_parent :: s_l ->
-          let s = add_child s_parent symbol in
-          get_document_symbols l (s :: s_l) symbols
-          
-
 let get_document_symbols st =
-  let outline = List.rev @@ Document.outline st.document in
-  get_document_symbols outline [] []
+  DocumentEntries.document_symbols (entries_for_request st)
+
+let get_folding_ranges st =
+  let folding_ranges = DocumentEntries.folding_ranges (entries_for_request st) in
+  log (fun () -> "Folding ranges: " ^ (string_of_int @@ List.length folding_ranges));
+  folding_ranges
 
 let get_next_range st pos =
   match Document.find_sentence_before_pos st.document pos with
@@ -290,7 +229,7 @@ let get_previous_range st pos =
       | Some { id } -> Some (Document.range_of_id st.document id)
 
 let validate_document state (Document.{unchanged_id; invalid_ids; previous_document; parsed_document}) =
-  let state = {state with document=parsed_document} in
+  let state = {state with document=parsed_document; folding_entries_cache = ref None} in
   (* this should be made in Document *)
   let old_schedule = Document.schedule previous_document in
   let rec invalidate_checked id state =
@@ -351,7 +290,7 @@ let init init_vs ~opts uri ~text =
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in
   let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
-  let state = { uri; opts; init_vs; document; document_state = Parsing; feedback_pipe; pending_feedback = []; checking_state } in
+  let state = { uri; opts; init_vs; document; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; checking_state } in
   state, [parsebegin_event;feedback_event]
 
 let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
@@ -361,7 +300,7 @@ let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
   let document = Document.create_document ~doc_id init_vs.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.reset checking_state init_vs ~feedback_pipe in
-  let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; feedback_pipe; pending_feedback = [] } in
+  let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = [] } in
   let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
   state, [parsebegin_event;feedback_event]
 
@@ -377,7 +316,7 @@ let apply_text_edits state edits =
     let offset = String.length new_text - edit_length in
     let document = Document.shift_feedbacks_and_checking_errors ~start ~offset document in
     let checking_state = CheckingManager.shift_overview state.checking_state ~before:state.document ~after:document ~start:edit_stop ~offset:(String.length new_text - edit_length) in
-    {state with checking_state; document; document_state = Parsing; pending_feedback = []}
+    {state with checking_state; document; document_state = Parsing; folding_entries_cache = ref None; pending_feedback = []}
   in
   let state = List.fold_left apply_edit_and_shift_diagnostics_locs_and_overview state edits in
   let priority = Some PriorityManager.launch_parsing in
@@ -399,7 +338,7 @@ let handle_event ev st =
      make_handled_event ~state ~update_view:true ~events:[local_feedback state.feedback_pipe.sel_feedback_queue] ()
   | ParseBegin ->
     let document, events = Document.validate_document st.document in
-    let state = {st with document; document_state = Parsing} in
+    let state = {st with document; document_state = Parsing; folding_entries_cache = ref None} in
     let events = inject_doc_events events in
     make_handled_event ~state ~update_view:true ~events ()
   | DocumentEvent ev ->
@@ -510,6 +449,8 @@ module Internal = struct
     Document.raw_document st.document
 
   let observe_id st = CheckingManager.get_observe_id st.checking_state
+
+  let folding_entries st = !(st.folding_entries_cache)
 
   let validate_document st parsing_end_info = validate_document st parsing_end_info
 
