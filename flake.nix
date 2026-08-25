@@ -3,19 +3,15 @@
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    nixpkgs-26-05.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     rocq-master = { url = "github:rocq-prover/rocq/5358976838128ff6125ee64e3b3d08dac45fc2f3"; }; # Should be kept in sync with PIN_COQ in CI workflow
-    rocq-master.inputs.nixpkgs.follows = "nixpkgs";
+    rocq-master.inputs.nixpkgs.follows = "nixpkgs-unstable";
     rocq-master.inputs.flake-utils.follows = "flake-utils";
   };
 
   outputs = {
     self,
-    nixpkgs,
-    nixpkgs-26-05,
     nixpkgs-unstable,
     flake-utils,
     rocq-master,
@@ -27,22 +23,30 @@
       vscodeExtUniqueId = "rocq-prover.vsrocq";
       vsrocq_version = "2.4.3";
       rocq = let
-        pkgs = import nixpkgs-26-05 {inherit system;};
+        pkgs = import nixpkgs-unstable {inherit system;};
       in
         pkgs.rocq-core.override {
           version = rocq-master.outPath;
           customOCamlPackages = pkgs.ocaml-ng.ocamlPackages_4_14;
         };
     in rec {
-      formatter = nixpkgs.legacyPackages.${system}.alejandra;
+      formatter = nixpkgs-unstable.legacyPackages.${system}.alejandra;
 
       packages = {
         default = self.packages.${system}.vsrocq-language-server-coq-8-20;
 
         vsrocq-language-server-coq-8-18 =
-          # Notice the reference to nixpkgs here.
-          with import nixpkgs {inherit system;}; let
-            ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+          # `lsp`'s propagated ppx_yojson_conv_lib/yojson otherwise resolve to
+          # a different derivation than the scope's own copies, so findlib
+          # sees duplicate META files; overriding yojson forces one fixed
+          # point for the whole scope, matching the coq-9-1 stanza below.
+          with import nixpkgs-unstable {inherit system;}; let
+            ocamlPackages = coq_8_18.ocamlPackages.overrideScope (self: super: {
+              yojson = super.yojson.overrideAttrs (_: {
+                version = "2.2.2";
+                __intentionallyOverridingVersion = true;
+              });
+            });
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
@@ -57,7 +61,7 @@
                   coq_8_18
                   dune_3
                 ]
-                ++ (with coq.ocamlPackages; [
+                ++ (with ocamlPackages; [
                   ocaml
                   findlib
                   yojson
@@ -73,7 +77,7 @@
                   sel
                   memprof-limits
                 ]);
-              propagatedBuildInputs= (with coq.ocamlPackages;
+              propagatedBuildInputs= (with ocamlPackages;
                 [
                   zarith
                 ]);
@@ -83,9 +87,14 @@
             };
 
         vsrocq-language-server-coq-8-19 =
-          # Notice the reference to nixpkgs here.
-          with import nixpkgs {inherit system;}; let
-            ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+          # See the coq-8-18 stanza for why yojson is overridden here.
+          with import nixpkgs-unstable {inherit system;}; let
+            ocamlPackages = coq_8_19.ocamlPackages.overrideScope (self: super: {
+              yojson = super.yojson.overrideAttrs (_: {
+                version = "2.2.2";
+                __intentionallyOverridingVersion = true;
+              });
+            });
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
@@ -100,7 +109,7 @@
                   coq_8_19
                   dune_3
                 ]
-                ++ (with coq.ocamlPackages; [
+                ++ (with ocamlPackages; [
                   ocaml
                   yojson
                   findlib
@@ -116,7 +125,7 @@
                   sel
                   memprof-limits
                 ]);
-              propagatedBuildInputs= (with coq.ocamlPackages;
+              propagatedBuildInputs= (with ocamlPackages;
                 [
                   zarith
                 ]);
@@ -126,9 +135,14 @@
             };
 
         vsrocq-language-server-coq-8-20 =
-          # Notice the reference to nixpkgs here.
-          with import nixpkgs {inherit system;}; let
-            ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+          # See the coq-8-18 stanza for why yojson is overridden here.
+          with import nixpkgs-unstable {inherit system;}; let
+            ocamlPackages = coq_8_20.ocamlPackages.overrideScope (self: super: {
+              yojson = super.yojson.overrideAttrs (_: {
+                version = "2.2.2";
+                __intentionallyOverridingVersion = true;
+              });
+            });
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
@@ -143,7 +157,7 @@
                   coq_8_20
                   dune_3
                 ]
-                ++ (with coq.ocamlPackages; [
+                ++ (with ocamlPackages; [
                   ocaml
                   yojson
                   findlib
@@ -159,7 +173,7 @@
                   sel
                   memprof-limits
                 ]);
-              propagatedBuildInputs= (with coq.ocamlPackages;
+              propagatedBuildInputs= (with ocamlPackages;
                 [
                   zarith
                 ]);
@@ -169,9 +183,14 @@
             };
 
         vsrocq-language-server-rocq-9 =
-          # Notice the reference to nixpkgs here.
-          with import nixpkgs {inherit system;}; let
-            ocamlPackages = ocaml-ng.ocamlPackages_4_14;
+          # See the coq-8-18 stanza for why yojson is overridden here.
+          with import nixpkgs-unstable {inherit system;}; let
+            ocamlPackages = coq_9_0.ocamlPackages.overrideScope (self: super: {
+              yojson = super.yojson.overrideAttrs (_: {
+                version = "2.2.2";
+                __intentionallyOverridingVersion = true;
+              });
+            });
           in
             ocamlPackages.buildDunePackage {
               duneVersion = "3";
@@ -186,7 +205,7 @@
                   coq_9_0
                   dune_3
                 ]
-                ++ (with coq.ocamlPackages; [
+                ++ (with ocamlPackages; [
                   ocaml
                   yojson
                   findlib
@@ -202,7 +221,7 @@
                   sel
                   memprof-limits
                 ]);
-              propagatedBuildInputs= (with coq.ocamlPackages;
+              propagatedBuildInputs= (with ocamlPackages;
                 [
                   zarith
                 ]);
@@ -386,7 +405,7 @@
 
         vsrocq-language-server-coq-master =
           # Notice the reference to nixpkgs here.
-          with import nixpkgs-26-05 {inherit system;}; let
+          with import nixpkgs-unstable {inherit system;}; let
             # `lsp` hard-requires yojson_2 (2.2.2) while everything else in this
             # OCaml 4.14 scope defaults to yojson 3.0.0; unify on 2.2.2 to avoid
             # two conflicting yojson copies in the same build environment.
@@ -447,7 +466,7 @@
               '';
             };
 
-        vsrocq-client = with import nixpkgs {inherit system;}; let
+        vsrocq-client = with import nixpkgs-unstable {inherit system;}; let
           yarn_deps = name: (path: (mkYarnModules {
             pname = "${name}_yarn_deps";
             version = vsrocq_version;
@@ -526,7 +545,7 @@
       };
 
       devShells = {
-        vsrocq-8-18 = with import nixpkgs {inherit system;};
+        vsrocq-8-18 = with import nixpkgs-unstable {inherit system;};
           mkShell {
             buildInputs = 
               self.packages.${system}.vsrocq-client.extension.buildInputs
@@ -537,58 +556,38 @@
               ++ ([git]);
           };
         
-        vsrocq-8-19 = with import nixpkgs {inherit system;}; let
-          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
-        in
+        vsrocq-8-19 = with import nixpkgs-unstable {inherit system;};
           mkShell {
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-coq-8-19.buildInputs
-              ++ (with ocamlPackages; [
-                ocaml-lsp
-              ])
               ++ ([git]);
           };
 
-        vsrocq-8-20 = with import nixpkgs {inherit system;}; let
-          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
-        in
+        vsrocq-8-20 = with import nixpkgs-unstable {inherit system;};
           mkShell {
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-coq-8-20.buildInputs
-              ++ (with ocamlPackages; [
-                ocaml-lsp
-              ])
               ++ ([git]);
           };
 
-        vsrocq-9 = with import nixpkgs {inherit system;}; let
-          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
-        in
+        vsrocq-9 = with import nixpkgs-unstable {inherit system;};
           mkShell {
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-rocq-9.buildInputs
-              ++ (with ocamlPackages; [
-                ocaml-lsp
-              ])
               ++ ([git]);
             shellHook = ''
               export PATH="$PWD/language-server/.wrappers:$PATH"
             '';
           };
 
-        vsrocq-9-1 = with import nixpkgs {inherit system;}; let
-          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
-        in
+        vsrocq-9-1 = with import nixpkgs-unstable {inherit system;};
           mkShell {
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-rocq-9-1.buildInputs
-              ++ (with ocamlPackages; [
-                ocaml-lsp
-              ])
               ++ ([git]);
             shellHook = ''
               export PATH="$PWD/language-server/.wrappers:$PATH"
@@ -617,7 +616,7 @@
             '';
           };
 
-        vsrocq-master = with import nixpkgs-26-05 {inherit system;}; let
+        vsrocq-master = with import nixpkgs-unstable {inherit system;}; let
           ocamlPackages = rocq.ocamlPackages;
         in
           mkShell {
@@ -627,16 +626,11 @@
               ++ ([git]);
           };
 
-        default = with import nixpkgs {inherit system;}; let
-          ocamlPackages = ocaml-ng.ocamlPackages_4_14;
-        in
+        default = with import nixpkgs-unstable {inherit system;};
           mkShell {
             buildInputs =
               self.packages.${system}.vsrocq-client.extension.buildInputs
               ++ self.packages.${system}.vsrocq-language-server-coq-8-20.buildInputs
-              ++ (with ocamlPackages; [
-                ocaml-lsp
-              ])
               ++ ([git]);
           };
       };
