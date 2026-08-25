@@ -80,8 +80,9 @@ jobs:
         command: |
             nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && npm test"
       if: runner.os != 'Linux'
-    - if: ${{ failure() }}
-      run: cat /tmp/vsrocq_init_log.*
+    - name: Language server init log
+      if: ${{ failure() }}
+      run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
   install-opam:
     strategy:
@@ -135,8 +136,9 @@ jobs:
       env:
         VSROCQPATH: ${{ env.vsrocqtop }}
         VSROCQARGS: "-bt"
-    - if: runner.os == 'Linux' && failure()
-      run: cat /tmp/vsrocq_init_log.*
+    - name: Language server init log
+      if: runner.os == 'Linux' && failure()
+      run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
   install-windows:
     if: false
@@ -214,8 +216,9 @@ jobs:
       env:
         VSROCQARGS: "${{ env.vsrocqlib }}"
 
-    - if: ${{ failure() }}
-      run: cat /tmp/vsrocq_init_log.*
+    - name: Language server init log
+      if: ${{ failure() }}
+      run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
 
   create-release:
