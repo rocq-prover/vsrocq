@@ -248,8 +248,7 @@ jobs:
     # Dry run: it packages the extension and checks that both marketplace
     # actions accept the result, with a stub token. It depends on
     # build-extension so that it cannot report success while packaging is
-    # broken; `if: success()` on a job with no `needs` is vacuously true and
-    # gated nothing.
+    # broken.
     needs: build-extension
     runs-on: ubuntu-latest
     steps:
