@@ -61,6 +61,8 @@ let inject_im_events events = List.map inject_im_event events
 let inject_doc_event x = Sel.Event.map (fun e -> DocumentEvent e) x
 let inject_doc_events events = List.map inject_doc_event events
 
+let mk_parsing_begin_event () =
+  Sel.now ~undup:(=) ~priority:PriorityManager.launch_parsing ParseBegin
   
 type events = event Sel.Event.t list
 
@@ -289,7 +291,7 @@ let init init_vs ~opts uri ~text =
   let document = Document.create_document ~doc_id init_vs.Vernacstate.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in
-  let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
+  let parsebegin_event = mk_parsing_begin_event () in
   let state = { uri; opts; init_vs; document; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; checking_state } in
   state, [parsebegin_event;feedback_event]
 
@@ -301,7 +303,7 @@ let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.reset checking_state init_vs ~feedback_pipe in
   let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = [] } in
-  let parsebegin_event = Sel.now ~priority:PriorityManager.launch_parsing ParseBegin in
+  let parsebegin_event = mk_parsing_begin_event () in
   state, [parsebegin_event;feedback_event]
 
 let apply_text_edits state edits =
@@ -319,8 +321,7 @@ let apply_text_edits state edits =
     {state with checking_state; document; document_state = Parsing; folding_entries_cache = ref None; pending_feedback = []}
   in
   let state = List.fold_left apply_edit_and_shift_diagnostics_locs_and_overview state edits in
-  let priority = Some PriorityManager.launch_parsing in
-  let sel_event = Sel.now ?priority ParseBegin in
+  let sel_event = mk_parsing_begin_event () in
   state, [sel_event]
 
 let handle_feedback_event state (_, id, msg) =

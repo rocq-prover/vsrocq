@@ -117,7 +117,7 @@ let mk_block_on_error_event last_range error_id background =
   let update_goal_view = [ mk_proof_view_event error_id ] in
   if background then update_goal_view
   else
-    let red_flash = [ Sel.now ~priority:PriorityManager.move_cursor @@ SendBlockOnError error_id ] in
+    let red_flash = [ Sel.now ~undup:(=) ~priority:PriorityManager.move_cursor @@ SendBlockOnError error_id ] in
     let move_cursor = match last_range with Some last_range -> [ mk_move_cursor_event last_range ] | None -> [] in
     red_flash @ move_cursor @ update_goal_view
 
