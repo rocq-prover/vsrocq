@@ -20,16 +20,19 @@ jobs:
         os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: client
     steps:
     - name: Checkout
       uses: actions/checkout@v6
     - name: Install Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v7
       with:
         node-version: 22.x
-    - run: |
-        cd client
-        npm run package
+        cache: npm
+        cache-dependency-path: client/package-lock.json
+    - run: npm run package
 
   nix-dev-build:
     strategy:
@@ -119,10 +122,12 @@ jobs:
         echo "vsrocqtop=`which vsrocqtop`" >> $GITHUB_ENV
         vsrocqtop -v
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v7
       if: runner.os == 'Linux'
       with:
         node-version: 22
+        cache: npm
+        cache-dependency-path: client/package-lock.json
 
     - run: cd client && npm run package
       if: runner.os == 'Linux'
@@ -156,9 +161,11 @@ jobs:
 
     - run: C:\ci\cygwin64\bin\bash.exe --login -c 'echo vsrocqtop=$(cygpath -m $(which vsrocqtop))' >> $Env:GITHUB_ENV
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v7
       with:
         node-version: 22
+        cache: npm
+        cache-dependency-path: client/package-lock.json
 
     - run: cd client && npm run package && npm test
       env:
@@ -201,9 +208,11 @@ jobs:
         eval $(opam env)
         cd language-server && make test
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v7
       with:
         node-version: 22
+        cache: npm
+        cache-dependency-path: client/package-lock.json
 
     - run: |
         eval $(opam env)
@@ -258,9 +267,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
     - name: Install Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v7
       with:
         node-version: 22.x
+        cache: npm
+        cache-dependency-path: client/package-lock.json
     - name: Pre publish phase
       run: |
         cd client
