@@ -234,8 +234,12 @@ jobs:
           generate_release_notes: true
 
   publish-extension:
+    # Dry run: it packages the extension and checks that both marketplace
+    # actions accept the result, with a stub token. It depends on
+    # build-extension so that it cannot report success while packaging is
+    # broken.
+    needs: build-extension
     runs-on: ubuntu-latest
-    if: success()
     steps:
     - name: Checkout
       uses: actions/checkout@v6
