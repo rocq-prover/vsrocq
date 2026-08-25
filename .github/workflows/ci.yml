@@ -57,21 +57,7 @@ jobs:
     - uses: cachix/install-nix-action@v31
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - name: Check each yarn.nix up to date
-      if: false
-      run: |
-        cd client && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix"
-        cd goal-view-ui && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix"
-        cd ../search-ui && nix-shell -p yarn2nix --run "yarn2nix > new_yarn.nix" && cd ..
-        nix fmt new_yarn.nix goal-view-ui/new_yarn.nix search-ui/new_yarn.nix
-        nix fmt yarn.nix goal-view-ui/yarn.nix search-ui/yarn.nix
-        diff new_yarn.nix yarn.nix
-        diff goal-view-ui/new_yarn.nix goal-view-ui/yarn.nix
-        diff search-ui/new_yarn.nix search-ui/yarn.nix
     - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
-      if: ${{matrix.coq != 9}}
-    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
-      if: ${{matrix.coq == 9}}
     - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && npm install && npm run build --workspaces"
     - name: Test xvfb
       uses: Wandalen/wretry.action@v3
@@ -89,8 +75,9 @@ jobs:
         command: |
             nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && npm test"
       if: runner.os != 'Linux'
-    - if: ${{ failure() }}
-      run: cat /tmp/vsrocq_init_log.*
+    - name: Language server init log
+      if: ${{ failure() }}
+      run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
   install-opam:
     strategy:
@@ -145,8 +132,9 @@ jobs:
       env:
         VSROCQPATH: ${{ env.vsrocqtop }}
         VSROCQARGS: "-bt"
-    - if: runner.os == 'Linux' && failure()
-      run: cat /tmp/vsrocq_init_log.*
+    - name: Language server init log
+      if: runner.os == 'Linux' && failure()
+      run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
   install-windows:
     if: false
@@ -226,8 +214,9 @@ jobs:
       env:
         VSROCQARGS: "${{ env.vsrocqlib }}"
 
-    - if: ${{ failure() }}
-      run: cat /tmp/vsrocq_init_log.*
+    - name: Language server init log
+      if: ${{ failure() }}
+      run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
 
   create-release:
@@ -258,8 +247,12 @@ jobs:
           generate_release_notes: true
 
   publish-extension:
+    # Dry run: it packages the extension and checks that both marketplace
+    # actions accept the result, with a stub token. It depends on
+    # build-extension so that it cannot report success while packaging is
+    # broken.
+    needs: build-extension
     runs-on: ubuntu-latest
-    if: success()
     timeout-minutes: 10
     steps:
     - name: Checkout
