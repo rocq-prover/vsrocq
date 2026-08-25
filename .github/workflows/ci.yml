@@ -12,6 +12,9 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: client
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -21,9 +24,7 @@ jobs:
         node-version: 22.x
         cache: npm
         cache-dependency-path: client/package-lock.json
-    - run: |
-        cd client
-        npm run package
+    - run: npm run package
 
   nix-dev-build:
     strategy:
