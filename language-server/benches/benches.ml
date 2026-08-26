@@ -47,6 +47,6 @@ let print results =
       ) sorted_tests
 
 let () =
-  let suite = Test.make_grouped ~name:"" [Entries.suite] in
+  let suite = Test.make_grouped ~name:"" [Entries.suite; Text.suite] in
   let merged = benchmark suite in
   print merged
