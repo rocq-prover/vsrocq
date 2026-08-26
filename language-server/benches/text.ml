@@ -17,6 +17,11 @@ let validate_document parsed_document =
   let size = String.length @@ RawDocument.text @@ Document.raw_document parsed_document in
   handle_d_events ~steps:size todo doc
 
+let big_raw_document_create =
+  fun () ->
+    let _ = RawDocument.create big_rocq_source in
+    ()
+
 let big_parse =
   let text = big_rocq_source in
   fun () ->
@@ -33,10 +38,17 @@ let big_edit =
     let _ = validate_document parsed_document in
     ()
 
+let raw_document = Test.make_grouped ~name:"raw_document" [
+    (Test.make ~name:"big_create" @@ Bechamel.Staged.stage @@ big_raw_document_create);
+  ]
 let edit = Test.make_grouped ~name:"edit" [
     (Test.make ~name:"big" @@ Bechamel.Staged.stage @@ big_edit);
   ]
 let parse = Test.make_grouped ~name:"parse" [
     (Test.make ~name:"big" @@ Bechamel.Staged.stage @@ big_parse);
   ]
-let suite = Test.make_grouped ~name:"text" [edit; parse]
+let suite = Test.make_grouped ~name:"text" [
+    raw_document;
+    edit;
+    parse;
+  ]
