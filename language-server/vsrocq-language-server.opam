@@ -25,6 +25,7 @@ depends: [
   "ppx_sexp_conv"
   "ppx_deriving"
   "sexplib"
+  "bechamel"
   "ppx_yojson_conv"
   "ppx_import"
   "ppx_optcomp"
