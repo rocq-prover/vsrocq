@@ -6,12 +6,6 @@
     (preprocessor_deps vsrocq_config.mlh Big.v))
 
 (rule
- (alias bench)
- (deps (universe))
- (action
-  (run ./%{exe:benches.exe})))
-
-(rule
  (target vsrocq_config.mlh)
  (mode (promote (only vsrocq_config.mlh)))
  (action (with-stdout-to %{target}

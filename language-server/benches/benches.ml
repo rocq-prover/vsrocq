@@ -1,11 +1,16 @@
 open Bechamel
 open Toolkit
 
-let benchmark suite =
+let benchmark tests =
   let ols = Analyze.ols ~bootstrap:0 ~r_square:true ~predictors:Measure.[| run |] in
   let instances = Instance.[ monotonic_clock ] in
   let cfg = Benchmark.cfg ~quota:(Time.second 5.) () in
-  let raw_results = Benchmark.all cfg instances suite in
+  let raw_results = Hashtbl.create (List.length tests) in
+  List.iter
+    (fun test ->
+      let results = Benchmark.run cfg instances test in
+      Hashtbl.add raw_results (Test.Elt.name test) results)
+    tests;
   let results = List.map (fun instance -> Analyze.all ols instance raw_results) instances in
   Analyze.merge ols instances results
 
@@ -46,7 +51,21 @@ let print results =
             Printf.printf "%-*s %s\n" max_name_len test_name "N/A (Metric missing)"
       ) sorted_tests
 
+let filter_suite pattern suite =
+  let is_match elt =
+    let name = Test.Elt.name elt in
+    try
+      let _ = Str.search_forward pattern name 0 in
+      true
+    with Not_found -> false
+  in
+  List.filter is_match (Test.elements suite)
+
 let () =
+  let pattern =
+    if Array.length Sys.argv > 1 then Sys.argv.(1) else ".*"
+  in
   let suite = Test.make_grouped ~name:"" [Entries.suite; Text.suite] in
-  let merged = benchmark suite in
+  let tests = filter_suite (Str.regexp pattern) suite in
+  let merged = benchmark tests in
   print merged
