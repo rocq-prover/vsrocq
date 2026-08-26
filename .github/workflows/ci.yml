@@ -142,7 +142,6 @@ jobs:
       run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
   install-windows:
-    if: false
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -157,7 +156,7 @@ jobs:
     - name: Build language server
       run: .\language-server\build-windows-platform.bat
       env:
-        COQ_VERSION: V8.18+rc1
+        COQ_VERSION: V8.19.0
 
     - run: C:\ci\cygwin64\bin\bash.exe --login -c 'echo vsrocqtop=$(cygpath -m $(which vsrocqtop))' >> $Env:GITHUB_ENV
 
