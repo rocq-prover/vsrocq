@@ -117,16 +117,17 @@ let range_of_loc raw loc =
     end_  = position_of_loc_bisect raw loc.Loc.ep;
   }
 
+let word_back_reg = Str.regexp {|[^a-zA-Z_0-9.']|}
+let word_forward_reg = Str.regexp {|[^a-zA-Z_0-9']|}
+
 let word_at_loc raw loc : string option =
   try
-    let back_reg = Str.regexp {|[^a-zA-Z_0-9.']|} in
     let start_ind = loc in
     (* Search backwards until we find a character that cannot be part of a word *)
-    let first_non_word_ind = Str.search_backward back_reg raw.text start_ind in
+    let first_non_word_ind = Str.search_backward word_back_reg raw.text start_ind in
     let first_word_ind = first_non_word_ind + 1 in
-    let forward_reg = Str.regexp {|[^a-zA-Z_0-9']|} in
     (* Search forwards ensuring that all characters are part of a well defined word. (Cannot start with [0-9'.] and cannot end with .)*)
-    let last_word_ind = Str.search_forward forward_reg raw.text start_ind in
+    let last_word_ind = Str.search_forward word_forward_reg raw.text start_ind in
     (* we get the substring from the first word index to the last index for the word *)
     let word = String.sub raw.text first_word_ind (last_word_ind - first_word_ind) in
     Some word
