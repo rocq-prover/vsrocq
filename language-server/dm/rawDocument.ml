@@ -46,66 +46,79 @@ let text t = t.text
 let line_count raw =
   Array.length raw.lines
 
-let line_text raw i =
+let line_span raw i =
   if i + 1 < Array.length raw.lines then
    (raw.lines.(i), raw.lines.(i+1) - raw.lines.(i))
   else
    (raw.lines.(i), String.length raw.text - raw.lines.(i))
 
-let get_character_pos raw (i,e) loc =
-  let rec loop d =
-    if Uutf.decoder_byte_count d >= loc then
-      Uutf.decoder_count d
+(* UTF8 byte -> UTF16 code unit position *)
+let code_unit_pos_of_loc raw line_idx loc =
+  let line_start, line_len = line_span raw line_idx in
+  let loc = max 0 (min loc line_len) in
+  if raw.is_ascii.(line_idx) then
+    (* ASCII fast path: character position == byte offset *)
+    loc
+  else
+    let rec loop byte_offset utf16_count =
+      if byte_offset >= loc then
+        utf16_count
+      else
+        let d = String.get_utf_8_uchar raw.text (line_start + byte_offset) in
+        let byte_len = Uchar.utf_decode_length d in
+        let u = Uchar.utf_decode_uchar d in
+        (* handle UTF16 properly, code-points above 0xFFFF take two units to encode *)
+        let units = if Uchar.to_int u > 0xFFFF then 2 else 1 in
+        loop (byte_offset + byte_len) (utf16_count + units)
+    in
+    loop 0 0
+
+(* UTF16 code unit position -> UTF8 byte *)
+let loc_of_code_unit_pos raw line_idx pos =
+  let line_start, line_len = line_span raw line_idx in
+  let pos = max 0 (min pos line_len) in
+  if raw.is_ascii.(line_idx) then
+    (* ASCII fast path: character position == byte offset *)
+    pos
+  else
+    let rec loop byte_offset utf16_count =
+      if utf16_count >= pos then
+        byte_offset
+      else
+        let d = String.get_utf_8_uchar raw.text (line_start + byte_offset) in
+        let byte_len = Uchar.utf_decode_length d in
+        let u = Uchar.utf_decode_uchar d in
+        (* handle UTF16 properly, code-points above 0xFFFF take two units to encode *)
+        let units = if Uchar.to_int u > 0xFFFF then 2 else 1 in
+        loop (byte_offset + byte_len) (utf16_count + units)
+    in
+    loop 0 0
+
+let line_of_loc raw loc =
+  let nlines = line_count raw in
+  let rec aux low high =
+    if low > high then max 0 high
     else
-      match Uutf.decode d with
-      | `Uchar _ -> loop d
-      | `Malformed _ -> loop d
-      | `End -> Uutf.decoder_count d
-      | `Await -> Uutf.Manual.src d (Bytes.unsafe_of_string "") 0 0; loop d
+      let mid = low + (high - low) / 2 in
+      if raw.lines.(mid) <= loc then
+        if mid = nlines - 1 || loc < raw.lines.(mid + 1) then
+          mid
+        else
+          aux (mid + 1) high
+      else
+        aux low (mid - 1)
   in
-  let nln = `Readline (Uchar.of_int 0x000A) in
-  let encoding = `UTF_8 in
-  let d = Uutf.decoder ~nln ~encoding `Manual in
-  (* Printf.eprintf "lookup %d|%s\n" loc (String.sub raw.text i e); *)
-  Uutf.Manual.src d (Bytes.unsafe_of_string raw.text) i e;
-  loop d
+  aux 0 (nlines - 1)
 
-let rec position_of_loc_bisect raw loc i m n len =
-  (* Printf.eprintf "%i | %i(%d) <= %i(%d) < %i(%d)\n" loc m raw.lines.(m) i raw.lines.(i) n raw.lines.(n); *)
-  if i = len || i = n || raw.lines.(i) <= loc && loc < raw.lines.(i+1) then i
-  else if loc < raw.lines.(i) then position_of_loc_bisect raw loc (m + (max 1 ((i - m) / 2))) m i len
-  else position_of_loc_bisect raw loc (i + (max 1 ((n - i) / 2))) i n len
-
-
-let position_of_loc_bisect raw loc =
-  let nlines = Array.length raw.lines in
-  let line = if loc = 0 then 0 else position_of_loc_bisect raw loc (nlines/2) 0 (nlines-1) (nlines-1) in
-  (* Printf.eprintf "line bisect: %d\n" line; *)
-  let char = get_character_pos raw (line_text raw line) (loc - raw.lines.(line)) in
-  Position.{ line = line; character = char }
-
-let position_of_loc = position_of_loc_bisect
-
-let get_character_loc raw (i,e) pos =
-  let rec loop d =
-    if Uutf.decoder_count d >= pos then
-      Uutf.decoder_byte_count d
-    else
-      match Uutf.decode d with
-      | `Uchar _ -> loop d
-      | `Malformed _ -> loop d
-      | `End -> Uutf.decoder_byte_count d
-      | `Await -> Uutf.Manual.src d (Bytes.unsafe_of_string "") 0 0; loop d
-  in
-  let nln = `Readline (Uchar.of_int 0x000A) in
-  let encoding = `UTF_8 in
-  let d = Uutf.decoder ~nln ~encoding `Manual in
-  Uutf.Manual.src d (Bytes.unsafe_of_string raw.text) i e;
-  loop d
+let position_of_loc raw loc =
+  let line = line_of_loc raw loc in
+  let character = code_unit_pos_of_loc raw line (loc - raw.lines.(line)) in
+  Position.{ line; character }
 
 let loc_of_position raw Position.{ line; character } =
-  let linestr = line_text raw line in
-  let charloc = get_character_loc raw linestr character in
+  let nlines = line_count raw in
+  let line = max 0 (min line (nlines - 1)) in
+  let charloc = loc_of_code_unit_pos raw line character in
   raw.lines.(line) + charloc
 
 let end_loc raw =
@@ -113,8 +126,8 @@ let end_loc raw =
 
 let range_of_loc raw loc =
   let open Range in
-  { start = position_of_loc_bisect raw loc.Loc.bp;
-    end_  = position_of_loc_bisect raw loc.Loc.ep;
+  { start = position_of_loc raw loc.Loc.bp;
+    end_  = position_of_loc raw loc.Loc.ep;
   }
 
 let word_back_reg = Str.regexp {|[^a-zA-Z_0-9.']|}
