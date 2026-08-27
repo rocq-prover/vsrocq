@@ -18,14 +18,28 @@ type text_edit = Range.t * string
 type t = {
   text : string;
   lines : int array; (* locs of beginning of lines *)
+  is_ascii : bool array; (* whether lines are ascii-only *)
 }
 
 let compute_lines text =
-  let lines = String.split_on_char '\n' text in
-  let _,lines_locs = CList.fold_left_map (fun acc s -> let n = String.length s in n + acc + 1, acc) 0 lines in
-  Array.of_list lines_locs
+  let len = String.length text in
+  let rec loop idx current_ascii acc_lines acc_ascii =
+    if idx >= len then
+      let final_lines = Array.of_list (List.rev acc_lines) in
+      let final_ascii = Array.of_list (List.rev (current_ascii :: acc_ascii)) in
+      (final_lines, final_ascii)
+    else
+      let c = String.unsafe_get text idx in
+      if c = '\n' then
+        loop (idx + 1) true ((idx + 1) :: acc_lines) (current_ascii :: acc_ascii)
+      else
+        loop (idx + 1) (current_ascii && Char.code c < 128) acc_lines acc_ascii
+  in
+  loop 0 true [0] []
 
-let create text = { text; lines = compute_lines text }
+let create text =
+  let lines, is_ascii = compute_lines text in
+  { text; lines; is_ascii }
 
 let text t = t.text
 
@@ -131,5 +145,5 @@ let apply_text_edit raw (Range.{start; end_}, editText) =
   let before = String.sub raw.text 0 start in
   let after = String.sub raw.text stop (String.length raw.text - stop) in
   let new_text = before ^ editText ^ after in (* FIXME avoid concatenation *)
-  let new_lines = compute_lines new_text in (* FIXME compute this incrementally *)
-  { text = new_text; lines = new_lines }, start
+  let new_lines, new_is_ascii = compute_lines new_text in (* FIXME compute this incrementally *)
+  { text = new_text; lines = new_lines; is_ascii = new_is_ascii }, start
