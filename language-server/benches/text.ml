@@ -47,6 +47,17 @@ let loc_of_position source =
       ()
     done
 
+let word_at_loc source =
+  let rdoc = RawDocument.create source in
+  let len = RawDocument.end_loc rdoc in
+  let sample_count = 1000 in
+  let locs = Array.init sample_count ~f:(fun i -> (i * (len - 1)) / sample_count) in
+  fun () ->
+    for i = 0 to sample_count - 1 do
+      let _ = RawDocument.word_at_loc rdoc locs.(i) in
+      ()
+    done
+
 let big_parse =
   let text = big_rocq_source in
   fun () ->
@@ -67,8 +78,10 @@ let raw_document = Test.make_grouped ~name:"raw_document" [
     (Test.make ~name:"big_create" @@ Bechamel.Staged.stage @@ big_raw_document_create);
     (Test.make ~name:"big_pos_of_loc" @@ Bechamel.Staged.stage @@ position_of_loc big_rocq_source);
     (Test.make ~name:"big_loc_of_pos" @@ Bechamel.Staged.stage @@ loc_of_position big_rocq_source);
+    (Test.make ~name:"big_word_at_loc" @@ Bechamel.Staged.stage @@ word_at_loc big_rocq_source);
     (Test.make ~name:"unicode_pos_of_loc" @@ Bechamel.Staged.stage @@ position_of_loc unicode_rocq_source);
     (Test.make ~name:"unicode_loc_of_pos" @@ Bechamel.Staged.stage @@ loc_of_position unicode_rocq_source);
+    (Test.make ~name:"unicode_word_at_loc" @@ Bechamel.Staged.stage @@ word_at_loc unicode_rocq_source);
   ]
 let edit = Test.make_grouped ~name:"edit" [
     (Test.make ~name:"big" @@ Bechamel.Staged.stage @@ big_edit);
