@@ -300,18 +300,6 @@
         }
       },
       {
-        "title": "Folding",
-        "type": "object",
-        "properties": {
-          "vsrocq.folding.locCutOff": {
-            "scope": "window",
-            "type": "number",
-            "default": 3000,
-            "description": "Semantic folding ranges loc cut-off. Above this loc in the document, folding ranges fall back to the client-side support."
-          }
-        }
-      },
-      {
         "title": "Diagnostics",
         "type": "object",
         "properties": {
