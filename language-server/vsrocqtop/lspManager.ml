@@ -43,7 +43,7 @@ let max_memory_usage  = ref 4000000000
 let full_diagnostics = ref false
 let full_messages = ref false
 
-let folding_line_count_cut_off = ref 3000
+let folding_loc_cut_off = ref 3000
 
 
 let Dm.Types.Log log = Dm.Log.mk_log "lspManager"
@@ -127,7 +127,7 @@ let do_configuration settings =
   };
   full_diagnostics := settings.diagnostics.full;
   full_messages := settings.goals.messages.full;
-  folding_line_count_cut_off := settings.folding.lineCountCutOff;
+  folding_loc_cut_off := settings.folding.locCutOff;
   max_memory_usage := settings.memory.limit * 1000000000;
   Dm.CheckingManager.set_options {
     Dm.CheckingManager.check_mode = settings.proof.mode;
@@ -451,9 +451,9 @@ let documentFoldingRange id params =
   | None -> log (fun () -> "[documentFoldingRange] ignoring event on non existent document"); Error({message="Document does not exist"; code=None})
   | Some { st } ->
     log (fun () -> "[documentFoldingRange] getting folding ranges");
-    let raw_document = Dm.DocumentManager.Internal.raw_document st in
-    if Dm.RawDocument.line_count raw_document > !folding_line_count_cut_off then
-      Ok None
+    let end_loc = Dm.RawDocument.end_loc (Dm.DocumentManager.Internal.raw_document st) in
+    if end_loc > !folding_loc_cut_off then
+      Error {code=None; message="Semantic folding ranges unsupported above the loc cut-off"}
     else if Dm.DocumentManager.is_parsing st then
       Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"}
     else
