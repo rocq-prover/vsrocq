@@ -2,13 +2,13 @@
 
 ## Running
 
-From the `/language-server`:
+From `/language-server`:
 
 ```sh
 dune exec benches/benches.exe
 ```
 
-You can filter in benchmarks by passing a _regex_ pattern:
+You can filter-in benchmarks by passing a _regex_ pattern:
 
 ```sh
 dune exec benches/benches.exe "raw_document/create"
