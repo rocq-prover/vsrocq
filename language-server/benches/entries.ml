@@ -3,8 +3,8 @@ open Dm
 open Base
 open Common
 
-let big_entries =
-  let doc = doc_of_str big_rocq_source in
+let entries source =
+  let doc = doc_of_str source in
   fun () ->
     let _ = DocumentEntries.entries doc in
     ()
@@ -30,7 +30,8 @@ let folding_ranges = Test.make_grouped ~name:"folding_ranges" [
     (Test.make ~name:"big" @@ Bechamel.Staged.stage @@ big_folding_ranges);
   ]
 let suite = Test.make_grouped ~name:"entries" [
-    (Test.make ~name:"big" @@ Bechamel.Staged.stage @@ big_entries);
+    (Test.make ~name:"big" @@ Bechamel.Staged.stage @@ entries big_rocq_source);
+    (Test.make ~name:"unicode" @@ Bechamel.Staged.stage @@ entries unicode_rocq_source);
     outline;
     folding_ranges;
   ]
