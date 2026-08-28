@@ -75,10 +75,10 @@ let big_edit =
     ()
 
 let raw_document = Test.make_grouped ~name:"raw_document" [
-    (Test.make ~name:"big_create" @@ Bechamel.Staged.stage @@ big_raw_document_create);
-    (Test.make ~name:"big_pos_of_loc" @@ Bechamel.Staged.stage @@ position_of_loc big_rocq_source);
-    (Test.make ~name:"big_loc_of_pos" @@ Bechamel.Staged.stage @@ loc_of_position big_rocq_source);
-    (Test.make ~name:"big_word_at_loc" @@ Bechamel.Staged.stage @@ word_at_loc big_rocq_source);
+    (Test.make ~name:"create" @@ Bechamel.Staged.stage @@ big_raw_document_create);
+    (Test.make ~name:"pos_of_loc" @@ Bechamel.Staged.stage @@ position_of_loc big_rocq_source);
+    (Test.make ~name:"loc_of_pos" @@ Bechamel.Staged.stage @@ loc_of_position big_rocq_source);
+    (Test.make ~name:"word_at_loc" @@ Bechamel.Staged.stage @@ word_at_loc big_rocq_source);
     (Test.make ~name:"unicode_pos_of_loc" @@ Bechamel.Staged.stage @@ position_of_loc unicode_rocq_source);
     (Test.make ~name:"unicode_loc_of_pos" @@ Bechamel.Staged.stage @@ loc_of_position unicode_rocq_source);
     (Test.make ~name:"unicode_word_at_loc" @@ Bechamel.Staged.stage @@ word_at_loc unicode_rocq_source);
