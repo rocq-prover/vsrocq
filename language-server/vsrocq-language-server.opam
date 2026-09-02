@@ -16,7 +16,7 @@ depends: [
   "dune" { >= "3.5" }
   (("coq-core" { ((>= "8.18" < "8.21")) }
     "coq-stdlib" { ((>= "8.18" < "8.21")) })
-  | "rocq-core" { ((>= "9.0+rc1" < "9.3~") | (= "dev")) } )
+  | "rocq-core" { ((>= "9.0+rc1" < "9.4~") | (= "dev")) } )
   "yojson"
   "jsonrpc" { >= "1.15"}
   "ocamlfind"
