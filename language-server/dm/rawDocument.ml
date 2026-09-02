@@ -18,66 +18,107 @@ type text_edit = Range.t * string
 type t = {
   text : string;
   lines : int array; (* locs of beginning of lines *)
+  is_ascii : bool array; (* whether lines are ascii-only *)
 }
 
 let compute_lines text =
-  let lines = String.split_on_char '\n' text in
-  let _,lines_locs = CList.fold_left_map (fun acc s -> let n = String.length s in n + acc + 1, acc) 0 lines in
-  Array.of_list lines_locs
+  let len = String.length text in
+  let rec loop idx current_ascii acc_lines acc_ascii =
+    if idx >= len then
+      let final_lines = Array.of_list (List.rev acc_lines) in
+      let final_ascii = Array.of_list (List.rev (current_ascii :: acc_ascii)) in
+      (final_lines, final_ascii)
+    else
+      let c = String.unsafe_get text idx in
+      if c = '\n' then
+        loop (idx + 1) true ((idx + 1) :: acc_lines) (current_ascii :: acc_ascii)
+      else
+        loop (idx + 1) (current_ascii && Char.code c < 128) acc_lines acc_ascii
+  in
+  loop 0 true [0] []
 
-let create text = { text; lines = compute_lines text }
+let create text =
+  let lines, is_ascii = compute_lines text in
+  { text; lines; is_ascii }
 
 let text t = t.text
 
 let line_count raw =
   Array.length raw.lines
 
-let line_text raw i =
+let line_span raw i =
   if i + 1 < Array.length raw.lines then
-    String.sub raw.text (raw.lines.(i)) (raw.lines.(i+1) - raw.lines.(i))
+   (raw.lines.(i), raw.lines.(i+1) - raw.lines.(i))
   else
-    String.sub raw.text (raw.lines.(i)) (String.length raw.text - raw.lines.(i))
+   (raw.lines.(i), String.length raw.text - raw.lines.(i))
 
-let get_character_pos linestr loc =
-  let rec loop d =
-    if Uutf.decoder_byte_count d >= loc then
-      Uutf.decoder_count d
+(* UTF8 byte -> UTF16 code unit position *)
+let code_unit_pos_of_loc raw line_idx loc =
+  let line_start, line_len = line_span raw line_idx in
+  let loc = max 0 (min loc line_len) in
+  if raw.is_ascii.(line_idx) then
+    (* ASCII fast path: character position == byte offset *)
+    loc
+  else
+    let rec loop byte_offset utf16_count =
+      if byte_offset >= loc then
+        utf16_count
+      else
+        let d = String.get_utf_8_uchar raw.text (line_start + byte_offset) in
+        let byte_len = Uchar.utf_decode_length d in
+        let u = Uchar.utf_decode_uchar d in
+        (* handle UTF16 properly, code-points above 0xFFFF take two units to encode *)
+        let units = if Uchar.to_int u > 0xFFFF then 2 else 1 in
+        loop (byte_offset + byte_len) (utf16_count + units)
+    in
+    loop 0 0
+
+(* UTF16 code unit position -> UTF8 byte *)
+let loc_of_code_unit_pos raw line_idx pos =
+  let line_start, line_len = line_span raw line_idx in
+  let pos = max 0 (min pos line_len) in
+  if raw.is_ascii.(line_idx) then
+    (* ASCII fast path: character position == byte offset *)
+    pos
+  else
+    let rec loop byte_offset utf16_count =
+      if utf16_count >= pos then
+        byte_offset
+      else
+        let d = String.get_utf_8_uchar raw.text (line_start + byte_offset) in
+        let byte_len = Uchar.utf_decode_length d in
+        let u = Uchar.utf_decode_uchar d in
+        (* handle UTF16 properly, code-points above 0xFFFF take two units to encode *)
+        let units = if Uchar.to_int u > 0xFFFF then 2 else 1 in
+        loop (byte_offset + byte_len) (utf16_count + units)
+    in
+    loop 0 0
+
+let line_of_loc raw loc =
+  let nlines = line_count raw in
+  let rec aux low high =
+    if low > high then max 0 high
     else
-      match Uutf.decode d with
-      | `Uchar _ -> loop d
-      | `Malformed _ -> loop d
-      | `End -> Uutf.decoder_count d
-      | `Await -> assert false
+      let mid = low + (high - low) / 2 in
+      if raw.lines.(mid) <= loc then
+        if mid = nlines - 1 || loc < raw.lines.(mid + 1) then
+          mid
+        else
+          aux (mid + 1) high
+      else
+        aux low (mid - 1)
   in
-  let nln = `Readline (Uchar.of_int 0x000A) in
-  let encoding = `UTF_8 in
-  loop (Uutf.decoder ~nln ~encoding (`String linestr))
+  aux 0 (nlines - 1)
 
 let position_of_loc raw loc =
-  let i = ref 0 in
-  while (!i < Array.length raw.lines && raw.lines.(!i) <= loc) do incr(i) done;
-  let line = !i - 1 in
-  let char = get_character_pos (line_text raw line) (loc - raw.lines.(line)) in
-  Position.{ line = line; character = char }
-
-let get_character_loc linestr pos =
-  let rec loop d =
-    if Uutf.decoder_count d >= pos then
-      Uutf.decoder_byte_count d
-    else
-      match Uutf.decode d with
-      | `Uchar _ -> loop d
-      | `Malformed _ -> loop d
-      | `End -> Uutf.decoder_byte_count d
-      | `Await -> assert false
-  in
-  let nln = `Readline (Uchar.of_int 0x000A) in
-  let encoding = `UTF_8 in
-  loop (Uutf.decoder ~nln ~encoding (`String linestr))
+  let line = line_of_loc raw loc in
+  let character = code_unit_pos_of_loc raw line (loc - raw.lines.(line)) in
+  Position.{ line; character }
 
 let loc_of_position raw Position.{ line; character } =
-  let linestr = line_text raw line in
-  let charloc = get_character_loc linestr character in
+  let nlines = line_count raw in
+  let line = max 0 (min line (nlines - 1)) in
+  let charloc = loc_of_code_unit_pos raw line character in
   raw.lines.(line) + charloc
 
 let end_loc raw =
@@ -86,19 +127,20 @@ let end_loc raw =
 let range_of_loc raw loc =
   let open Range in
   { start = position_of_loc raw loc.Loc.bp;
-    end_ = position_of_loc raw loc.Loc.ep;
+    end_  = position_of_loc raw loc.Loc.ep;
   }
+
+let word_back_reg = Str.regexp {|[^a-zA-Z_0-9.']|}
+let word_forward_reg = Str.regexp {|[^a-zA-Z_0-9']|}
 
 let word_at_loc raw loc : string option =
   try
-    let back_reg = Str.regexp {|[^a-zA-Z_0-9.']|} in
     let start_ind = loc in
     (* Search backwards until we find a character that cannot be part of a word *)
-    let first_non_word_ind = Str.search_backward back_reg raw.text start_ind in
+    let first_non_word_ind = Str.search_backward word_back_reg raw.text start_ind in
     let first_word_ind = first_non_word_ind + 1 in
-    let forward_reg = Str.regexp {|[^a-zA-Z_0-9']|} in
     (* Search forwards ensuring that all characters are part of a well defined word. (Cannot start with [0-9'.] and cannot end with .)*)
-    let last_word_ind = Str.search_forward forward_reg raw.text start_ind in
+    let last_word_ind = Str.search_forward word_forward_reg raw.text start_ind in
     (* we get the substring from the first word index to the last index for the word *)
     let word = String.sub raw.text first_word_ind (last_word_ind - first_word_ind) in
     Some word
@@ -117,5 +159,5 @@ let apply_text_edit raw (Range.{start; end_}, editText) =
   let before = String.sub raw.text 0 start in
   let after = String.sub raw.text stop (String.length raw.text - stop) in
   let new_text = before ^ editText ^ after in (* FIXME avoid concatenation *)
-  let new_lines = compute_lines new_text in (* FIXME compute this incrementally *)
-  { text = new_text; lines = new_lines }, start
+  let new_lines, new_is_ascii = compute_lines new_text in (* FIXME compute this incrementally *)
+  { text = new_text; lines = new_lines; is_ascii = new_is_ascii }, start

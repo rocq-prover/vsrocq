@@ -1,0 +1,16 @@
+(executable
+  (name benches)
+  (libraries base dm protocol tests bechamel)
+  (preprocess
+    (pps ppx_blob ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
+    (preprocessor_deps vsrocq_config.mlh Big.v))
+
+(rule
+ (target vsrocq_config.mlh)
+ (mode (promote (only vsrocq_config.mlh)))
+ (action (with-stdout-to %{target}
+   (progn
+     (echo "(* Automatically generated, don't edit *)\n")
+     (echo "[%%define lsp ")
+     (run vsrocq_version_parser %{version:lsp})
+     (echo "]\n")))))

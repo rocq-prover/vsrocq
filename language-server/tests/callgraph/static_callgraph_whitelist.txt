@@ -13,6 +13,8 @@ Mutex\.
 Queue\.
 
 # Rocq ######################
+CString\.
+NumTok\.
 CList\.
 Stateid\.
 Pp\.
@@ -36,8 +38,9 @@ Protocol\.Printing\.
 LM\.
 SM\.
 Dm\.Log\.
-Dm\.RawDocument\.get_character_loc\.loop
-Dm\.RawDocument\.get_character_pos\.loop
+Dm\.RawDocument\.\(loc_of_code_unit_pos\|code_unit_pos_of_loc\)\.loop
+Dm\.RawDocument\.line_of_loc\.aux
+Dm\.RawDocument\.compute_lines\.loop
 Dm\.DocumentEntries\.
 Dm\.Types\.
 get_document_symbols\.

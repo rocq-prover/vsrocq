@@ -5,6 +5,6 @@ language/dune
 protocol/dune
 vsrocqtop/dune
 tests/dune
-dm/vsrocq_config.mlh
-tests/vsrocq_config.mlh
+benches/dune
+*/vsrocq_config.mlh
 *.install
