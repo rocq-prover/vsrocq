@@ -154,6 +154,12 @@ let range_of_id_with_blank_space document id =
   | None -> CErrors.anomaly Pp.(str"Trying to get range of non-existing sentence " ++ Stateid.print id)
   | Some sentence -> range_of_sentence_with_blank_space document.raw_doc sentence
 
+let range_of_document document =
+  let raw = document.raw_doc in
+  let start : Position.t = { line = 0; character = 0 } in 
+  let end_ = RawDocument.position_of_loc raw (RawDocument.end_loc raw) in
+    Range.create ~end_ ~start
+
 let schedule doc = doc.schedule
 
 let raw_document doc = doc.raw_doc
@@ -252,6 +258,16 @@ let find_sentence parsed loc =
       let sentence = sentence_of_id parsed sentence_id in
       if sentence.start <= loc then Some sentence else None
   | _ -> None
+
+let find_sentence_with_blank_space parsed loc =
+  match LM.find_first_opt (fun k -> loc <= k) parsed.sentences_by_end with
+  | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
+  | None -> None
+
+let find_sentence_at_pos document pos = 
+  let raw = raw_document document in
+  let loc = RawDocument.loc_of_position raw pos in
+  find_sentence_with_blank_space document loc
 
 let find_sentence_before parsed loc =
   match LM.find_last_opt (fun k -> k <= loc) parsed.sentences_by_end with
