@@ -456,12 +456,12 @@ let documentFoldingRange id params =
       let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
       Ok(Some folding_ranges)
 
-let documentSelectionRange id params = 
+let documentSelectionRanges id params = 
   let Lsp.Types.SelectionRangeParams.{ textDocument = { uri }; positions } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[documentSelectionRange] ignoring event on non existent document"); Ok []
+  | None -> log (fun () -> "[documentSelectionRanges] ignoring event on non existent document"); Ok []
   | Some { st } -> 
-    log (fun () -> "[documentSelectionRange] getting selection range");
+    log (fun () -> "[documentSelectionRanges] getting selection ranges");
     Ok (List.map (fun pos -> Dm.DocumentManager.get_selection_range st pos) positions)
 
 let documentSymbol id params =
@@ -589,7 +589,7 @@ let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a,
   | TextDocumentFoldingRange params ->
     documentFoldingRange id params, []
   | SelectionRange params ->
-    documentSelectionRange id params, []
+    documentSelectionRanges id params, []
   | UnknownRequest _ | _  -> Error ({message="Received unknown request"; code=None}), []
 
 let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) result * events =

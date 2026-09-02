@@ -102,7 +102,7 @@ val get_document_symbols : state -> DocumentSymbol.t list
 val get_folding_ranges : state -> FoldingRange.t list
 
 val get_selection_range : state -> Position.t -> SelectionRange.t
-(** [get_selection_ranges st pos] returns the selection range at pos *)
+(** [get_selection_range st pos] returns the selection range at pos *)
 
 val get_document_proofs : state -> ProofState.proof_block list
 

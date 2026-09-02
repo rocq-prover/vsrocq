@@ -158,7 +158,7 @@ let range_of_document document =
   let raw = document.raw_doc in
   let start : Position.t = { line = 0; character = 0 } in 
   let end_ = RawDocument.position_of_loc raw (RawDocument.end_loc raw) in
-    Range.create ~end_ ~start
+  Range.create ~end_ ~start
 
 let schedule doc = doc.schedule
 
@@ -261,8 +261,8 @@ let find_sentence parsed loc =
 
 let find_sentence_with_blank_space parsed loc =
   match LM.find_first_opt (fun k -> loc <= k) parsed.sentences_by_end with
-  | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
   | None -> None
+  | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
 
 let find_sentence_at_pos document pos = 
   let raw = raw_document document in

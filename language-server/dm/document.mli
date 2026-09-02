@@ -129,7 +129,7 @@ val find_sentence : document -> int -> sentence option
 (** [find_sentence doc loc] finds the sentence containing the loc *)
 
 val find_sentence_at_pos : document -> Position.t -> sentence option
-(** [find_sentence_at_pos doc pos] finds the sentence at the pos *)
+(** [find_sentence_at_pos doc pos] finds the sentence at the pos, with leading blank spaces *)
 
 val find_sentence_before : document -> int -> sentence option
 (** [find_sentence_before doc loc] finds the last sentence before the loc *)
