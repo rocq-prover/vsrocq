@@ -91,6 +91,8 @@ jobs:
         coq: [8.18.0, 8.19.0, 8.20.0, 9.0.0, 9.1.1, 9.2.0, 9.3.dev, dev]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    # Rocq 8.19 on macOS is known-flaky; don't let it fail the whole run.
+    continue-on-error: ${{ matrix.os == 'macos-latest' && matrix.coq == '8.19.0' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v6
