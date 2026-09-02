@@ -20,13 +20,13 @@ depends: [
   "yojson"
   "jsonrpc" { >= "1.15"}
   "ocamlfind"
-  "ppx_inline_test"
-  "ppx_assert"
-  "ppx_blob"
+  "ppx_inline_test" { with-dev-setup }
+  "ppx_assert" { with-dev-setup }
+  "ppx_blob" { with-dev-setup }
   "ppx_sexp_conv"
   "ppx_deriving"
   "sexplib"
-  "bechamel"
+  "bechamel" { with-dev-setup }
   "ppx_yojson_conv"
   "ppx_import"
   "ppx_optcomp"
