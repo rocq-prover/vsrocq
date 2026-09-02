@@ -8,6 +8,7 @@ From `/language-server`:
 dune exec benches/benches.exe
 ```
 
+Running all benches takes a few **minutes**.
 You can filter-in benchmarks by passing a _regex_ pattern:
 
 ```sh
