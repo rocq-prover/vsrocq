@@ -190,9 +190,6 @@ After installation and activation of the extension:
 * `"vsrocq.completion.algorithm": StructuredSplitUnification | SplitTypeIntersection` -- Which completion algorithm to use
 * `"vsrocq.completion.unificationLimit": int` -- Sets the limit for how many theorems unification is attempted
 
-#### Folding
-* `"vsrocq.folding.lineCountCutOff": int` -- Semantic folding ranges line count cut-off. Above this number of lines, folding ranges fall back to the client-side support. (defaults to `3000`)
-
 #### Diagnostics
 * `"vsrocq.diagnostics.full": bool` -- Toggles the printing of `Info` level diagnostics (defaults to `false`)
 

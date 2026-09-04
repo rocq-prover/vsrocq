@@ -300,18 +300,6 @@
         }
       },
       {
-        "title": "Folding",
-        "type": "object",
-        "properties": {
-          "vsrocq.folding.lineCountCutOff": {
-            "scope": "window",
-            "type": "number",
-            "default": 3000,
-            "description": "Semantic folding ranges line count cut-off. Above this number of lines, folding ranges fall back to the client-side support."
-          }
-        }
-      },
-      {
         "title": "Diagnostics",
         "type": "object",
         "properties": {
