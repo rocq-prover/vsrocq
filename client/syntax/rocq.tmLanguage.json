@@ -10,7 +10,7 @@
       "name": "keyword.control.import.rocq"
     },
     {
-      "match": "\\b((Open|Close|Delimit|Undelimit|Bind)\\s+Scope)\\b",
+      "match": "\\b((Open|Close|Delimit|Undelimit|Bind|Declare)\\s+Scope)\\b",
       "comment": "Vernacular scope keywords",
       "name": "keyword.control.import.rocq"
     },
@@ -121,7 +121,7 @@
       }
     },
     {
-      "match": "\\b(Hint(\\s+Mode)?|Create\\s+HintDb|Constructors|Resolve|Rewrite|Ltac|Ltac2|Implicit(\\s+Types)?|Set|Unset|Remove\\s+Printing|Arguments|((Tactic|Reserved)\\s+)?Notation|Infix|Section|Module(\\s+Type)?|End|Check|Print(\\s+All)?|Eval|Compute|Search|Universe|Coercions|Generalizable(\\s+(All|Variable))?|Existing(\\s+(Class|Instance))?|Canonical|About|Locate|Collection|Typeclasses\\s+(Opaque|Transparent))\\b",
+      "match": "\\b(Hint(\\s+Mode)?|Create\\s+HintDb|Constructors|Resolve|Rewrite|Ltac|Ltac2|Implicit(\\s+Types?)?|Set|Unset|Remove\\s+Printing|Arguments|((Tactic|Reserved)\\s+)?Notation|Infix|Section|Module(\\s+Type)?|End|Check|Print(\\s+All)?|Eval|Compute|Search|Universe|Coercions|Generalizable(\\s+(All|Variable))?|Existing(\\s+(Class|Instance))?|Canonical|About|Locate|Collection|Typeclasses\\s+(Opaque|Transparent))\\b",
       "comment": "Vernacular keywords",
       "name": "keyword.source.rocq"
     },
