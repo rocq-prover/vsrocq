@@ -42,6 +42,7 @@ Dm\.RawDocument\.\(loc_of_code_unit_pos\|code_unit_pos_of_loc\)\.loop
 Dm\.RawDocument\.line_of_loc\.aux
 Dm\.RawDocument\.compute_lines\.loop
 Dm\.DocumentEntries\.
+Dm\.RawDocument\.line_nonwhitespace_start
 Dm\.Types\.
 get_document_symbols\.
 Internal\.string_of_state\.string_of_state
