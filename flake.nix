@@ -21,7 +21,7 @@
       vscodeExtPublisher = "rocq-prover";
       vscodeExtName = "vsrocq";
       vscodeExtUniqueId = "rocq-prover.vsrocq";
-      vsrocq_version = "2.4.3";
+      vsrocq_version = "2.5.0";
       rocq = let
         pkgs = import nixpkgs-unstable {inherit system;};
       in
