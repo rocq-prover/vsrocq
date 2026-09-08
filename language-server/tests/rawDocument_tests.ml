@@ -60,3 +60,13 @@ let%test_unit "out of bounds" =
   [%test_eq: int] (RawDocument.loc_of_position doc { line = 100; character = 0 }) 4;
   [%test_eq: int] (RawDocument.loc_of_position doc { line = 0; character = -1 }) 0;
   [%test_eq: int] (RawDocument.loc_of_position doc { line = 0; character = 100 }) 4
+
+let%test_unit "line_nonwhitespace_start" =
+  let text = "abc\n def\n\t \tghi" in
+  let test i = Option.value_exn (RawDocument.line_nonwhitespace_start (RawDocument.create text) i) in
+  [%test_eq: int] (test 0).Position.line 0;
+  [%test_eq: int] (test 0).Position.character 0;
+  [%test_eq: int] (test 1).Position.line 1;
+  [%test_eq: int] (test 1).Position.character 1;
+  [%test_eq: int] (test 2).Position.line 2;
+  [%test_eq: int] (test 2).Position.character 3
