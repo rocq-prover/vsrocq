@@ -54,8 +54,7 @@ let line_span raw i =
 
 (* first non-whitespace character position in a line *)
 let line_nonwhitespace_start raw i =
-  let start, end_ = line_span raw i in
-  let length = end_ - start in
+  let start, length = line_span raw i in
   let rec loop j =
     if j >= length then None
     else if raw.text.[start + j] = ' ' || raw.text.[start + j] = '\t' then
