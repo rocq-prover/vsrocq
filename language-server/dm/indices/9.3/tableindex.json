@@ -1,0 +1,184 @@
+{
+  "Printing Coercion": {
+    "documentation_path": "addendum/implicit-coercions",
+    "documentation_anchor": "rocq:table.Printing-Coercion",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Coercion",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This table specifies a set of qualids for which coercions are always displayed.  Use the\n`Add` and `Remove` commands to update the set of qualids."
+  },
+  "Printing Record": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:table.Printing-Record",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Record",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This table specifies a set of qualids which are displayed as records.  Use the\n`Add` and `Remove` commands to update the set of qualids."
+  },
+  "Printing Constructor": {
+    "documentation_path": "language/core/records",
+    "documentation_anchor": "rocq:table.Printing-Constructor",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Constructor",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This table specifies a set of qualids which are displayed as constructors.  Use the\n`Add` and `Remove` commands to update the set of qualids."
+  },
+  "Printing Let": {
+    "documentation_path": "language/extensions/match",
+    "documentation_anchor": "rocq:table.Printing-Let",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Printing",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Let",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This table specifies a set of qualids for which pattern matching is displayed using a let expression.\nNote that this only applies to pattern matching instances entered with `match`.\nIt doesn't affect pattern matching explicitly entered with a destructuring\n`let`.\nUse the `Add` and `Remove` commands to update this set."
+  },
+  "Search Blacklist": {
+    "documentation_path": "proof-engine/vernacular-commands",
+    "documentation_anchor": "rocq:table.Search-Blacklist",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Search",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Blacklist",
+          "subscript": null
+        }
+      ],
+      [
+        "Alternative",
+        {
+          "children": [
+            [
+              "Reference",
+              {
+                "value": "reference",
+                "subscript": null
+              }
+            ],
+            [
+              "Reference",
+              {
+                "value": "string",
+                "subscript": null
+              }
+            ]
+          ]
+        }
+      ]
+    ],
+    "documentation": "This table specifies a set of strings used to exclude lemmas from the results of `Search`,\n`SearchPattern` and `SearchRewrite` queries. A lemma present in the table or whose\nfully qualified name contains any of the strings will be excluded from the\nsearch results. The default blacklisted substrings are `_subterm`, `_subproof` and\n`Private_`.\n\nUse the `Add` and `Remove` commands to update the set of\nblacklisted strings."
+  },
+  "Keep Equalities": {
+    "documentation_path": "proofs/writing-proofs/reasoning-inductives",
+    "documentation_anchor": "rocq:table.Keep-Equalities",
+    "syntax": [
+      [
+        "Literal",
+        {
+          "value": "Keep",
+          "subscript": null
+        }
+      ],
+      [
+        "Literal",
+        {
+          "value": "Equalities",
+          "subscript": null
+        }
+      ],
+      [
+        "Reference",
+        {
+          "value": "qualid",
+          "subscript": null
+        }
+      ]
+    ],
+    "documentation": "This table specifies a set of inductive types for which proof\nequalities are always kept by `injection`. This overrides the\n`Keep Proof Equalities` flag for those inductive types.\nUse the `Add` and `Remove` commands to update this set manually."
+  }
+}

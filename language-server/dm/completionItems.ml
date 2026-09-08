@@ -6,7 +6,7 @@ open Printer
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 
-(** Builtin commands, options, tactics, and attributes *)
+(** Builtin commands, flags, options, tables, tactics, and attributes *)
 
 (*
   Some vernacular is implemented internally in Rocq and not visible as a normal definition
@@ -14,7 +14,7 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
   Ltac1 tactics, or attributes.
 
   To remedy this, we scrape the official documentation of Rocq and create indices of all
-  of the built-in tactics, commands, options, and attributes. These indices are then loaded into
+  of the built-in tactics, flags, commands, tables, options, and attributes. These indices are then loaded into
   vsrocqtop to serve these completions to the user.
 *)
 
