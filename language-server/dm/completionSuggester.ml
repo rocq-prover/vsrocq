@@ -344,9 +344,32 @@ let get_lemmas sigma env =
   generic_search env sigma display;
   results.contents
 
+let builtin_vernacs = lazy (
+  let open CompletionItems in
+  let commands = BuiltinIndices.v.commands in
+  let sets = List.map (fun b ->
+    promote_builtin_raw
+      (* enhance flags/options with a "Set" command *)
+      {b.raw with syntax = (Literal {value = "Set"; subscript = None}) :: b.raw.syntax}
+      ("Set " ^ b.label) b.kind)
+    (BuiltinIndices.v.flags @ BuiltinIndices.v.options) in
+  let adds = List.map (fun b ->
+    promote_builtin_raw
+      (* enhance tables with an "Add" command *)
+      {b.raw with syntax = (Literal {value = "Add"; subscript = None}) :: b.raw.syntax}
+      ("Add " ^ b.label) b.kind)
+    (BuiltinIndices.v.tables) in
+  let removes = List.map (fun b ->
+    promote_builtin_raw
+      (* enhance tables with a "Remove" command *)
+      {b.raw with syntax = (Literal {value = "Remove"; subscript = None}) :: b.raw.syntax}
+      ("Remove " ^ b.label) b.kind)
+    (BuiltinIndices.v.tables) in
+  List.map (fun b -> Builtin b) (commands @ sets @ adds @ removes)
+)
+
 let get_completions options vs =
   (* in any context, we suggest a vernac command *)
-  let commands = List.map (fun e -> CompletionItems.Builtin e) CompletionItems.BuiltinIndices.v.commands in
   Vernacstate.unfreeze_full_state vs;
   let lib_items = match vs.interp.lemmas with
     | None -> []
@@ -357,4 +380,4 @@ let get_completions options vs =
       let lemmas = get_lemmas sigma env in
       List.map (fun item -> CompletionItems.Library item) (get_completion_lib_items env proof lemmas options)
   in
-  commands @ lib_items
+  (Lazy.force builtin_vernacs) @ lib_items
