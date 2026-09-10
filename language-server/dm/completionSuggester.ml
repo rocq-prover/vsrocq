@@ -346,30 +346,49 @@ let get_lemmas sigma env =
 
 let builtin_vernacs = lazy (
   let open CompletionItems in
+  (*
+    Syntax of options and tables has the grammar of the value at the end.
+    For example: `Inline Level @natural`. But for commands like `Unset` or `Test`,
+    we do not want a value to be provided. Here we remove the grammar for the value
+    from a syntax list.
+  *)
+  let trim_option_value (s: builtin_syntax list): builtin_syntax list =
+    match List.rev s with
+    | [] -> []
+    (* sometimes a value is something like `"@goal_selector"` *)
+    | Literal {value = "\"" } :: tl ->
+      List.rev @@ List.tl @@ List.drop_while (function Literal {value = "\""} -> false | _ -> true) tl
+    (* if the syntax already does not specify a value, we leave it as-is *)
+    | Literal {value = _ } :: _ -> s
+    | _ :: tl -> List.rev tl
+  in
+  let builtin_trim_option_value (b: builtin_item): builtin_item =
+    {b with raw = {b.raw with syntax = trim_option_value b.raw.syntax}}
+  in
   let commands = BuiltinIndices.v.commands in
-  let sets = List.map (fun b ->
+  let opts_no_val = List.map builtin_trim_option_value BuiltinIndices.v.options in
+  let tbls_no_val = List.map builtin_trim_option_value BuiltinIndices.v.tables in
+  let extend (prefix: string) (b: builtin_item) : builtin_item =
     promote_builtin_raw
-      (* enhance flags/options with a "Set" command *)
-      {b.raw with syntax = (Literal {value = "Set"; subscript = None}) :: b.raw.syntax}
-      ("Set " ^ b.label) b.kind)
-    (BuiltinIndices.v.flags @ BuiltinIndices.v.options) in
-  let adds = List.map (fun b ->
-    promote_builtin_raw
-      (* enhance tables with an "Add" command *)
-      {b.raw with syntax = (Literal {value = "Add"; subscript = None}) :: b.raw.syntax}
-      ("Add " ^ b.label) b.kind)
-    (BuiltinIndices.v.tables) in
-  let removes = List.map (fun b ->
-    promote_builtin_raw
-      (* enhance tables with a "Remove" command *)
-      {b.raw with syntax = (Literal {value = "Remove"; subscript = None}) :: b.raw.syntax}
-      ("Remove " ^ b.label) b.kind)
-    (BuiltinIndices.v.tables) in
-  List.map (fun b -> Builtin b) (commands @ sets @ adds @ removes)
+      {b.raw with syntax = (Literal {value = prefix; subscript = None}) :: b.raw.syntax}
+      (prefix ^ " " ^ b.label) b.kind
+  in
+  (* enhance flags/options with a "Set" command *)
+  let sets = List.map (extend "Set") (BuiltinIndices.v.flags @ BuiltinIndices.v.options) in
+  (* enhance flags/options with an "Unset" command *)
+  let unsets = List.map (extend "Unset") (BuiltinIndices.v.flags @ opts_no_val) in
+  (* enhance tables with an "Add" command *)
+  let adds = List.map (extend "Add") BuiltinIndices.v.tables in
+  (* enhance tables with a "Remove" command *)
+  let removes = List.map (extend "Remove") BuiltinIndices.v.tables in
+  (* enhance flags/options/tables with a "Test" command *)
+  let tests = List.map (extend "Test") (BuiltinIndices.v.flags @ opts_no_val @ tbls_no_val) in
+  (* enhance tables with a "Print Table" command *)
+  let print_tables = List.map (extend "Print Table") tbls_no_val in
+  List.map (fun b -> Builtin b) (commands @ sets @ unsets @ adds @ removes @ tests @ print_tables)
 )
 
 let get_completions options vs =
-  (* in any context, we suggest a vernac command *)
   Vernacstate.unfreeze_full_state vs;
   let lib_items = match vs.interp.lemmas with
     | None -> []
