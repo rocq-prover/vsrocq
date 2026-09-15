@@ -214,7 +214,7 @@ let get_folding_ranges st =
   log (fun () -> "Folding ranges: " ^ (string_of_int @@ List.length folding_ranges));
   folding_ranges
 
-let get_selection_range (st : state) (pos : Position.t) =
+let get_selection_range (st : state) (pos : Position.t) : SelectionRange.t =
   let document = st.document in
   let sentence = Document.find_sentence_at_pos document pos in
   let document_range = SelectionRange.create ~range:(Document.range_of_document document) () in 
