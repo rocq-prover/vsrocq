@@ -287,7 +287,7 @@ module SelectiveUnification = struct
       try 
         aux 0 (of_constr lemma.typ)
       with e ->
-        log (fun () -> Printf.sprintf "Error in Split Unification: %s for %s\n%!" (Printexc.to_string e) (Pp.string_of_ppcmds (pr_global lemma.ref)));
+        log (fun () -> Printf.sprintf "Error in Split Unification: %s for %s" (Printexc.to_string e) (Pp.string_of_ppcmds (pr_global lemma.ref)));
         ({lemma with completes = Some No_completion}, worst_value)
      in
     lemmas
@@ -300,7 +300,7 @@ module SelectiveUnification = struct
       let take, skip = takeSkip options.unificationLimit lemmas in
       List.append (rankByUnifiability goal sigma env take) skip
     with e ->
-      log (fun () -> "Error in Split Unification: %s" ^ (Printexc.to_string e));
+      log (fun () -> Printf.sprintf "Error in Split Unification: %s" (Printexc.to_string e));
       lemmas
 
   let rank = selectiveRank
