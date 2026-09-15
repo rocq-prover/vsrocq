@@ -456,11 +456,11 @@ let documentFoldingRange id params =
       let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
       Ok(Some folding_ranges)
 
-let documentSelectionRanges id params = 
+let documentSelectionRanges id params =
   let Lsp.Types.SelectionRangeParams.{ textDocument = { uri }; positions } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[documentSelectionRanges] ignoring event on non existent document"); Ok []
-  | Some { st } -> 
+  | Some { st } ->
     log (fun () -> "[documentSelectionRanges] getting selection ranges");
     Ok (List.map (fun pos -> Dm.DocumentManager.get_selection_range st pos) positions)
 

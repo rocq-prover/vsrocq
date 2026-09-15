@@ -217,7 +217,7 @@ let get_folding_ranges st =
 let get_selection_range (st : state) (pos : Position.t) : SelectionRange.t =
   let document = st.document in
   let sentence = Document.find_sentence_at_pos document pos in
-  let document_range = SelectionRange.create ~range:(Document.range_of_document document) () in 
+  let document_range = SelectionRange.create ~range:(Document.range_of_document document) () in
   match sentence with
   | None -> document_range
   | Some { id } ->
