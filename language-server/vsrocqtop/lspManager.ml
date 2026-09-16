@@ -53,7 +53,7 @@ let server_info = InitializeResult.create_serverInfo
   ~version:"2.5.0"
   ()
 
-type lsp_event = 
+type lsp_event =
   | Receive of Jsonrpc.Packet.t option
   | Send of Jsonrpc.Packet.t
 
@@ -109,7 +109,7 @@ let inject_notifications l =
 let inject_debug_events l =
   List.map inject_debug_event l
 
-let do_configuration settings = 
+let do_configuration settings =
   let open Settings in
   let open Dm.ExecutionManager in
   let delegation_mode =
@@ -171,7 +171,7 @@ let do_initialize id params =
   ()
   in
   let initialize_result = Lsp.Types.InitializeResult.{
-    capabilities = capabilities; 
+    capabilities = capabilities;
     serverInfo = Some server_info;
   } in
   log ~force:true (fun () -> "---------------- initialized --------------");
@@ -217,12 +217,12 @@ let send_proof_view pv =
   let notification = Notification.Server.ProofView pv in
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notification
 
-let send_move_cursor uri range = 
-  let notification = Notification.Server.MoveCursor {uri;range} in 
+let send_move_cursor uri range =
+  let notification = Notification.Server.MoveCursor {uri;range} in
   output_notification notification
 
-let send_block_on_error uri range = 
-  let notification = Notification.Server.BlockOnError {uri;range} in 
+let send_block_on_error uri range =
+  let notification = Notification.Server.BlockOnError {uri;range} in
   output_notification notification
 
 let send_rocq_debug message =
@@ -312,11 +312,11 @@ let textDocumentDidOpen params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> open_new_document uri text
   | Some { st } -> update_view uri st; []
-    (* let (st, events) = 
+    (* let (st, events) =
       if !check_mode = Settings.Mode.Continuous then
         let (st, events) = Dm.DocumentManager.interpret_in_background st ~should_block_on_error:!block_on_first_error in
         (st, events)
-      else 
+      else
         (st, [])
     in
     update_view uri st;
@@ -367,33 +367,30 @@ let textDocumentDidClose params =
   consider_purge_invisible_tabs ();
   [] (* TODO handle properly *)
 
-let textDocumentHover id params = 
+let textDocumentHover id params =
   let Lsp.Types.HoverParams.{ textDocument; position } = params in
   let open Yojson.Safe.Util in
-  (* FIXME handle error case properly: an unknown document answers [Ok None] *)
-  with_document_or ~default:(Ok None) "textDocumentHover" textDocument.uri (fun { st } ->
+  with_document_request "textDocumentHover" textDocument.uri (fun { st } ->
     match Dm.DocumentManager.hover st position with
-    | Some contents -> Ok (Some (Hover.create ~contents:(`MarkupContent contents) ()))
-    | _ -> Ok None (* FIXME handle error case properly *))
+    | Some contents -> Ok (Some (Hover.create ~contents:(`MarkupContent contents) ())), []
+    | None -> Ok None, [])
 
 let textDocumentHighlight id params =
   let Lsp.Types.DocumentHighlightParams.{ textDocument; position } = params in
   let open Yojson.Safe.Util in
-  (* FIXME handle error case properly: an unknown document answers [Ok None] *)
-  with_document_or ~default:(Ok None) "textDocumentHighlight" textDocument.uri (fun { st } ->
+  with_document_request "textDocumentHighlight" textDocument.uri (fun { st } ->
     let ranges = Dm.DocumentManager.highlight st position in
-    Ok (Some (List.map (fun range -> DocumentHighlight.create ~range:range ()) ranges)))
+    Ok (Some (List.map (fun range -> DocumentHighlight.create ~range:range ()) ranges)), [])
 
 let textDocumentDefinition params =
   let Lsp.Types.DefinitionParams.{ textDocument; position } = params in
-  (* FIXME handle error case properly: an unknown document answers [Ok None] *)
-  with_document_or ~default:(Ok None) "textDocumentDefinition" textDocument.uri (fun { st } ->
+  with_document_request "textDocumentDefinition" textDocument.uri (fun { st } ->
     match Dm.DocumentManager.jump_to_definition st position with
-    | None -> log (fun () -> "[textDocumentDefinition] could not find symbol location"); Ok None (* FIXME handle error case properly *)
+    | None -> log (fun () -> "[textDocumentDefinition] could not find symbol location"); Ok None, []
     | Some (range, uri) ->
       let uri = DocumentUri.of_path uri in
       let location = Location.create ~range:range ~uri:uri in
-      Ok (Some (`Location [location])))
+      Ok (Some (`Location [location])), [])
 
 
 let progress_hook uri () =
@@ -406,7 +403,7 @@ let rocqtopInterpretToPoint params =
     let events = Dm.DocumentManager.interpret_to_position position in
     let sel_events = inject_dm_events (uri, events) in
     sel_events)
- 
+
 let rocqtopStepBackward params =
   let Notification.Client.StepBackwardParams.{ textDocument = { uri } } = params in
   with_document "stepBackward" uri (fun { st; visible } ->
@@ -419,7 +416,7 @@ let rocqtopStepForward params =
     let events = Dm.DocumentManager.interpret_to_next () in
     inject_dm_events (uri,events))
 
-  let make_CompletionItem i item : CompletionItem.t = 
+  let make_CompletionItem i item : CompletionItem.t =
     let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item item in
     CompletionItem.create
       ~label
@@ -456,7 +453,7 @@ let documentSymbol id params =
   let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get support for partialResult and workDone*)
   with_document_request "documentSymbol" uri (fun tab -> log (fun () -> "[documentSymbol] getting symbols");
     if Dm.DocumentManager.is_parsing tab.st then
-       (* Making use of the error codes: the ServerCancelled error code indicates 
+       (* Making use of the error codes: the ServerCancelled error code indicates
        that the server is busy and the client should resend the request later.
        It doesn't seem to be working for documentSymbol at the moment. *)
       Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} , []
@@ -478,12 +475,12 @@ let rocqtopInterpretToEnd params =
     let events = Dm.DocumentManager.interpret_to_end () in
     inject_dm_events (uri,events))
 
-let rocqtopLocate id params = 
+let rocqtopLocate id params =
   let Request.Client.LocateParams.{ textDocument = { uri }; position; pattern } = params in
   with_document_request "locate" uri (fun { st } ->
     Dm.DocumentManager.locate st position ~pattern, [])
 
-let rocqtopPrint id params = 
+let rocqtopPrint id params =
   let Request.Client.PrintParams.{ textDocument = { uri }; position; pattern } = params in
   with_document_request "print" uri (fun { st } -> Dm.DocumentManager.print st position ~pattern, [])
 
@@ -506,14 +503,14 @@ let rocqtopSearch id params =
       let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
       Error({message; code=None}), [])
 
-let sendDocumentState id params = 
+let sendDocumentState id params =
   let Request.Client.DocumentStateParams.{ textDocument } = params in
   let uri = textDocument.uri in
   with_document_request "documentState" uri (fun { st } ->
     let document = Dm.DocumentManager.Internal.string_of_state st in
     Ok Request.Client.DocumentStateResult.{ document }, [])
 
-let sendDocumentProofs id params = 
+let sendDocumentProofs id params =
   let Request.Client.DocumentProofsParams.{ textDocument } = params in
   let uri = textDocument.uri in
   with_document_request "documentProofs" uri (fun { st } ->
@@ -523,7 +520,7 @@ let sendDocumentProofs id params =
       let proofs = Dm.DocumentManager.get_document_proofs st in
       Ok Request.Client.DocumentProofsResult.{ proofs }, [])
 
-let workspaceDidChangeConfiguration params = 
+let workspaceDidChangeConfiguration params =
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
   let settings = Settings.t_of_yojson settings in
   do_configuration settings;
@@ -546,11 +543,11 @@ let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a,
   | TextDocumentCompletion params ->
     textDocumentCompletion id params
   | TextDocumentDefinition params ->
-    textDocumentDefinition params, []
+    textDocumentDefinition params
   | TextDocumentHover params ->
-    textDocumentHover id params, []
+    textDocumentHover id params
   | TextDocumentHighlight params ->
-    textDocumentHighlight id params, []
+    textDocumentHighlight id params
   | DocumentSymbol params ->
     documentSymbol id params
   | TextDocumentFoldingRange params ->
@@ -570,7 +567,7 @@ let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) r
   | DocumentState params -> sendDocumentState id params
   | DocumentProofs params -> sendDocumentProofs id params
 
-let dispatch_std_notification = 
+let dispatch_std_notification =
   let open Lsp.Client_notification in function
   | TextDocumentDidOpen params -> log_notification "textDocument/didOpen";
     begin try textDocumentDidOpen params with
@@ -661,7 +658,7 @@ let handle_event = function
       Option.iter output_notification handled_event.notification;
       inject_dm_events (uri, events))
   | Notification notification ->
-    begin match notification with 
+    begin match notification with
     | QueryResultNotification params ->
       output_notification @@ SearchResult params; [inject_notification Dm.SearchQuery.query_feedback]
     end
