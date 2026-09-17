@@ -28,6 +28,8 @@ module CompactedDecl = Context.Compacted.Declaration
 module CompactedDecl = Ppconstr.CompactedDecl
 [%%endif]
 
+let ( let@ ) f x = f x
+
 let init_state : Vernacstate.t option ref = ref None
 let get_init_state () =
   match !init_state with
@@ -53,7 +55,7 @@ let server_info = InitializeResult.create_serverInfo
   ~version:"2.5.0"
   ()
 
-type lsp_event = 
+type lsp_event =
   | Receive of Jsonrpc.Packet.t option
   | Send of Jsonrpc.Packet.t
 
@@ -109,7 +111,7 @@ let inject_notifications l =
 let inject_debug_events l =
   List.map inject_debug_event l
 
-let do_configuration settings = 
+let do_configuration settings =
   let open Settings in
   let open Dm.ExecutionManager in
   let delegation_mode =
@@ -173,7 +175,7 @@ let do_initialize id params =
   ()
   in
   let initialize_result = Lsp.Types.InitializeResult.{
-    capabilities = capabilities; 
+    capabilities = capabilities;
     serverInfo = Some server_info;
   } in
   log ~force:true (fun () -> "---------------- initialized --------------");
@@ -219,12 +221,12 @@ let send_proof_view pv =
   let notification = Notification.Server.ProofView pv in
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notification
 
-let send_move_cursor uri range = 
-  let notification = Notification.Server.MoveCursor {uri;range} in 
+let send_move_cursor uri range =
+  let notification = Notification.Server.MoveCursor {uri;range} in
   output_notification notification
 
-let send_block_on_error uri range = 
-  let notification = Notification.Server.BlockOnError {uri;range} in 
+let send_block_on_error uri range =
+  let notification = Notification.Server.BlockOnError {uri;range} in
   output_notification notification
 
 let send_rocq_debug message =
@@ -244,6 +246,24 @@ let update_view uri st =
   )
 
 let replace_state path st visible = Hashtbl.replace states path { st; visible}
+
+(* Every handler that acts on a document starts by looking it up in [states].
+   When the document is unknown the event is logged and dropped; what "dropped"
+   means depends on the handler's return shape, hence the variants below. *)
+let with_document_or ~default handler uri f =
+  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
+  | None -> log (fun () -> "[" ^ handler ^ "] ignoring event on non existent document"); default
+  | Some tab -> f tab
+
+let document_does_not_exist = Error { message = "Document does not exist"; code = None }
+
+(* For notification handlers: no events on an unknown document. *)
+let with_document handler uri f = with_document_or ~default:[] handler uri f
+
+(* For request handlers replying with a result and events. *)
+let with_document_request handler uri f = with_document_or ~default:(document_does_not_exist, []) handler uri f
+
+let log_notification method_ = log (fun () -> "Received notification: " ^ method_)
 
 let run_documents () =
   let interpret_doc_in_bg path { st : Dm.DocumentManager.state ; visible } events =
@@ -296,11 +316,11 @@ let textDocumentDidOpen params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> open_new_document uri text
   | Some { st } -> update_view uri st; []
-    (* let (st, events) = 
+    (* let (st, events) =
       if !check_mode = Settings.Mode.Continuous then
         let (st, events) = Dm.DocumentManager.interpret_in_background st ~should_block_on_error:!block_on_first_error in
         (st, events)
-      else 
+      else
         (st, [])
     in
     update_view uri st;
@@ -309,17 +329,15 @@ let textDocumentDidOpen params =
 let textDocumentDidChange params =
   let Lsp.Types.DidChangeTextDocumentParams.{ textDocument; contentChanges } = params in
   let uri = textDocument.uri in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-    | None -> log (fun () -> "[textDocumentDidChange] ignoring event on non-existing document"); []
-    | Some { st; visible } ->
-      let mk_text_edit TextDocumentContentChangeEvent.{ range; text } =
-        Option.get range, text
-      in
-      let text_edits = List.map mk_text_edit contentChanges in
-      let st, events = Dm.DocumentManager.apply_text_edits st text_edits in
-      replace_state (DocumentUri.to_path uri) st visible;
-      update_view uri st;
-      inject_dm_events (uri, events)
+  let@ { st; visible } = with_document "textDocumentDidChange" uri in
+  let mk_text_edit TextDocumentContentChangeEvent.{ range; text } =
+    Option.get range, text
+  in
+  let text_edits = List.map mk_text_edit contentChanges in
+  let st, events = Dm.DocumentManager.apply_text_edits st text_edits in
+  replace_state (DocumentUri.to_path uri) st visible;
+  update_view uri st;
+  inject_dm_events (uri, events)
 
 let current_memory_usage () =
   let { Gc.heap_words; _ } = Gc.stat () in
@@ -349,77 +367,61 @@ let consider_purge_invisible_tabs () =
 let textDocumentDidClose params =
   let Lsp.Types.DidCloseTextDocumentParams.{ textDocument } = params in
   let path = DocumentUri.to_path textDocument.uri in
-  begin match Hashtbl.find_opt states path with
-  | None -> log (fun () -> "[textDocumentDidClose] closed document with no state")
-  | Some { st } -> replace_state path st false
-  end;
+  with_document_or ~default:() "textDocumentDidClose" textDocument.uri (fun { st } -> replace_state path st false);
   consider_purge_invisible_tabs ();
   [] (* TODO handle properly *)
 
-let textDocumentHover id params = 
+let textDocumentHover id params =
   let Lsp.Types.HoverParams.{ textDocument; position } = params in
   let open Yojson.Safe.Util in
-  match Hashtbl.find_opt states (DocumentUri.to_path textDocument.uri) with
-  | None -> log (fun () -> "[textDocumentHover] ignoring event on non existing document"); Ok None (* FIXME handle error case properly *)
-  | Some { st } ->
-    match Dm.DocumentManager.hover st position with
-    | Some contents -> Ok (Some (Hover.create ~contents:(`MarkupContent contents) ()))
-    | _ -> Ok None (* FIXME handle error case properly *)
+  let@ { st } = with_document_request "textDocumentHover" textDocument.uri in
+  match Dm.DocumentManager.hover st position with
+  | Some contents -> Ok (Some (Hover.create ~contents:(`MarkupContent contents) ())), []
+  | None -> Ok None, []
 
 let textDocumentHighlight id params =
   let Lsp.Types.DocumentHighlightParams.{ textDocument; position } = params in
   let open Yojson.Safe.Util in
-  match Hashtbl.find_opt states (DocumentUri.to_path textDocument.uri) with
-  | None -> log (fun () -> "[textDocumentHighlight] ignoring event on non existing document"); Ok None (* FIXME handle error case properly *)
-  | Some { st } ->
-    let ranges = Dm.DocumentManager.highlight st position in
-    Ok (Some (List.map (fun range -> DocumentHighlight.create ~range:range ()) ranges))
+  let@ { st } = with_document_request "textDocumentHighlight" textDocument.uri in
+  let ranges = Dm.DocumentManager.highlight st position in
+  Ok (Some (List.map (fun range -> DocumentHighlight.create ~range:range ()) ranges)), []
 
 let textDocumentDefinition params =
   let Lsp.Types.DefinitionParams.{ textDocument; position } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path textDocument.uri) with
-  | None -> log (fun () -> "[textDocumentDefinition] ignoring event on non existing document"); Ok None (* FIXME handle error case properly *)
-  | Some { st } -> 
-    match Dm.DocumentManager.jump_to_definition st position with
-    | None -> log (fun () -> "[textDocumentDefinition] could not find symbol location"); Ok None (* FIXME handle error case properly *)
-    | Some (range, uri) ->
-      let uri = DocumentUri.of_path uri in
-      let location = Location.create ~range:range ~uri:uri in
-      Ok (Some (`Location [location]))
+  let@ { st } = with_document_request "textDocumentDefinition" textDocument.uri in
+  match Dm.DocumentManager.jump_to_definition st position with
+  | None -> log (fun () -> "[textDocumentDefinition] could not find symbol location"); Ok None, []
+  | Some (range, uri) ->
+    let uri = DocumentUri.of_path uri in
+    let location = Location.create ~range:range ~uri:uri in
+    Ok (Some (`Location [location])), []
 
 
 let progress_hook uri () =
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "ignoring non existent document")
-  | Some { st } -> update_view uri st
+  let@ { st } = with_document_or ~default:() "progress_hook" uri in
+  update_view uri st
 
 let rocqtopInterpretToPoint params =
   let Notification.Client.InterpretToPointParams.{ textDocument; position } = params in
   let uri = textDocument.uri in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[interpretToPoint] ignoring event on non existent document"); []
-  | Some { st; visible } ->
-    let events = Dm.DocumentManager.interpret_to_position position in
-    let sel_events = inject_dm_events (uri, events) in
-    sel_events
- 
+  let@ { st; visible } = with_document "interpretToPoint" uri in
+  let events = Dm.DocumentManager.interpret_to_position position in
+  let sel_events = inject_dm_events (uri, events) in
+  sel_events
+
 let rocqtopStepBackward params =
   let Notification.Client.StepBackwardParams.{ textDocument = { uri } } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[stepBackward] ignoring event on non existent document"); []
-  | Some { st; visible } ->
-      let events = Dm.DocumentManager.interpret_to_previous () in
-      inject_dm_events (uri,events)
+  let@ { st; visible } = with_document "stepBackward" uri in
+  let events = Dm.DocumentManager.interpret_to_previous () in
+  inject_dm_events (uri,events)
 
 let rocqtopStepForward params =
   let Notification.Client.StepForwardParams.{ textDocument = { uri } } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[stepForward] ignoring event on non existent document"); []
-  | Some { st; visible } ->
-      let events = Dm.DocumentManager.interpret_to_next () in
-      inject_dm_events (uri,events) 
+  let@ { st; visible } = with_document "stepForward" uri in
+  let events = Dm.DocumentManager.interpret_to_next () in
+  inject_dm_events (uri,events)
 
-  let make_CompletionItem i item : CompletionItem.t = 
+  let make_CompletionItem i item : CompletionItem.t =
     let (label, insertText, typ, path) = Dm.CompletionItems.pp_completion_item item in
     CompletionItem.create
       ~label
@@ -438,23 +440,19 @@ let textDocumentCompletion id params =
     return_completion ~isIncomplete:false ~items:[], []
   else
   let Lsp.Types.CompletionParams.{ textDocument = { uri }; position } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[textDocumentCompletion]ignoring event on non existent document"); Error( {message="Document does not exist"; code=None} ), []
-  | Some { st } -> 
-    let items = List.mapi make_CompletionItem (Dm.DocumentManager.get_completions st position) in
-    return_completion ~isIncomplete:false ~items, []
+  let@ { st } = with_document_request "textDocumentCompletion" uri in
+  let items = List.mapi make_CompletionItem (Dm.DocumentManager.get_completions st position) in
+  return_completion ~isIncomplete:false ~items, []
 
 let documentFoldingRange id params =
   let Lsp.Types.FoldingRangeParams.{ textDocument = { uri } } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[documentFoldingRange] ignoring event on non existent document"); Error({message="Document does not exist"; code=None})
-  | Some { st } ->
-    log (fun () -> "[documentFoldingRange] getting folding ranges");
-    if Dm.DocumentManager.is_parsing st then
-      Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"}
-    else
-      let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
-      Ok(Some folding_ranges)
+  let@ { st } = with_document_or ~default:document_does_not_exist "documentFoldingRange" uri in
+  log (fun () -> "[documentFoldingRange] getting folding ranges");
+  if Dm.DocumentManager.is_parsing st then
+    Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"}
+  else
+    let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
+    Ok(Some folding_ranges)
 
 let documentSelectionRanges id params =
   let Lsp.Types.SelectionRangeParams.{ textDocument = { uri }; positions } = params in
@@ -466,95 +464,80 @@ let documentSelectionRanges id params =
 
 let documentSymbol id params =
   let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get support for partialResult and workDone*)
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[documentSymbol] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some tab -> log (fun () -> "[documentSymbol] getting symbols");
-    if Dm.DocumentManager.is_parsing tab.st then
-       (* Making use of the error codes: the ServerCancelled error code indicates 
+  let@ { st } = with_document_request "documentSymbol" uri in
+  log (fun () -> "[documentSymbol] getting symbols");
+  if Dm.DocumentManager.is_parsing st then
+    (* Making use of the error codes: the ServerCancelled error code indicates
        that the server is busy and the client should resend the request later.
        It doesn't seem to be working for documentSymbol at the moment. *)
-      Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} , []
-    else
-      let symbols = Dm.DocumentManager.get_document_symbols tab.st in
-      Ok(Some (`DocumentSymbol symbols)), []
+    Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} , []
+  else
+    let symbols = Dm.DocumentManager.get_document_symbols st in
+    Ok(Some (`DocumentSymbol symbols)), []
 
 let rocqtopResetRocq id params =
   let Request.Client.ResetParams.{ textDocument = { uri } } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[resetRocq] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st; visible } -> 
-    let st, events = Dm.DocumentManager.reset st in
-    replace_state (DocumentUri.to_path uri) st visible;
-    update_view uri st;
-    Ok(()), (uri,events) |> inject_dm_events
+  let@ { st; visible } = with_document_request "resetRocq" uri in
+  let st, events = Dm.DocumentManager.reset st in
+  replace_state (DocumentUri.to_path uri) st visible;
+  update_view uri st;
+  Ok(()), (uri,events) |> inject_dm_events
 
 let rocqtopInterpretToEnd params =
   let Notification.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[interpretToEnd] ignoring event on non existent document"); []
-  | Some { st; visible } ->
-    let events = Dm.DocumentManager.interpret_to_end () in
-    inject_dm_events (uri,events)
+  let@ { st; visible } = with_document "interpretToEnd" uri in
+  let events = Dm.DocumentManager.interpret_to_end () in
+  inject_dm_events (uri,events)
 
-let rocqtopLocate id params = 
+let rocqtopLocate id params =
   let Request.Client.LocateParams.{ textDocument = { uri }; position; pattern } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[locate] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } ->
-    Dm.DocumentManager.locate st position ~pattern, []
+  let@ { st } = with_document_request "locate" uri in
+  Dm.DocumentManager.locate st position ~pattern, []
 
-let rocqtopPrint id params = 
+let rocqtopPrint id params =
   let Request.Client.PrintParams.{ textDocument = { uri }; position; pattern } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[print] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } -> Dm.DocumentManager.print st position ~pattern, []
+  let@ { st } = with_document_request "print" uri in
+  Dm.DocumentManager.print st position ~pattern, []
 
 let rocqtopAbout id params =
   let Request.Client.AboutParams.{ textDocument = { uri }; position; pattern } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[about] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } -> Dm.DocumentManager.about st position ~pattern, []
+  let@ { st } = with_document_request "about" uri in
+  Dm.DocumentManager.about st position ~pattern, []
 
 let rocqtopCheck id params =
   let Request.Client.CheckParams.{ textDocument = { uri }; position; pattern } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[check] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } -> Dm.DocumentManager.check st position ~pattern, []
+  let@ { st } = with_document_request "check" uri in
+  Dm.DocumentManager.check st position ~pattern, []
 
 let rocqtopSearch id params =
   let Request.Client.SearchParams.{ textDocument = { uri }; id; position; pattern } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[search] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } ->
-    try
-      let notifications = Dm.DocumentManager.search st ~id position pattern in
-      Ok(()), inject_notifications notifications
-    with e ->
-      let e, info = Exninfo.capture e in
-      let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
-      Error({message; code=None}), []
+  let@ { st } = with_document_request "search" uri in
+  try
+    let notifications = Dm.DocumentManager.search st ~id position pattern in
+    Ok(()), inject_notifications notifications
+  with e ->
+    let e, info = Exninfo.capture e in
+    let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
+    Error({message; code=None}), []
 
-let sendDocumentState id params = 
+let sendDocumentState id params =
   let Request.Client.DocumentStateParams.{ textDocument } = params in
   let uri = textDocument.uri in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[documentState] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } -> let document = Dm.DocumentManager.Internal.string_of_state st in
-    Ok Request.Client.DocumentStateResult.{ document }, []
+  let@ { st } = with_document_request "documentState" uri in
+  let document = Dm.DocumentManager.Internal.string_of_state st in
+  Ok Request.Client.DocumentStateResult.{ document }, []
 
-let sendDocumentProofs id params = 
+let sendDocumentProofs id params =
   let Request.Client.DocumentProofsParams.{ textDocument } = params in
   let uri = textDocument.uri in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[documentProofs] ignoring event on non existent document"); Error({message="Document does not exist"; code=None}), []
-  | Some { st } ->
-    if Dm.DocumentManager.is_parsing st then
-      Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} , []
-    else
-      let proofs = Dm.DocumentManager.get_document_proofs st in
-      Ok Request.Client.DocumentProofsResult.{ proofs }, []
+  let@ { st } = with_document_request "documentProofs" uri in
+  if Dm.DocumentManager.is_parsing st then
+    Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} , []
+  else
+    let proofs = Dm.DocumentManager.get_document_proofs st in
+    Ok Request.Client.DocumentProofsResult.{ proofs }, []
 
-let workspaceDidChangeConfiguration params = 
+let workspaceDidChangeConfiguration params =
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
   let settings = Settings.t_of_yojson settings in
   do_configuration settings;
@@ -565,9 +548,8 @@ let workspaceDidChangeConfiguration params =
 let handle_interrupt params =
   let Notification.Client.InterruptParams.{ textDocument } = params in
   let uri = textDocument.uri in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[interrupt] ignoring event on non existent document"); []
-  | Some { st } -> Dm.DocumentManager.interrupt_execution st; []
+  let@ { st } = with_document "interrupt" uri in
+  Dm.DocumentManager.interrupt_execution st; []
 
 let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a, error) result * events =
   fun id req ->
@@ -579,11 +561,11 @@ let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a,
   | TextDocumentCompletion params ->
     textDocumentCompletion id params
   | TextDocumentDefinition params ->
-    textDocumentDefinition params, []
+    textDocumentDefinition params
   | TextDocumentHover params ->
-    textDocumentHover id params, []
+    textDocumentHover id params
   | TextDocumentHighlight params ->
-    textDocumentHighlight id params, []
+    textDocumentHighlight id params
   | DocumentSymbol params ->
     documentSymbol id params
   | TextDocumentFoldingRange params ->
@@ -605,19 +587,19 @@ let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) r
   | DocumentState params -> sendDocumentState id params
   | DocumentProofs params -> sendDocumentProofs id params
 
-let dispatch_std_notification = 
+let dispatch_std_notification =
   let open Lsp.Client_notification in function
-  | TextDocumentDidOpen params -> log (fun () -> "Received notification: textDocument/didOpen");
+  | TextDocumentDidOpen params -> log_notification "textDocument/didOpen";
     begin try textDocumentDidOpen params with
       exn -> let info = Exninfo.capture exn in
       let message = "Error while opening document. " ^ Pp.string_of_ppcmds @@ CErrors.iprint_no_report info in
       send_error_notification message; []
     end
-  | TextDocumentDidChange params -> log (fun () -> "Received notification: textDocument/didChange");
+  | TextDocumentDidChange params -> log_notification "textDocument/didChange";
     textDocumentDidChange params
-  | TextDocumentDidClose params ->  log (fun () -> "Received notification: textDocument/didClose");
+  | TextDocumentDidClose params -> log_notification "textDocument/didClose";
     textDocumentDidClose params
-  | ChangeConfiguration params -> log (fun () -> "Received notification: workspace/didChangeConfiguration");
+  | ChangeConfiguration params -> log_notification "workspace/didChangeConfiguration";
     workspaceDidChangeConfiguration params
   | Initialized -> []
   | Exit ->
@@ -626,11 +608,11 @@ let dispatch_std_notification =
 
 let dispatch_notification =
   let open Notification.Client in function
-  | InterpretToPoint params -> log (fun () -> "Received notification: prover/interpretToPoint"); rocqtopInterpretToPoint params
-  | InterpretToEnd params -> log (fun () -> "Received notification: prover/interpretToEnd"); rocqtopInterpretToEnd params
-  | StepBackward params -> log (fun () -> "Received notification: prover/stepBackward"); rocqtopStepBackward params
-  | StepForward params -> log (fun () -> "Received notification: prover/stepForward"); rocqtopStepForward params
-  | Interrupt params -> log (fun () -> "Received notification: prover/interrupt"); handle_interrupt params
+  | InterpretToPoint params -> log_notification "prover/interpretToPoint"; rocqtopInterpretToPoint params
+  | InterpretToEnd params -> log_notification "prover/interpretToEnd"; rocqtopInterpretToEnd params
+  | StepBackward params -> log_notification "prover/stepBackward"; rocqtopStepBackward params
+  | StepForward params -> log_notification "prover/stepForward"; rocqtopStepForward params
+  | Interrupt params -> log_notification "prover/interrupt"; handle_interrupt params
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function
@@ -684,24 +666,19 @@ let pr_lsp_event fmt = function
 let handle_event = function
   | LspManagerEvent e -> handle_lsp_event e
   | DocumentManagerEvent (uri, e) ->
-    begin match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-    | None ->
-      log (fun () -> "ignoring event on non-existing document");
-      []
-    | Some { st; visible } ->
-      let handled_event = Dm.DocumentManager.handle_event e st in
-      let events = handled_event.events in
-      begin match handled_event.state with
-        | None -> ()
-        | Some st ->
-          replace_state (DocumentUri.to_path uri) st visible;
-          if handled_event.update_view then update_view uri st
-      end;
-      Option.iter output_notification handled_event.notification;
-      inject_dm_events (uri, events)
-    end
+    let@ { st; visible } = with_document "handle_event" uri in
+    let handled_event = Dm.DocumentManager.handle_event e st in
+    let events = handled_event.events in
+    begin match handled_event.state with
+      | None -> ()
+      | Some st ->
+        replace_state (DocumentUri.to_path uri) st visible;
+        if handled_event.update_view then update_view uri st
+    end;
+    Option.iter output_notification handled_event.notification;
+    inject_dm_events (uri, events)
   | Notification notification ->
-    begin match notification with 
+    begin match notification with
     | QueryResultNotification params ->
       output_notification @@ SearchResult params; [inject_notification Dm.SearchQuery.query_feedback]
     end
