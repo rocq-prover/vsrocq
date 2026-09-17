@@ -11,68 +11,79 @@ import {
 
 const fixtureRoot = path.resolve(__dirname, "../../../testFixture");
 
-let copiesMade = 0;
-const copies: vscode.Uri[] = [];
-const settingsToReset: (() => Promise<void>)[] = [];
-
 /**
- * Copies a fixture to a URI of its own and opens that copy.
- *
- * Every test shares one VS Code instance and one server, and diagnostics are
- * keyed by URI. The server does not retract them when a document is closed
- * (`lspManager.ml`'s `textDocumentDidClose` emits no events), so a test that
- * opens the same fixture as an earlier one reads the earlier one's results and
- * cannot tell them from its own. Opening a fresh copy is what makes a test
- * observe only what it caused.
- *
- * The copies live in the fixture directory, so they are checked under the same
- * workspace root as the originals, and `resetTestState` deletes them.
+ * What one test opens and changes in the shared VS Code instance, so that it
+ * can be undone afterwards. A suite creates one in `setup` and disposes it in
+ * `teardown`.
  */
-export async function openFixture(fixture: string): Promise<vscode.Uri> {
-    const { name, ext } = path.parse(fixture);
-    const copy = vscode.Uri.file(
-        path.join(fixtureRoot, `${name}_${copiesMade++}${ext}`),
-    );
-    await vscode.workspace.fs.copy(
-        vscode.Uri.file(path.join(fixtureRoot, fixture)),
-        copy,
-        { overwrite: true },
-    );
-    copies.push(copy);
+export class TestContext {
+    private readonly copies: vscode.Uri[] = [];
+    private readonly settingsToReset: (() => Promise<void>)[] = [];
 
-    const doc = await vscode.workspace.openTextDocument(copy);
-    await vscode.window.showTextDocument(doc, { preview: false });
-    return copy;
-}
+    /**
+     * Copies a fixture to a URI of its own and opens that copy.
+     *
+     * Every test shares one VS Code instance and one server, and diagnostics
+     * are keyed by URI. The server does not retract them when a document is
+     * closed (`lspManager.ml`'s `textDocumentDidClose` emits no events), so a
+     * test that opens the same fixture as an earlier one reads the earlier
+     * one's results and cannot tell them from its own. Opening a fresh copy is
+     * what makes a test observe only what it caused.
+     *
+     * The copies live in the fixture directory, so they are checked under the
+     * same workspace root as the originals, and `dispose` deletes them.
+     */
+    async openFixture(fixture: string): Promise<vscode.Uri> {
+        const { name, ext } = path.parse(fixture);
+        const suffix = Math.random().toString(16).slice(2, 10);
+        const copy = vscode.Uri.file(
+            path.join(fixtureRoot, `${name}_${suffix}${ext}`),
+        );
+        await vscode.workspace.fs.copy(
+            vscode.Uri.file(path.join(fixtureRoot, fixture)),
+            copy,
+            { overwrite: true },
+        );
+        this.copies.push(copy);
 
-/**
- * Applies a setting and records it, so that `resetTestState` can undo it. The
- * write is asynchronous, so an unawaited call leaves a fixture free to be
- * opened and checked under the previous configuration.
- */
-export async function configure<P extends ConfigPath>(
-    path: [...P],
-    value: ConfigValue<P>,
-): Promise<void> {
-    settingsToReset.push(() => setConfigurationOption(path, undefined));
-    await setConfigurationOption(path, value);
-}
-
-/**
- * Undoes everything a test did to the shared VS Code instance: open editors,
- * fixture copies, and settings. Settings are written to the workspace, i.e.
- * to `testFixture/.vscode/settings.json`, so without this they outlive the
- * whole run and the next one starts from them.
- */
-export async function resetTestState(): Promise<void> {
-    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-
-    for (const copy of copies.splice(0)) {
-        await vscode.workspace.fs.delete(copy);
+        const doc = await vscode.workspace.openTextDocument(copy);
+        await vscode.window.showTextDocument(doc, { preview: false });
+        return copy;
     }
 
-    for (const reset of settingsToReset.splice(0)) {
-        await reset();
+    /**
+     * Applies a setting and records it, so that `dispose` can undo it. The
+     * write is asynchronous, so an unawaited call leaves a fixture free to be
+     * opened and checked under the previous configuration.
+     */
+    async configure<P extends ConfigPath>(
+        path: [...P],
+        value: ConfigValue<P>,
+    ): Promise<void> {
+        this.settingsToReset.push(() =>
+            setConfigurationOption(path, undefined),
+        );
+        await setConfigurationOption(path, value);
+    }
+
+    /**
+     * Undoes everything the test did to the shared VS Code instance: open
+     * editors, fixture copies, and settings. Settings are written to the
+     * workspace, i.e. to `testFixture/.vscode/settings.json`, so without this
+     * they outlive the whole run and the next one starts from them.
+     */
+    async dispose(): Promise<void> {
+        await vscode.commands.executeCommand(
+            "workbench.action.closeAllEditors",
+        );
+
+        for (const copy of this.copies.splice(0)) {
+            await vscode.workspace.fs.delete(copy);
+        }
+
+        for (const reset of this.settingsToReset.splice(0)) {
+            await reset();
+        }
     }
 }
 

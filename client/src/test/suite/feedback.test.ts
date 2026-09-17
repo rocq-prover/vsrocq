@@ -7,16 +7,20 @@ import * as common from "./common";
 suite("Should get diagnostics in the appropriate tab", function () {
     this.timeout(20000);
 
-    teardown(common.resetTestState);
+    let t: common.TestContext;
+    setup(() => {
+        t = new common.TestContext();
+    });
+    teardown(() => t.dispose());
 
     test("Checking proofs in master", async () => {
         const ext = vscode.extensions.getExtension("rocq-prover.vsrocq")!;
         await ext.activate();
 
-        await common.configure(["proof", "mode"], 1);
+        await t.configure(["proof", "mode"], 1);
 
-        const doc1 = await common.openFixture("basic.v");
-        const doc2 = await common.openFixture("warn.v");
+        const doc1 = await t.openFixture("basic.v");
+        const doc2 = await t.openFixture("warn.v");
 
         const [diagnostics1, diagnostics2] = await Promise.all([
             common.waitForDiagnostics(doc1, common.anyDiagnostic),
