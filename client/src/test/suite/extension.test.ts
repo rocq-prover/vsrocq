@@ -12,7 +12,7 @@ suite("Should get diagnostics", function () {
     test("Diagnoses an undefined ref error", async () => {
         const ext = vscode.extensions.getExtension("rocq-prover.vsrocq")!;
         await ext.activate();
-        await common.configure("vsrocq.proof.mode", 1);
+        await common.configure(["proof", "mode"], 1);
 
         const doc = await common.openFixture("basic.v");
 
@@ -33,7 +33,7 @@ suite("Should get diagnostics", function () {
     test("Opens two files and gets feedback", async () => {
         const ext = vscode.extensions.getExtension("rocq-prover.vsrocq")!;
         await ext.activate();
-        await common.configure("vsrocq.proof.mode", 1);
+        await common.configure(["proof", "mode"], 1);
 
         const doc1 = await common.openFixture("basic.v");
         const doc2 = await common.openFixture("warn.v");

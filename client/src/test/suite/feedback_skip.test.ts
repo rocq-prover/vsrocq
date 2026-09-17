@@ -16,8 +16,8 @@ suite("Should get diagnostics in the appropriate tab", function () {
         const ext = vscode.extensions.getExtension("rocq-prover.vsrocq")!;
         await ext.activate();
 
-        await common.configure("vsrocq.proof.delegation", "Skip");
-        await common.configure("vsrocq.proof.mode", 1);
+        await common.configure(["proof", "delegation"], "Skip");
+        await common.configure(["proof", "mode"], 1);
 
         const doc1 = await common.openFixture("delegate_proof.v");
 

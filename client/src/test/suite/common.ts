@@ -3,13 +3,17 @@ import * as path from "node:path";
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from "vscode";
-// import * as myExtension from '../../extension';
+import {
+    ConfigPath,
+    ConfigValue,
+    setConfigurationOption,
+} from "../../configuration";
 
 const fixtureRoot = path.resolve(__dirname, "../../../testFixture");
 
 let copiesMade = 0;
 const copies: vscode.Uri[] = [];
-const settingsChanged = new Set<string>();
+const settingsToReset: (() => Promise<void>)[] = [];
 
 /**
  * Copies a fixture to a URI of its own and opens that copy.
@@ -42,16 +46,16 @@ export async function openFixture(fixture: string): Promise<vscode.Uri> {
 }
 
 /**
- * Applies a setting and records it, so that `resetTestState` can take it back
- * out. `update` is asynchronous, so an unawaited call leaves a fixture free to
- * be opened and checked under the previous configuration.
+ * Applies a setting and records it, so that `resetTestState` can undo it. The
+ * write is asynchronous, so an unawaited call leaves a fixture free to be
+ * opened and checked under the previous configuration.
  */
-export async function configure(
-    section: string,
-    value: unknown,
+export async function configure<P extends ConfigPath>(
+    path: [...P],
+    value: ConfigValue<P>,
 ): Promise<void> {
-    settingsChanged.add(section);
-    await vscode.workspace.getConfiguration().update(section, value);
+    settingsToReset.push(() => setConfigurationOption(path, undefined));
+    await setConfigurationOption(path, value);
 }
 
 /**
@@ -67,10 +71,9 @@ export async function resetTestState(): Promise<void> {
         await vscode.workspace.fs.delete(copy);
     }
 
-    for (const section of settingsChanged) {
-        await vscode.workspace.getConfiguration().update(section, undefined);
+    for (const reset of settingsToReset.splice(0)) {
+        await reset();
     }
-    settingsChanged.clear();
 }
 
 /**
