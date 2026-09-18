@@ -17,7 +17,7 @@
 
 let log = Dm.ParTactic.TacticWorkerProcess.log 
 
-let main_worker options ~opts:_ state =
+let main_worker options ~opts:_ () =
   let initial_vernac_state = Vernacstate.freeze_full_state () in
   try Dm.ParTactic.TacticWorkerProcess.main ~st:initial_vernac_state options
   with exn ->

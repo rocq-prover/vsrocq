@@ -74,7 +74,7 @@ let get_local_args dir =
   ) else (
     let find_project_file = CoqProject_file.find_project_file ~from:dir in
     let project_file = match find_project_file ~projfile_name:"_RocqProject" with
-    | Some f as x -> x
+    | Some _ as x -> x
     | None -> find_project_file ~projfile_name:"_CoqProject"
     in
     match project_file with

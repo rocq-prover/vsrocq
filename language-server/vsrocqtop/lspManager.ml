@@ -15,7 +15,6 @@
 (** This toplevel implements an LSP-based server language for VsCode,
     used by the VsRocq extension. *)
 
-open Printer
 open Lsp.Types
 open Protocol
 open Protocol.LspWrapper
@@ -73,8 +72,12 @@ let lsp : event Sel.Event.t =
       begin
         log (fun () -> "UI req ready");
         try LspManagerEvent (Receive (Some (Jsonrpc.Packet.t_of_yojson (Yojson.Safe.from_string (Bytes.to_string buff)))))
-        with exn ->
-          log (fun () -> "failed to decode json");
+        with
+        | Jsonrpc.Json.Of_json (msg, json) ->
+          log (fun () -> "failed to decode json: " ^ msg ^ " in " ^ Yojson.Safe.to_string json);
+          LspManagerEvent (Receive None)
+        | exn ->
+          log (fun () -> "failed to decode json: " ^ Printexc.to_string exn);
           LspManagerEvent (Receive None)
       end
     | Error exn ->
@@ -148,7 +151,7 @@ let send_configuration_request () =
   let req = Lsp.Server_request.(to_jsonrpc_request (WorkspaceConfiguration { items }) ~id) in
   Send (Request req)
 
-let do_initialize id params =
+let do_initialize params =
   let Lsp.Types.InitializeParams.{ initializationOptions } = params in
   begin match initializationOptions with
   | None -> log (fun () -> "Failed to decode initialization options")
@@ -182,17 +185,10 @@ let do_initialize id params =
   let debug_events = Dm.Log.lsp_initialization_done () |> inject_debug_events in
   Ok initialize_result, debug_events@[Sel.now @@ LspManagerEvent (send_configuration_request ())]
 
-let do_shutdown id params =
-  Ok(()), []
+let do_shutdown () = Ok(()), []
 
 let do_exit () =
   exit 0
-
-let parse_loc json =
-  let open Yojson.Safe.Util in
-  let line = json |> member "line" |> to_int in
-  let character = json |> member "character" |> to_int in
-  Position.{ line ; character }
 
 let publish_diagnostics uri doc =
   let diagnostics = Dm.DocumentManager.all_diagnostics doc in
@@ -215,19 +211,6 @@ let send_highlights uri doc =
   }
   in
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notification
-
-let send_proof_view pv =
-  log (fun () -> "-------------------------- sending proof view ---------------------------------------");
-  let notification = Notification.Server.ProofView pv in
-  output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notification
-
-let send_move_cursor uri range =
-  let notification = Notification.Server.MoveCursor {uri;range} in
-  output_notification notification
-
-let send_block_on_error uri range =
-  let notification = Notification.Server.BlockOnError {uri;range} in
-  output_notification notification
 
 let send_rocq_debug message =
   let notification = Notification.Server.RocqLogMessage {message} in
@@ -277,14 +260,14 @@ let run_documents () =
   in
   Hashtbl.fold interpret_doc_in_bg states []
 
-let reset_observe_ids =
-  let reset_doc_observe_id path {st : Dm.DocumentManager.state; visible} events =
+let reset_observe_ids () =
+  let reset_doc_observe_id path {st : Dm.DocumentManager.state; visible} =
     let st = Dm.DocumentManager.reset_to_top st in
     let uri = DocumentUri.of_path path in
     replace_state path st visible;
     update_view uri st
   in
-  Hashtbl.fold reset_doc_observe_id states
+  Hashtbl.iter reset_doc_observe_id states
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
 (* in these rocq versions init_runtime called globally for the process includes init_document
@@ -316,15 +299,6 @@ let textDocumentDidOpen params =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> open_new_document uri text
   | Some { st } -> update_view uri st; []
-    (* let (st, events) =
-      if !check_mode = Settings.Mode.Continuous then
-        let (st, events) = Dm.DocumentManager.interpret_in_background st ~should_block_on_error:!block_on_first_error in
-        (st, events)
-      else
-        (st, [])
-    in
-    update_view uri st;
-    inject_dm_events (uri, events) *)
 
 let textDocumentDidChange params =
   let Lsp.Types.DidChangeTextDocumentParams.{ textDocument; contentChanges } = params in
@@ -371,17 +345,15 @@ let textDocumentDidClose params =
   consider_purge_invisible_tabs ();
   [] (* TODO handle properly *)
 
-let textDocumentHover id params =
+let textDocumentHover params =
   let Lsp.Types.HoverParams.{ textDocument; position } = params in
-  let open Yojson.Safe.Util in
   let@ { st } = with_document_request "textDocumentHover" textDocument.uri in
   match Dm.DocumentManager.hover st position with
   | Some contents -> Ok (Some (Hover.create ~contents:(`MarkupContent contents) ())), []
   | None -> Ok None, []
 
-let textDocumentHighlight id params =
+let textDocumentHighlight params =
   let Lsp.Types.DocumentHighlightParams.{ textDocument; position } = params in
-  let open Yojson.Safe.Util in
   let@ { st } = with_document_request "textDocumentHighlight" textDocument.uri in
   let ranges = Dm.DocumentManager.highlight st position in
   Ok (Some (List.map (fun range -> DocumentHighlight.create ~range:range ()) ranges)), []
@@ -396,28 +368,23 @@ let textDocumentDefinition params =
     let location = Location.create ~range:range ~uri:uri in
     Ok (Some (`Location [location])), []
 
-
-let progress_hook uri () =
-  let@ { st } = with_document_or ~default:() "progress_hook" uri in
-  update_view uri st
-
 let rocqtopInterpretToPoint params =
   let Notification.Client.InterpretToPointParams.{ textDocument; position } = params in
   let uri = textDocument.uri in
-  let@ { st; visible } = with_document "interpretToPoint" uri in
+  let@ _ = with_document "interpretToPoint" uri in
   let events = Dm.DocumentManager.interpret_to_position position in
   let sel_events = inject_dm_events (uri, events) in
   sel_events
 
 let rocqtopStepBackward params =
   let Notification.Client.StepBackwardParams.{ textDocument = { uri } } = params in
-  let@ { st; visible } = with_document "stepBackward" uri in
+  let@ _ = with_document "stepBackward" uri in
   let events = Dm.DocumentManager.interpret_to_previous () in
   inject_dm_events (uri,events)
 
 let rocqtopStepForward params =
   let Notification.Client.StepForwardParams.{ textDocument = { uri } } = params in
-  let@ { st; visible } = with_document "stepForward" uri in
+  let@ _ = with_document "stepForward" uri in
   let events = Dm.DocumentManager.interpret_to_next () in
   inject_dm_events (uri,events)
 
@@ -432,7 +399,7 @@ let rocqtopStepForward params =
       ?filterText:(if label == insertText then None else Some (insertText))
       ()
 
-let textDocumentCompletion id params =
+let textDocumentCompletion params =
   let return_completion ~isIncomplete ~items =
     Ok (Some (`CompletionList (Lsp.Types.CompletionList.create ~isIncomplete ~items ())))
   in
@@ -444,7 +411,7 @@ let textDocumentCompletion id params =
   let items = List.mapi make_CompletionItem (Dm.DocumentManager.get_completions st position) in
   return_completion ~isIncomplete:false ~items, []
 
-let documentFoldingRange id params =
+let documentFoldingRange params =
   let Lsp.Types.FoldingRangeParams.{ textDocument = { uri } } = params in
   let@ { st } = with_document_or ~default:document_does_not_exist "documentFoldingRange" uri in
   log (fun () -> "[documentFoldingRange] getting folding ranges");
@@ -454,7 +421,7 @@ let documentFoldingRange id params =
     let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
     Ok(Some folding_ranges)
 
-let documentSelectionRanges id params =
+let documentSelectionRanges params =
   let Lsp.Types.SelectionRangeParams.{ textDocument = { uri }; positions } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> log (fun () -> "[documentSelectionRanges] ignoring event on non existent document"); Ok []
@@ -462,8 +429,8 @@ let documentSelectionRanges id params =
     log (fun () -> "[documentSelectionRanges] getting selection ranges");
     Ok (List.map (fun pos -> Dm.DocumentManager.get_selection_range st pos) positions)
 
-let documentSymbol id params =
-  let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri}; partialResultToken; workDoneToken } = params in (*TODO: At some point we might get support for partialResult and workDone*)
+let documentSymbol params =
+  let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri} } = params in
   let@ { st } = with_document_request "documentSymbol" uri in
   log (fun () -> "[documentSymbol] getting symbols");
   if Dm.DocumentManager.is_parsing st then
@@ -475,7 +442,7 @@ let documentSymbol id params =
     let symbols = Dm.DocumentManager.get_document_symbols st in
     Ok(Some (`DocumentSymbol symbols)), []
 
-let rocqtopResetRocq id params =
+let rocqtopResetRocq params =
   let Request.Client.ResetParams.{ textDocument = { uri } } = params in
   let@ { st; visible } = with_document_request "resetRocq" uri in
   let st, events = Dm.DocumentManager.reset st in
@@ -485,31 +452,31 @@ let rocqtopResetRocq id params =
 
 let rocqtopInterpretToEnd params =
   let Notification.Client.InterpretToEndParams.{ textDocument = { uri } } = params in
-  let@ { st; visible } = with_document "interpretToEnd" uri in
+  let@ _ = with_document "interpretToEnd" uri in
   let events = Dm.DocumentManager.interpret_to_end () in
   inject_dm_events (uri,events)
 
-let rocqtopLocate id params =
+let rocqtopLocate params =
   let Request.Client.LocateParams.{ textDocument = { uri }; position; pattern } = params in
   let@ { st } = with_document_request "locate" uri in
   Dm.DocumentManager.locate st position ~pattern, []
 
-let rocqtopPrint id params =
+let rocqtopPrint params =
   let Request.Client.PrintParams.{ textDocument = { uri }; position; pattern } = params in
   let@ { st } = with_document_request "print" uri in
   Dm.DocumentManager.print st position ~pattern, []
 
-let rocqtopAbout id params =
+let rocqtopAbout params =
   let Request.Client.AboutParams.{ textDocument = { uri }; position; pattern } = params in
   let@ { st } = with_document_request "about" uri in
   Dm.DocumentManager.about st position ~pattern, []
 
-let rocqtopCheck id params =
+let rocqtopCheck params =
   let Request.Client.CheckParams.{ textDocument = { uri }; position; pattern } = params in
   let@ { st } = with_document_request "check" uri in
   Dm.DocumentManager.check st position ~pattern, []
 
-let rocqtopSearch id params =
+let rocqtopSearch params =
   let Request.Client.SearchParams.{ textDocument = { uri }; id; position; pattern } = params in
   let@ { st } = with_document_request "search" uri in
   try
@@ -520,14 +487,14 @@ let rocqtopSearch id params =
     let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
     Error({message; code=None}), []
 
-let sendDocumentState id params =
+let sendDocumentState params =
   let Request.Client.DocumentStateParams.{ textDocument } = params in
   let uri = textDocument.uri in
   let@ { st } = with_document_request "documentState" uri in
   let document = Dm.DocumentManager.Internal.string_of_state st in
   Ok Request.Client.DocumentStateResult.{ document }, []
 
-let sendDocumentProofs id params =
+let sendDocumentProofs params =
   let Request.Client.DocumentProofsParams.{ textDocument } = params in
   let uri = textDocument.uri in
   let@ { st } = with_document_request "documentProofs" uri in
@@ -551,41 +518,28 @@ let handle_interrupt params =
   let@ { st } = with_document "interrupt" uri in
   Dm.DocumentManager.interrupt_execution st; []
 
-let dispatch_std_request : type a. Jsonrpc.Id.t -> a Lsp.Client_request.t -> (a, error) result * events =
-  fun id req ->
-  match req with
-  | Initialize params ->
-    do_initialize id params
-  | Shutdown ->
-    do_shutdown id ()
-  | TextDocumentCompletion params ->
-    textDocumentCompletion id params
-  | TextDocumentDefinition params ->
-    textDocumentDefinition params
-  | TextDocumentHover params ->
-    textDocumentHover id params
-  | TextDocumentHighlight params ->
-    textDocumentHighlight id params
-  | DocumentSymbol params ->
-    documentSymbol id params
-  | TextDocumentFoldingRange params ->
-    documentFoldingRange id params, []
-  | SelectionRange params ->
-    documentSelectionRanges id params, []
+let dispatch_std_request : type a. a Lsp.Client_request.t -> (a, error) result * events = function
+  | Initialize params -> do_initialize params
+  | Shutdown -> do_shutdown ()
+  | TextDocumentCompletion params -> textDocumentCompletion params
+  | TextDocumentDefinition params -> textDocumentDefinition params
+  | TextDocumentHover params -> textDocumentHover params
+  | TextDocumentHighlight params -> textDocumentHighlight params
+  | DocumentSymbol params -> documentSymbol params
+  | TextDocumentFoldingRange params -> documentFoldingRange params, []
+  | SelectionRange params -> documentSelectionRanges params, []
   | UnknownRequest _ | _  -> Error ({message="Received unknown request"; code=None}), []
 
-let dispatch_request : type a. Jsonrpc.Id.t -> a Request.Client.t -> (a,error) result * events =
-  fun id req ->
-  match req with
-  | Std req -> dispatch_std_request id req
-  | Reset params -> rocqtopResetRocq id params
-  | About params -> rocqtopAbout id params
-  | Check params -> rocqtopCheck id params
-  | Locate params -> rocqtopLocate id params
-  | Print params -> rocqtopPrint id params
-  | Search params -> rocqtopSearch id params
-  | DocumentState params -> sendDocumentState id params
-  | DocumentProofs params -> sendDocumentProofs id params
+let dispatch_request : type a. a Request.Client.t -> (a,error) result * events = function
+  | Std req -> dispatch_std_request req
+  | Reset params -> rocqtopResetRocq params
+  | About params -> rocqtopAbout params
+  | Check params -> rocqtopCheck params
+  | Locate params -> rocqtopLocate params
+  | Print params -> rocqtopPrint params
+  | Search params -> rocqtopSearch params
+  | DocumentState params -> sendDocumentState params
+  | DocumentProofs params -> sendDocumentProofs params
 
 let dispatch_std_notification =
   let open Lsp.Client_notification in function
@@ -628,7 +582,7 @@ let handle_lsp_event = function
           begin match Request.Client.t_of_jsonrpc req with
           | Error(e) -> log (fun () -> "Error decoding request: " ^ e); []
           | Ok(Pack r) ->
-            let resp, events = dispatch_request req.id r in
+            let resp, events = dispatch_request r in
             begin match resp with
             | Error {code; message} ->
               let code = Option.default Jsonrpc.Response.Error.Code.RequestFailed code in
@@ -644,13 +598,13 @@ let handle_lsp_event = function
         | Ok notif -> dispatch_notification notif
         | Error e -> log (fun () -> "error decoding notification: " ^ e); []
         end
-      | Response resp ->
-          log (fun () -> "got unknown response");
+      | Response { id; _ } ->
+          log (fun () -> "ignoring unknown response to request " ^ Yojson.Safe.to_string (Jsonrpc.Id.yojson_of_t id));
           []
       | Batch_response _ -> log (fun () -> "Unsupported batch response received"); []
       | Batch_call _ -> log (fun () -> "Unsupported batch call received"); []
       end
-    with Ppx_yojson_conv_lib__Yojson_conv.Of_yojson_error(exn,json) ->
+    with Ppx_yojson_conv_lib__Yojson_conv.Of_yojson_error(_exn, json) ->
       log (fun () -> "error parsing json: " ^ Yojson.Safe.pretty_to_string json);
       []
     end
@@ -658,10 +612,8 @@ let handle_lsp_event = function
     output_json (Jsonrpc.Packet.yojson_of_t jsonrpc); []
 
 let pr_lsp_event fmt = function
-  | Receive jsonrpc ->
-    Format.fprintf fmt "Request"
-  | Send jsonrpc ->
-    Format.fprintf fmt "Send"
+  | Receive _ -> Format.fprintf fmt "Request"
+  | Send _ -> Format.fprintf fmt "Send"
 
 let handle_event = function
   | LspManagerEvent e -> handle_lsp_event e
@@ -687,7 +639,7 @@ let handle_event = function
 
 let pr_event fmt = function
   | LspManagerEvent e -> pr_lsp_event fmt e
-  | DocumentManagerEvent (uri, e) ->
+  | DocumentManagerEvent (_, e) ->
     Format.fprintf fmt "%a" Dm.DocumentManager.pp_event e
   | Notification _ -> Format.fprintf fmt "notif"
   | LogEvent _ -> Format.fprintf fmt "debug"
