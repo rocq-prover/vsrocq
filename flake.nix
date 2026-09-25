@@ -66,6 +66,7 @@
                   findlib
                   yojson
                   ppx_inline_test
+                  ppx_blob
                   ppx_assert
                   ppx_sexp_conv
                   ppx_deriving
@@ -114,6 +115,7 @@
                   yojson
                   findlib
                   ppx_inline_test
+                  ppx_blob
                   ppx_assert
                   ppx_sexp_conv
                   ppx_deriving
@@ -162,6 +164,7 @@
                   yojson
                   findlib
                   ppx_inline_test
+                  ppx_blob
                   ppx_assert
                   ppx_sexp_conv
                   ppx_deriving
@@ -210,6 +213,7 @@
                   yojson
                   findlib
                   ppx_inline_test
+                  ppx_blob
                   ppx_assert
                   ppx_sexp_conv
                   ppx_deriving
@@ -261,6 +265,7 @@
                   yojson
                   findlib
                   ppx_inline_test
+                  ppx_blob
                   ppx_assert
                   ppx_sexp_conv
                   ppx_yojson_conv
@@ -316,6 +321,7 @@
                   yojson
                   findlib
                   ppx_inline_test
+                  ppx_blob
                   ppx_assert
                   ppx_sexp_conv
                   ppx_yojson_conv
@@ -371,6 +377,7 @@
                   yojson
                   findlib
                   ppx_inline_test
+                  ppx_blob
                   ppx_assert
                   ppx_sexp_conv
                   ppx_yojson_conv
@@ -434,6 +441,7 @@
                   yojson
                   findlib
                   ppx_inline_test
+                  ppx_blob
                   ppx_assert
                   ppx_sexp_conv
                   ppx_yojson_conv
