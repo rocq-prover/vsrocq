@@ -198,12 +198,18 @@ jobs:
         opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
         opam install dune
         opam install rocq-core=dev
-        opam install ./language-server/vsrocq-language-server.opam --deps-only --with-doc --with-test --ignore-constraints-on dune
+        opam install ./language-server/vsrocq-language-server.opam --deps-only --ignore-constraints-on dune
       
     - name: Build vsrocq-language-server
       run: |
         eval $(opam env)
         cd language-server && make ${{ matrix.profile }}
+
+    - name: Install test deps
+      env:
+        OPAMYES: true
+      run: |
+        opam install ./language-server/vsrocq-language-server.opam --deps-only --with-test --ignore-constraints-on dune
 
     - name: Unit tests
       run: |
