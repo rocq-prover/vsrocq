@@ -22,7 +22,7 @@ depends: [
   "ocamlfind"
   "ppx_inline_test" { with-test }
   "ppx_assert" { with-test }
-  "ppx_blob" { with-test }
+  "ppx_blob"
   "ppx_sexp_conv"
   "ppx_deriving"
   "sexplib"
