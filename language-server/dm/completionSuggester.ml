@@ -22,6 +22,7 @@ open Printer
 open EConstr
 open Names
 open Types
+open Utilities
 
 let Log log = Log.mk_log "completionSuggester"
 
@@ -357,7 +358,7 @@ let builtin_vernacs = lazy (
     | [] -> []
     (* sometimes a value is something like `"@goal_selector"` *)
     | Literal {value = "\"" } :: tl ->
-      List.rev @@ List.tl @@ List.drop_while (function Literal {value = "\""} -> false | _ -> true) tl
+      List.rev @@ List.tl @@ drop_while (function Literal {value = "\""} -> false | _ -> true) tl
     (* if the syntax already does not specify a value, we leave it as-is *)
     | Literal {value = _ } :: _ -> s
     | _ :: tl -> List.rev tl
