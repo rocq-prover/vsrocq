@@ -132,7 +132,7 @@ let hover document pos =
      - At the start of the current sentence
      - At the start of the next sentence (for symbols defined in the current sentence)
        e.g. Definition, Inductive
-     - At the next QED (for symbols defined after proof), if the next sentence 
+     - At the next QED (for symbols defined after proof), if the next sentence
        is in proof mode e.g. Lemmas, Definition with tactics *)
   let raw = Document.raw_document document in
   let loc = RawDocument.loc_of_position raw pos in
@@ -147,20 +147,20 @@ let hover document pos =
     (* hover at previous sentence *)
     match hover_of_sentence pattern (Document.find_sentence_before_pos document pos) with
     | Some _ as x -> x
-    | None -> 
+    | None ->
     match Document.find_sentence_after_pos document pos with
     | None -> None (* Skip if no next sentence *)
     | Some sentence as opt ->
     (* hover at next sentence *)
     match hover_of_sentence pattern opt with
     | Some _ as x -> x
-    | None -> 
+    | None ->
     match sentence.ast with
     | Error _ -> None
-    | Parsed ast -> 
+    | Parsed ast ->
       match ast.classification with
     (* next sentence in proof mode, hover at qed *)
-      | VtProofStep _ | VtStartProof _ -> 
+      | VtProofStep _ | VtStartProof _ ->
         hover_of_sentence pattern (Document.find_next_qed_pos document pos)
       | _ -> None
 
@@ -217,9 +217,9 @@ let jump_to_definition document vs pos  =
                     | Ok f ->
                       let f =  Filename.remove_extension f ^ ".v" in
                       (if Sys.file_exists f then
-                        let b_pos = Position.create ~character:(loc.bp - loc.bol_pos) ~line:(loc.line_nb - 1) in
-                        let e_pos = Position.create ~character:(loc.ep - loc.bol_pos) ~line:(loc.line_nb - 1) in
-                        let range = Range.create ~end_:b_pos ~start:e_pos in
+                        let start_pos = Position.create ~character:(loc.bp - loc.bol_pos) ~line:(loc.line_nb - 1) in
+                        let end_pos = Position.create ~character:(loc.ep - loc.bol_pos) ~line:(loc.line_nb - 1) in
+                        let range = Range.create ~start:start_pos ~end_:end_pos in
                         Some (range, f)
                       else
                         None
@@ -258,7 +258,7 @@ let search ~vs ~id pattern =
   let query, r = parse_entry vs (G_vernac.search_queries) pattern in
   SearchQuery.interp_search ~id env sigma query r
 
-let print ~vs ~pattern = 
+let print ~vs ~pattern =
   let sigma, env = context_of_vernac_state vs in
   let qid = parse_entry vs (smart_global) pattern in
   let udecl = None in (*TODO*)
@@ -307,7 +307,7 @@ let search ~doc_id ~vs ~id pattern =
   ProverThread.try_run ~doc_id ~name:"search" ~timeout:0.5 (fun () -> search ~vs ~id pattern) |>
   to_list
 
-let print ~doc_id ~vs ~pattern = 
+let print ~doc_id ~vs ~pattern =
   ProverThread.try_run ~doc_id ~name:"print" ~timeout (fun () -> print ~vs ~pattern) |>
   to_types_error
 
