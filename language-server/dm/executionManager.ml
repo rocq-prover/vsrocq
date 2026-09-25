@@ -129,6 +129,16 @@ let inject_proof_event = Sel.Event.map (fun x -> ProofWorkerEvent x)
 let inject_proof_events st l =
   (st, List.map inject_proof_event l)
 
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2" || rocq = "9.3"]
+let make_expl _st lemmas program = (lemmas, program)
+[%%else]
+let make_expl st lemmas program = {
+  (Vernacstate.explicit_from_frozen st.Vernacstate.interp) with
+  proof=lemmas;
+  prog=program;
+}
+[%%endif]
+
 let interp_error_recovery strategy st : Vernacstate.t =
   match strategy with
   | RSkip -> st
@@ -152,7 +162,8 @@ let interp_error_recovery strategy st : Vernacstate.t =
         | Ok (pm) ->
           let lemmas = snd (Vernacstate.LemmaStack.pop lemmas) in
           let program = NeList.map_head (fun _ -> pm) program in
-          Vernacstate.Declare.set (lemmas,program) [@ocaml.warning "-3"];
+          let expl = make_expl st lemmas program in
+          Vernacstate.Declare.set expl [@ocaml.warning "-3"];
           let interp = Vernacstate.Interp.freeze_interp_state () in
           { st with interp }
         | Error (Sys.Break, _ as exn) ->
