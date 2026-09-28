@@ -405,12 +405,18 @@ let rocqtopStepForward params =
         ~label:item.label
         ~textEdit:(`TextEdit (TextEdit.create ~newText:item.snippet ~range:line_range))
         ~detail:(match item.kind with
-                | Dm.CompletionItems.Command -> "Command")
+                | Dm.CompletionItems.Command -> "Command"
+                | Dm.CompletionItems.Flag -> "Flag"
+                | Dm.CompletionItems.Option -> "Option"
+                | Dm.CompletionItems.Table -> "Table")
         ~kind:(match item.kind with
-               | Dm.CompletionItems.Command -> CompletionItemKind.Property)
+               | Dm.CompletionItems.Command -> CompletionItemKind.Method
+               | Dm.CompletionItems.Flag -> CompletionItemKind.Constant
+               | Dm.CompletionItems.Option -> CompletionItemKind.Property
+               | Dm.CompletionItems.Table -> CompletionItemKind.Field)
         ~documentation:(`MarkupContent {
           kind = MarkupKind.Markdown;
-          value = Printf.sprintf "<%s>\n\n%s" item.documentation_url item.raw.documentation})
+          value = Printf.sprintf "%s\n\n[See full docs](%s)" item.raw.documentation item.documentation_url})
         ~insertTextFormat:InsertTextFormat.Snippet
         ()
 

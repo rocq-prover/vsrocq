@@ -2,7 +2,7 @@
 
 We scrape the official Rocq documentation to collect metadata that can be used to serve completions to LSP users.
 
-While some things can be collected by semantic analysis (such as user defined or library defined lemmas/definitions), a large part of core Rocq are compiler builtins. This includes [commands](https://rocq-prover.org/doc/V9.2.0/refman/rocq-cmdindex.html) (like `Hint Rewrite`), [options](https://rocq-prover.org/doc/V9.2.0/refman/rocq-optindex.html) (like `Set Printing All`), [Ltac1 tactics](https://rocq-prover.org/doc/V9.2.0/refman/rocq-tacindex.html) (like `eapply`), and even [attributes](https://rocq-prover.org/doc/V9.2.0/refman/rocq-attrindex.html) (like `#[refine]`).
+While some things can be collected by semantic analysis (such as user defined or library defined lemmas/definitions), a large part of core Rocq are compiler builtins. This includes [commands](https://rocq-prover.org/doc/V9.2.0/refman/rocq-cmdindex.html) (like `Hint Rewrite`), [flags/options/tables](https://rocq-prover.org/doc/V9.2.0/refman/rocq-optindex.html) (like `Set Printing All`), [Ltac1 tactics](https://rocq-prover.org/doc/V9.2.0/refman/rocq-tacindex.html) (like `eapply`), and even [attributes](https://rocq-prover.org/doc/V9.2.0/refman/rocq-attrindex.html) (like `#[refine]`).
 
 The documentation and grammar for these builtins cannot be queried from `rocq-runtime` and thus need to be maintained separately. To do so, we first extend the doc generator for the official Rocq documentation to additionally generate JSON metadata description of all builtins. Then, we use those metadata files (called "indices") to serve completions to the user in a best-effort manner.
 

@@ -83,3 +83,6 @@ let constrs_of_local_binder = function
   | Constrexpr.CLocalPattern _ -> []
 [%%endif]
 
+let rec drop_while p = function
+  | [] -> []
+  | x :: xs as l -> if p x then drop_while p xs else l
