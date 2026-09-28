@@ -117,7 +117,7 @@ jobs:
             opam pin add rocq-core ${{ matrix.coq }}  
           fi
         fi
-        opam pin add vsrocq-language-server ./language-server/ --with-doc --with-test -y
+        opam pin add vsrocq-language-server ./language-server/ -y
 
     - run: |
         eval $(opam env)
