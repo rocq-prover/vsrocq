@@ -82,7 +82,7 @@ type document = {
   parsed_loc : int;
   raw_doc : RawDocument.t;
   init_synterp_state : Vernacstate.Synterp.t;
-  cancel_handle: Sel.Event.cancellation_handle option;
+  parse_revision : int;
   doc_id : document_id; (* Rocq specific identifier, used for feedback & co *)
 }
 
@@ -115,7 +115,7 @@ type parsing_end_info = {
 }
 
 type event =
-| Parse of (bool * parse_state) interruptible_result Sel.Promise.state
+| Parse of document_id * int * (bool * parse_state) interruptible_result Sel.Promise.state
 let pp_event fmt = function
  | Parse _ -> Format.fprintf fmt "Parse _"
 
@@ -690,9 +690,9 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
       junk_sentence_end stream;
       handle_parse_error id start start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state
   end
-and create_parse_event ~doc_id parse_state =
+and create_parse_event ~doc_id ~parse_revision parse_state =
   let priority = Some PriorityManager.parsing in
-  Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id ~name:"create_parse_event" (fun () -> parse_more parse_state)) (fun x -> Parse x)
+  Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id ~name:"create_parse_event" (fun () -> parse_more parse_state)) (fun x -> Parse (doc_id, parse_revision, x))
 
 
 let rec unchanged_id id = function
@@ -751,9 +751,7 @@ let invalidate top_edit top_id parsed_doc new_sentences =
   unchanged_id, invalid_ids, parsed_doc
 
 (** Validate document when raw text has changed *)
-let validate_document ({ parsed_loc; raw_doc; cancel_handle; doc_id } as document) =
-  (* Cancel any previous parsing event *)
-  Option.iter Sel.Event.cancel cancel_handle;
+let validate_document ({ parsed_loc; raw_doc; doc_id; parse_revision } as document) =
   (* We take the state strictly before parsed_loc to cover the case when the
   end of the sentence is editted *)
   let (stop, synterp_state, _scheduler_state) = state_strictly_before document parsed_loc in
@@ -765,9 +763,9 @@ let validate_document ({ parsed_loc; raw_doc; cancel_handle; doc_id } as documen
   log (fun () -> Format.sprintf "Parsing more from pos %i" stop);
   let started = Unix.gettimeofday () in
   let parsed_state = {stop; top_id;synterp_state; stream; raw=raw_doc; parsed=[]; errors=[]; parsed_comments=[]; loc=None; started; previous_document=document} in
-  let event = create_parse_event ~doc_id parsed_state in
-  let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
-  {document with cancel_handle}, [event]
+  let parse_revision = parse_revision + 1 in
+  let event = create_parse_event ~doc_id ~parse_revision parsed_state in
+  {document with parse_revision}, [event]
 
 let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; previous_document} document =
   let end_ = Unix.gettimeofday ()in
@@ -791,17 +789,21 @@ let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; p
   let parsed_document = {document with parsed_loc; parsing_errors_by_end; comments_by_end} in
   Some {parsed_document; unchanged_id; invalid_ids; previous_document}
 
-let handle_event document = function
-| Parse (Sel.Promise.Rejected e) -> raise e
-| Parse (Sel.Promise.Fulfilled Interrupted) -> assert false
-| Parse (Sel.Promise.Fulfilled (Aborted e)) -> CErrors.user_err e
-| Parse (Sel.Promise.Fulfilled (Terminated (true,parse_state))) ->
+let handle_event document (Parse (doc_id, parse_revision, result)) =
+  if doc_id <> document.doc_id || parse_revision <> document.parse_revision then
+    document, [], None
+  else match result with
+| Sel.Promise.Rejected e -> raise e
+| Sel.Promise.Fulfilled Interrupted ->
+  let document, events = validate_document document in
+  document, events, None
+| Sel.Promise.Fulfilled (Aborted e) -> CErrors.user_err e
+| Sel.Promise.Fulfilled (Terminated (true,parse_state)) ->
   (* let event = create_parse_event parse_state in *)
-  let event = create_parse_event ~doc_id:document.doc_id parse_state in
-  let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
-  {document with cancel_handle}, [event], None
-| Parse (Sel.Promise.Fulfilled (Terminated (false,parse_state))) ->
-  {document with cancel_handle=None}, [], handle_invalidate parse_state document
+  let event = create_parse_event ~doc_id ~parse_revision parse_state in
+  document, [event], None
+| Sel.Promise.Fulfilled (Terminated (false,parse_state)) ->
+  document, [], handle_invalidate parse_state document
 
 let create_document ~doc_id init_synterp_state text =
   let raw_doc = RawDocument.create text in
@@ -814,7 +816,7 @@ let create_document ~doc_id init_synterp_state text =
       comments_by_end = LM.empty;
       schedule = initial_schedule;
       init_synterp_state;
-      cancel_handle = None;
+      parse_revision = 0;
       doc_id;
     }
 

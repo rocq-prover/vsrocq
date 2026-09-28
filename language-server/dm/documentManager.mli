@@ -38,6 +38,13 @@ type events = event Sel.Event.t list
 
 val is_parsing : state -> bool
 
+val await_parsed : state -> unit Sel.Event.t option
+(** [await_parsed st] registers one event for the current parsing period.
+    It returns [None] when an event is already registered. *)
+
+val cancel_await_parsed : state -> unit
+(** Releases the event registered by [await_parsed], if any. *)
+
 val init : Vernacstate.t -> opts:Coqargs.injection_command list -> DocumentUri.t -> text:string -> state * events
 (** [init st opts uri text] initializes the document manager with initial vernac state
     [st] on which command line opts will be set. *)

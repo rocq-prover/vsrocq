@@ -37,7 +37,13 @@ let get_init_state () =
 
 type tab = { st : Dm.DocumentManager.state; visible : bool }
 
+type deferred_request = {
+  request : Jsonrpc.Request.t;
+  path : string;
+}
+
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
+let deferred_requests : deferred_request list ref = ref []
 
 let max_memory_usage  = ref 4000000000
 
@@ -61,6 +67,7 @@ type lsp_event =
 type event =
  | LspManagerEvent of lsp_event
  | DocumentManagerEvent of DocumentUri.t * Dm.DocumentManager.event
+ | ResumeDeferredRequests of string
  | Notification of notification
  | LogEvent of Dm.Log.event
 
@@ -92,6 +99,42 @@ let output_json obj =
   let s = Printf.sprintf "Content-Length: %d\r\n\r\n%s" size msg in
   log (fun () -> "sent: " ^ Yojson.Safe.pretty_to_string ~std:true obj);
   ignore(Unix.write_substring Unix.stdout s 0 (String.length s)) (* TODO ERROR *)
+
+let take_deferred_requests pred =
+  let selected, remaining = List.partition pred !deferred_requests in
+  deferred_requests := remaining;
+  selected
+
+let has_deferred_requests path =
+  List.exists (fun deferred -> deferred.path = path) !deferred_requests
+
+let cancel_parsing_waiter path =
+  match Hashtbl.find_opt states path with
+  | None -> ()
+  | Some { st } -> Dm.DocumentManager.cancel_await_parsed st
+
+let cancel_deferred_requests pred =
+  let cancelled = take_deferred_requests pred in
+  List.iter (fun deferred ->
+    let response_error = Jsonrpc.Response.Error.make
+      ~code:Jsonrpc.Response.Error.Code.RequestCancelled
+      ~message:"Request cancelled" ()
+    in
+    output_json @@ Jsonrpc.Response.(yojson_of_t @@ error deferred.request.id response_error)
+  ) cancelled;
+  List.iter (fun deferred ->
+    if not (has_deferred_requests deferred.path) then
+      cancel_parsing_waiter deferred.path
+  ) cancelled
+
+let cancel_deferred_request id =
+  cancel_deferred_requests (fun deferred ->
+    Jsonrpc.Id.equal deferred.request.id id)
+
+let ensure_parsing_waiter path st =
+  match Dm.DocumentManager.await_parsed st with
+  | None -> []
+  | Some event -> [Sel.Event.map (fun () -> ResumeDeferredRequests path) event]
 
 let output_notification notif =
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notif
@@ -296,9 +339,22 @@ let open_new_document uri text =
 
 let textDocumentDidOpen params =
   let Lsp.Types.DidOpenTextDocumentParams.{ textDocument = { uri; text } } = params in
-  match Hashtbl.find_opt states (DocumentUri.to_path uri) with
+  let path = DocumentUri.to_path uri in
+  match Hashtbl.find_opt states path with
   | None -> open_new_document uri text
-  | Some { st } -> update_view uri st; []
+  | Some { st } ->
+    let raw_document = Dm.DocumentManager.Internal.raw_document st in
+    let current_text = Dm.RawDocument.text raw_document in
+    let st, events =
+      if current_text = text then st, []
+      else
+        let start = Position.create ~line:0 ~character:0 in
+        let end_ = Dm.RawDocument.position_of_loc raw_document (String.length current_text) in
+        Dm.DocumentManager.apply_text_edits st [(Range.create ~start ~end_, text)]
+    in
+    replace_state path st true;
+    update_view uri st;
+    inject_dm_events (uri, events)
 
 let textDocumentDidChange params =
   let Lsp.Types.DidChangeTextDocumentParams.{ textDocument; contentChanges } = params in
@@ -319,7 +375,7 @@ let current_memory_usage () =
 
 let purge_invisible_tabs () =
   Hashtbl.filter_map_inplace (fun u ({ visible } as v) ->
-    if visible then Some v
+    if visible || has_deferred_requests u then Some v
     else begin
       log (fun () -> "purging tab " ^ u);
       None
@@ -341,6 +397,7 @@ let consider_purge_invisible_tabs () =
 let textDocumentDidClose params =
   let Lsp.Types.DidCloseTextDocumentParams.{ textDocument } = params in
   let path = DocumentUri.to_path textDocument.uri in
+  cancel_deferred_requests (fun deferred -> deferred.path = path);
   with_document_or ~default:() "textDocumentDidClose" textDocument.uri (fun { st } -> replace_state path st false);
   consider_purge_invisible_tabs ();
   [] (* TODO handle properly *)
@@ -433,11 +490,8 @@ let documentFoldingRange params =
   let Lsp.Types.FoldingRangeParams.{ textDocument = { uri } } = params in
   let@ { st } = with_document_or ~default:document_does_not_exist "documentFoldingRange" uri in
   log (fun () -> "[documentFoldingRange] getting folding ranges");
-  if Dm.DocumentManager.is_parsing st then
-    Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"}
-  else
-    let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
-    Ok(Some folding_ranges)
+  let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
+  Ok(Some folding_ranges)
 
 let documentSelectionRanges params =
   let Lsp.Types.SelectionRangeParams.{ textDocument = { uri }; positions } = params in
@@ -451,14 +505,8 @@ let documentSymbol params =
   let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri} } = params in
   let@ { st } = with_document_request "documentSymbol" uri in
   log (fun () -> "[documentSymbol] getting symbols");
-  if Dm.DocumentManager.is_parsing st then
-    (* Making use of the error codes: the ServerCancelled error code indicates
-       that the server is busy and the client should resend the request later.
-       It doesn't seem to be working for documentSymbol at the moment. *)
-    Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"} , []
-  else
-    let symbols = Dm.DocumentManager.get_document_symbols st in
-    Ok(Some (`DocumentSymbol symbols)), []
+  let symbols = Dm.DocumentManager.get_document_symbols st in
+  Ok(Some (`DocumentSymbol symbols)), []
 
 let rocqtopResetRocq params =
   let Request.Client.ResetParams.{ textDocument = { uri } } = params in
@@ -559,6 +607,71 @@ let dispatch_request : type a. a Request.Client.t -> (a,error) result * events =
   | DocumentState params -> sendDocumentState params
   | DocumentProofs params -> sendDocumentProofs params
 
+let deferred_request_target : type a. a Request.Client.t -> string option =
+  fun request ->
+  let open Request.Client in
+  match request with
+  | Std (Lsp.Client_request.DocumentSymbol params) ->
+    let Lsp.Types.DocumentSymbolParams.{ textDocument = { uri }; _ } = params in
+    Some (DocumentUri.to_path uri)
+  | Std (Lsp.Client_request.TextDocumentFoldingRange params) ->
+    let Lsp.Types.FoldingRangeParams.{ textDocument = { uri }; _ } = params in
+    Some (DocumentUri.to_path uri)
+  | _ -> None
+
+let defer_request request path st =
+  deferred_requests := !deferred_requests @ [{ request; path }];
+  ensure_parsing_waiter path st
+
+let output_success : type a. Jsonrpc.Request.t -> a Request.Client.t -> a -> unit =
+  fun request typed_request response ->
+  let response = Request.Client.yojson_of_result typed_request response in
+  output_json @@ Jsonrpc.Response.(yojson_of_t @@ ok request.id response)
+
+let dispatch_decoded_and_respond : type a. Jsonrpc.Request.t -> a Request.Client.t -> events =
+  fun request typed_request ->
+  let response, events = dispatch_request typed_request in
+  begin match response with
+  | Error {code; message} ->
+    let code = Option.default Jsonrpc.Response.Error.Code.RequestFailed code in
+    output_json @@ Jsonrpc.Response.(yojson_of_t @@ error request.id (Error.make ~code ~message ()))
+  | Ok response -> output_success request typed_request response
+  end;
+  events
+
+let dispatch_and_respond request =
+  match Request.Client.t_of_jsonrpc request with
+  | Error e -> log (fun () -> "Error decoding request: " ^ e); []
+  | Ok (Pack typed_request) -> dispatch_decoded_and_respond request typed_request
+
+let handle_lsp_request request =
+  match Request.Client.t_of_jsonrpc request with
+  | Error e -> log (fun () -> "Error decoding request: " ^ e); []
+  | Ok (Pack typed_request) ->
+    begin match deferred_request_target typed_request with
+    | Some path ->
+      begin match Hashtbl.find_opt states path with
+      | Some { st } when Dm.DocumentManager.is_parsing st ->
+        log (fun () -> "deferring request while parsing: " ^ request.method_);
+        defer_request request path st
+      | _ -> dispatch_decoded_and_respond request typed_request
+      end
+    | None -> dispatch_decoded_and_respond request typed_request
+    end
+
+let release_deferred_requests path =
+  take_deferred_requests (fun deferred -> deferred.path = path)
+  |> List.concat_map (fun deferred -> dispatch_and_respond deferred.request)
+
+let resume_deferred_requests path =
+  if not (has_deferred_requests path)
+  then []
+  else
+    match Hashtbl.find_opt states path with
+    | Some { st } when Dm.DocumentManager.is_parsing st ->
+      ensure_parsing_waiter path st
+    | _ -> release_deferred_requests path
+
 let dispatch_std_notification =
   let open Lsp.Client_notification in function
   | TextDocumentDidOpen params -> log_notification "textDocument/didOpen";
@@ -573,6 +686,9 @@ let dispatch_std_notification =
     textDocumentDidClose params
   | ChangeConfiguration params -> log_notification "workspace/didChangeConfiguration";
     workspaceDidChangeConfiguration params
+  | CancelRequest id ->
+    cancel_deferred_request id;
+    []
   | Initialized -> []
   | Exit ->
     do_exit ()
@@ -597,20 +713,7 @@ let handle_lsp_event = function
       begin match rpc with
       | Request req ->
           log (fun () -> "ui request: " ^ req.method_);
-          begin match Request.Client.t_of_jsonrpc req with
-          | Error(e) -> log (fun () -> "Error decoding request: " ^ e); []
-          | Ok(Pack r) ->
-            let resp, events = dispatch_request r in
-            begin match resp with
-            | Error {code; message} ->
-              let code = Option.default Jsonrpc.Response.Error.Code.RequestFailed code in
-              output_json @@ Jsonrpc.Response.(yojson_of_t @@ error req.id (Error.make ~code ~message ()))
-            | Ok resp ->
-              let resp = Request.Client.yojson_of_result r resp in
-              output_json @@ Jsonrpc.Response.(yojson_of_t @@ ok req.id resp)
-            end;
-            events
-          end
+          handle_lsp_request req
       | Notification notif ->
         begin match Notification.Client.of_jsonrpc notif with
         | Ok notif -> dispatch_notification notif
@@ -647,6 +750,8 @@ let handle_event = function
     end;
     Option.iter output_notification handled_event.notification;
     inject_dm_events (uri, events)
+  | ResumeDeferredRequests path ->
+    resume_deferred_requests path
   | Notification notification ->
     begin match notification with
     | QueryResultNotification params ->
@@ -659,6 +764,8 @@ let pr_event fmt = function
   | LspManagerEvent e -> pr_lsp_event fmt e
   | DocumentManagerEvent (_, e) ->
     Format.fprintf fmt "%a" Dm.DocumentManager.pp_event e
+  | ResumeDeferredRequests path ->
+    Format.fprintf fmt "ResumeDeferredRequests %s" path
   | Notification _ -> Format.fprintf fmt "notif"
   | LogEvent _ -> Format.fprintf fmt "debug"
 
