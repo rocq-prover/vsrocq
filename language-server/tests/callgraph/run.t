@@ -16,6 +16,7 @@ Calls sequentialized via ProverThread APIs
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> ProofWorker.worker_available -> *
   handle_event -> Dm.CheckingManager.handle_event -> Dm.ProverThread.try_run -> *
   handle_event -> Dm.Document.handle_event -> Dm.Document.create_parse_event -> Dm.ProverThread.eventually_run -> *
+  handle_event -> Dm.Document.handle_event -> Dm.Document.validate_document -> Dm.Document.create_parse_event -> Dm.ProverThread.eventually_run -> *
   handle_event -> Dm.Document.validate_document -> Dm.Document.create_parse_event -> Dm.ProverThread.eventually_run -> *
   highlight -> Dm.QueryManager.highlight -> Dm.ProverThread.try_run -> [thunk] -> *
   hover -> Dm.QueryManager.hover -> Dm.ProverThread.try_run -> [thunk] -> *
