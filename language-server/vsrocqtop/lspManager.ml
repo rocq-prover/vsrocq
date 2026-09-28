@@ -416,7 +416,7 @@ let rocqtopStepForward params =
                | Dm.CompletionItems.Table -> CompletionItemKind.Field)
         ~documentation:(`MarkupContent {
           kind = MarkupKind.Markdown;
-          value = Printf.sprintf "<%s>\n\n%s" item.documentation_url item.raw.documentation})
+          value = Printf.sprintf "%s\n\n[See full docs](%s)" item.raw.documentation item.documentation_url})
         ~insertTextFormat:InsertTextFormat.Snippet
         ()
 
