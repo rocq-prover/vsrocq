@@ -58,7 +58,7 @@ let eq_realarg =
 let nargs_maximal_of_pos imp =
   let (na, _, _) = imp.Impargs.impl_pos in
   na, imp.Impargs.impl_max
-let make_scope = (fun s -> CAst.make (Constrexpr.DelimUnboundedScope, s))
+let make_scope = (fun s -> CAst.make s)
 [%%endif]
 
 let pr_args args more_implicits mods =
