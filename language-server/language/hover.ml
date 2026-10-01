@@ -58,7 +58,11 @@ let eq_realarg =
 let nargs_maximal_of_pos imp =
   let (na, _, _) = imp.Impargs.impl_pos in
   na, imp.Impargs.impl_max
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2" || rocq = "9.3"]
 let make_scope = (fun s -> CAst.make (Constrexpr.DelimUnboundedScope, s))
+[%%else]
+let make_scope = (fun s -> CAst.make s)
+[%%endif]
 [%%endif]
 
 let pr_args args more_implicits mods =
