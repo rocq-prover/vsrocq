@@ -14,7 +14,6 @@ VsRocq is an extension for [Visual Studio Code](https://code.visualstudio.com/)
 
 **VsRocq** supports all recent Rocq/Coq versions >= 8.18.
 If you are running an Coq < 8.18 you should use [VsCoq Legacy](https://github.com/coq-community/vscoq-legacy).
-For the exact versions supported by each release, see the [compatibility matrix](#compatibility-matrix).
 
 ## Installing VsRocq
 
@@ -22,8 +21,8 @@ To use VsRocq, you need to:
 1. Install the VsRocq language server, and
 2. install and configure the VsRocq extension, in either VS Code or VSCodium.
 
-The opam package `vsrocq-language-server` and the VS Code extension are released independently, and they may stop working if their versions don't match.
-For the exact compatible versions supported by each release, see the [compatibility matrix](#compatibility-matrix).
+The VS Code extension and the opam package `vsrocq-language-server` are installed and updated separately, and they may stop working if their versions don't match.
+To check which versions you have, run **Rocq: Troubleshooting: Show setup** from the command palette (F1).
 See the [troubleshooting](#troubleshooting) section in case of problems.
 
 
@@ -59,7 +58,7 @@ for pre-release ```v2.3.1```:
 ```shell
 $ opam pin add vsrocq-language-server.2.3.1  https://github.com/rocq-prover/vsrocq/releases/download/v2.3.1/vsrocq-language-server-2.3.1.tar.gz
 ```
-When pinning a pre-release language server, ensure you also select the matching VsRocq extension version in VS Code ([compatibility matrix](#compatibility-matrix)).
+When pinning a pre-release language server, ensure you also select the same VsRocq extension version in VS Code.
 
 #### Using a Local Version of Rocq
 
@@ -82,7 +81,7 @@ configuration is needed. If VsRocq can't find it, see
 To install a [pre-release version](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_install-a-pre-release-extension-version)
 or a [specific version](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_install-an-extension)
 of the extension, see the VS Code guide.
-Make sure the language server version matches (see the [compatibility matrix](#compatibility-matrix)).
+Make sure you also install the same language server version.
 
 ### Troubleshooting
 
@@ -90,14 +89,16 @@ We list some common problems here, otherwise check out the [FAQ](./docs/FAQ.md) 
 
 **Server and extension versions mismatch**
 
-The opam package `vsrocq-language-server` and the VS Code extension are released independently, and they may stop working if their versions don't match.
-To pick matching versions:
-1. Check the installed VsRocq extension version in VS Code (Extensions view → “VsRocq” → version).
-2. Check the language server and Rocq versions installed in your current opam switch:
+The VS Code extension and the opam package `vsrocq-language-server` are installed and updated separately, and they may stop working if their versions don't match.
+To check your versions, run **Rocq: Troubleshooting: Show setup** from the command palette (F1).
+If the command isn't available, check them separately:
+- The extension version: in the Extensions view, under "VsRocq".
+- The language server and Rocq versions installed in your current opam switch:
   ```shell
   $ opam list vsrocq-language-server rocq-core coq-core
   ```
-3. Compare using the [compatibility matrix](#compatibility-matrix).
+
+If they differ, install the same version of both.
 
 **Language server not found**
 
@@ -222,56 +223,6 @@ After installation and activation of the extension:
 
 #### Diagnostics
 * `"vsrocq.diagnostics.full": bool` -- Toggles the printing of `Info` level diagnostics (defaults to `false`)
-
-## Compatibility matrix
-
-The VsRocq extension and the `vsrocq-language-server` opam package are
-released separately. To pick matching versions:
-
-1. Find your extension version in the first table. It gives the minimum
-   language server version that you need.
-2. In the second table, pick a language server version at or above that
-   minimum that supports your Rocq version.
-
-When in doubt, use the latest extension with the latest language server.
-
-**Extension and server versions**
-
-| Extension version | Minimum language server version |
-|---|---|
-| 2.5.0 | 2.3.3 |
-| 2.4.3 | 2.3.3 |
-| 2.4.0 – 2.4.2 | 2.4.0 |
-| 2.3.3 – 2.3.4 | 2.3.3 |
-| 2.3.0 – 2.3.2 | 2.3.0 |
-| 2.2.6 | 2.2.6 |
-| 2.2.5 | 2.2.5 |
-| 2.2.4 | 2.2.4 |
-| 2.2.2 – 2.2.3 | 2.2.2 |
-| 2.2.1 | 2.2.1 |
-| 2.1.7 – 2.2.0 | 2.1.7 |
-| 2.1.5 – 2.1.6 | 2.1.5 |
-| 2.1.3 | 2.1.3 |
-| 2.1.2 | 2.1.2 |
-| 2.1.1 | 2.1.1 |
-| 2.0.3 – 2.1.0 | 2.0.3 |
-| 2.0.0 – 2.0.2 | 2.0.0 |
-
-**Language server and Rocq/Coq versions**
-
-| Language server version | Coq (`coq-core`) | Rocq (`rocq-core`) |
-|---|---|---|
-| 2.5.0 | 8.18 – 8.20 | 9.0 – 9.3, `dev` |
-| 2.4.0 – 2.4.3 | 8.18 – 8.20 | 9.0 – 9.2, `dev` |
-| 2.3.0 – 2.3.4 | 8.18 – 8.20 | 9.0 – 9.1, `dev` |
-| 2.1.7 – 2.2.6 | 8.18 – 8.20 | — |
-| 2.1.0 – 2.1.6 | 8.18 – 8.19 | — |
-| 2.0.0 – 2.0.3 | 8.18 | — |
-
-All language server versions from 2.1.7 onwards require OCaml >= 4.14.
-
-If the installed language server is older than the extension requires,
-the extension shows an error at startup that names the required version.
 
 ## For extension developers
 See [Dev docs](https://github.com/rocq-prover/vsrocq/blob/main/docs/developers.md)
