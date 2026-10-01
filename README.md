@@ -75,7 +75,7 @@ If you haven't installed an extension before, see the VS Code guide on
 
 By default, VsRocq uses the `vsrocqtop` found in your `PATH`, so no further
 configuration is needed. If VsRocq can't find it, see
-[Language server not found](#troubleshooting).
+[Language server not found](#language-server-not-found).
 
 #### Pre-release versions
 
@@ -83,47 +83,6 @@ To install a [pre-release version](https://code.visualstudio.com/docs/configure/
 or a [specific version](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_install-an-extension)
 of the extension, see the VS Code guide.
 Make sure you also install the same language server version.
-
-### Troubleshooting
-
-We list some common problems here, otherwise check out the [FAQ](./docs/FAQ.md) for more issues and troubleshooting tips.
-
-**Server and extension versions mismatch**
-
-The VS Code extension and the opam package `vsrocq-language-server` are installed and updated separately, and they may stop working if their versions don't match.
-To check your versions, run **Rocq: Troubleshooting: Show setup** from the command palette (F1).
-If the command isn't available, check them separately:
-- The extension version: in the Extensions view, under "VsRocq".
-- The language server and Rocq versions installed in your current opam switch:
-  ```shell
-  $ opam list vsrocq-language-server rocq-core coq-core
-  ```
-
-If they differ, install the same version of both.
-
-**Language server not found**
-
-If VsRocq shows a "No language server found" error even though `which vsrocqtop`
-works in your shell, VS Code is probably not seeing the same `PATH` as your shell.
-This happens, for example, when VS Code is started from the desktop instead of a
-terminal where the opam environment is loaded.
-To fix it, either start VS Code from that terminal (`code .`), or set the full path
-to `vsrocqtop` (the output of `which vsrocqtop`) in the "Vsrocq: Path" setting
-(`vsrocq.path`).
-
-
-#### Known problems
-
-- Getting an ```Unable to start coqtop``` or ```coqtop-stderr: Don't know what to do with -ideslave``` error.
-This is a known issue if you are updating from a very old version.
-Solution: navigate to your extensions folder (```Extensions: Open Extensions Folder``` from the command palette) and then delete the ```siegbell.vscoq-**version**``` folder.
-
-- Extension hanging: query panel shows a loading bar and shortcuts fail
-This could be due to an old ```vscode``` version. Make sure ```vscode``` is up to date.
-
-#### Getting help
-
-If you are unable to set-up VsRocq, feel free to contact us on the ```VsRocq Devs and Users``` [channel in zulip](https://rocq-prover.zulipchat.com/#narrow/channel/237662-VsRocq-devs-.26-users).
 
 ## Features
 * Syntax highlighting
@@ -228,6 +187,80 @@ After installation and activation of the extension:
 
 #### Diagnostics
 * `"vsrocq.diagnostics.full": bool` -- Toggles the printing of `Info` level diagnostics (defaults to `false`)
+
+## Troubleshooting
+
+This section covers the most common setup problems. For other questions, see the [FAQ](./docs/FAQ.md).
+
+### Diagnosing problems
+
+VsRocq includes two commands to help you find out what is wrong. Run them from
+the command palette (F1):
+
+- **Rocq: Troubleshooting: Show setup** shows the versions and paths of your
+  VsRocq extension, language server (`vsrocqtop`), Rocq, OS, and VS Code,
+  with a button to copy them to the clipboard.
+- **Rocq: Troubleshooting: Show Log Output** opens the **VsRocq** output
+  channel, where the extension reports problems with finding and starting
+  the language server.
+
+Both commands work even if the language server didn't start. In that case,
+**Show setup** shows the language server version as "not available".
+
+### Server and extension versions mismatch
+
+The VS Code extension and the opam package `vsrocq-language-server` are installed
+and updated separately, and they may stop working if their versions don't match. VS Code
+updates extensions automatically, so a mismatch can appear without you changing anything.
+
+Typical symptoms:
+- An error saying "This version of VsRocq requires version X of vsrocq-language-server".
+- Commands such as "Interpret to point" seem to do nothing.
+
+To check your versions, run **Rocq: Troubleshooting: Show setup** (see [Diagnosing problems](#diagnosing-problems)).
+It shows the extension, language server, and Rocq versions together.
+If the language server version shows as "not available", check the versions
+installed in your current opam switch:
+  ```shell
+  $ opam list vsrocq-language-server rocq-core coq-core
+  ```
+
+If they differ, install the same version of both: either upgrade the language server
+(`opam update && opam upgrade vsrocq-language-server`), or
+[install the extension version](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_install-an-extension)
+that matches your language server.
+
+### Language server not found
+
+If VsRocq shows a "No language server found" error, it couldn't find `vsrocqtop`.
+The **VsRocq** output channel shows `[Toolchain] Did not find vsrocqtop path`.
+
+First, run `which vsrocqtop` in a terminal:
+
+- **It prints nothing:** the language server isn't installed in your current opam
+  switch, or the opam environment isn't loaded in that terminal. Run
+  `eval $(opam env)` and try again; if it still prints nothing, see
+  [Installing the language server](#installing-the-language-server).
+- **It prints a path:** VS Code isn't seeing the same `PATH` as your terminal.
+  This happens, for example, when VS Code is started from the desktop instead
+  of a terminal where the opam environment is loaded. To fix it, either:
+  - start VS Code from that terminal (`code .`), or
+  - set the "Vsrocq: Path" setting (`vsrocq.path`) to the path printed by
+    `which vsrocqtop`.
+
+After changing `vsrocq.path`, run **Developer: Reload Window** from the command
+palette (F1). VsRocq only looks for `vsrocqtop` when it starts.
+If you change your opam switch instead, fully quit VS Code and start it again, so
+that it picks up the new `PATH`.
+
+### Getting help
+
+If you can't set up VsRocq, feel free to ask on the `VsRocq Devs and Users`
+[channel in Zulip](https://rocq-prover.zulipchat.com/#narrow/channel/237662-VsRocq-devs-.26-users).
+To report a bug, [open an issue](https://github.com/rocq-prover/vsrocq/issues).
+
+In both cases, include the output of **Rocq: Troubleshooting: Show setup**
+(see [Diagnosing problems](#diagnosing-problems)).
 
 ## For extension developers
 See [Dev docs](https://github.com/rocq-prover/vsrocq/blob/main/docs/developers.md)

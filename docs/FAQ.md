@@ -43,7 +43,11 @@ Welcome to the VsRocq FAQ! This document aims to answer common questions and hel
     - Ensure your opam environment is active in the terminal from which you launch VS Code (run `eval $(opam env)`).
     - The most reliable method is to set the explicit full path to `vsrocqtop` in the `vsrocq.path` extension setting.
     - On macOS, fully restarting VS Code (Quit and Relaunch) after installation might be necessary.
-    - If you see errors mentioning `-ideslave`, it might indicate an old VsCoq Legacy version or its settings are interfering. Ensure any old VsCoq versions (e.g., `siegebell.vscoq`) are uninstalled, and that `vsrocq.path` points to `vsrocqtop`, not `coqtop`.
+    - If you see `Unable to start coqtop` or `coqtop-stderr: Don't know what to do with -ideslave`,
+      an old VsCoq version (e.g., `siegebell.vscoq`) is interfering. This happens when updating
+      from a very old version. Uninstall it; if the error persists, run
+      "Extensions: Open Extensions Folder" from the command palette and delete the
+      `siegebell.vscoq-<version>` folder. Also make sure `vsrocq.path` points to `vsrocqtop`, not `coqtop`.
 
 1.  **How does VsRocq handle `_CoqProject` files for finding `.vo` files?**
 
@@ -151,6 +155,10 @@ Welcome to the VsRocq FAQ! This document aims to answer common questions and hel
     This indicates a temporary desynchronization. Saving the file, or sometimes removing and re-adding the problematic bullet and then saving, can help resynchronize.
 
     Additionally, reloading the VS Code window (F1, then "Developer: Reload Window") can often resolve these issues.
+
+1.  **The extension hangs: the query panel shows a loading bar and shortcuts don't work.**
+
+    This can be caused by an old VS Code version. Make sure VS Code is up to date.
 
 ---
 
