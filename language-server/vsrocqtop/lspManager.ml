@@ -49,9 +49,12 @@ let Dm.Types.Log log = Dm.Log.mk_log "lspManager"
 
 let conf_request_id = max_int
 
+let rocq_version =
+  String.map (fun c -> if c = '+' then '-' else c) Coq_config.version
+
 let server_info = InitializeResult.create_serverInfo
   ~name:"vsrocq-language-server"
-  ~version:"2.5.0"
+  ~version:("2.5.0" ^ "+" ^ rocq_version)
   ()
 
 type lsp_event =
