@@ -103,7 +103,7 @@ export function activate(context: ExtensionContext) {
                                 commands.executeCommand(
                                     "vscode.open",
                                     Uri.parse(
-                                        "https://github.com/rocq-prover/vscoq?tab=readme-ov-file#installing-the-language-server",
+                                        "https://github.com/rocq-prover/vsrocq?tab=readme-ov-file#installing-the-language-server",
                                     ),
                                 );
                             }
@@ -139,7 +139,7 @@ export function activate(context: ExtensionContext) {
                             if (act?.id === 1) {
                                 commands.executeCommand(
                                     "extension.open",
-                                    "rocq-community.vsrocq1",
+                                    "coq-community.vscoq1",
                                 );
                             }
                         });
@@ -148,7 +148,7 @@ export function activate(context: ExtensionContext) {
     );
 
     // Detect if vsrocq1 is installed and active
-    const vsrocq1 = extensions.getExtension("rocq-community.vsrocq1");
+    const vsrocq1 = extensions.getExtension("coq-community.vscoq1");
     if (vsrocq1) {
         if (vsrocq1.isActive) {
             const message =
@@ -163,7 +163,7 @@ export function activate(context: ExtensionContext) {
                     if (act?.id === 0) {
                         commands.executeCommand(
                             "extension.open",
-                            "rocq-community.vsrocq1",
+                            "coq-community.vscoq1",
                         );
                     }
                     if (act?.id === 1) {
