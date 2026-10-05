@@ -106,7 +106,6 @@ export interface AboutRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
     pattern: string;
     position: Position;
-    goalIndex?: number;
 }
 
 export type AboutRocqResponse = PpString;
@@ -115,7 +114,6 @@ export interface CheckRocqRequest {
     textDocument: VersionedTextDocumentIdentifier;
     pattern: string;
     position: Position;
-    goalIndex?: number;
 }
 
 export type CheckRocqResponse = PpString;
