@@ -4,6 +4,7 @@ Option\.
 List\.
 Int\.
 Unix\.
+Yojson\.
 Lsp\.
 Memprof_limits\.Token\.
 Str\.
