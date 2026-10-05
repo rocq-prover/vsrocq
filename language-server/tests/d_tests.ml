@@ -110,3 +110,28 @@ let %test_unit "document: expand sentence" =
   let r1,(r2,()) = d_sentences parsed_document (P(P(O))) in
   [%test_eq: sentence_id] s1.id r1.id;
   ()
+let%test_unit "diags_dirty: feedback levels" =
+  let Document.{parsed_document} = init_and_parse_test_doc () ~text:"Definition x := 3." in
+  let s1,() = d_sentences parsed_document (P(O)) in
+  let doc = Document.clear_diags_dirty parsed_document in
+  let feedback lvl = (lvl, None, [], Pp.str "message") in
+  let dirty_after id lvl = Document.diags_dirty (Document.append_feedback doc id (feedback lvl)) in
+  [%test_eq: bool] false (dirty_after s1.id Feedback.Info);
+  [%test_eq: bool] false (dirty_after s1.id Feedback.Notice);
+  [%test_eq: bool] false (dirty_after s1.id Feedback.Debug);
+  [%test_eq: bool] true (dirty_after s1.id Feedback.Warning);
+  [%test_eq: bool] true (dirty_after s1.id Feedback.Error);
+  (* feedback for a sentence that is not in the document is dropped *)
+  [%test_eq: bool] false (dirty_after (Stateid.fresh ()) Feedback.Error)
+
+let%test_unit "diags_dirty: shift and parse" =
+  let Document.{parsed_document} = init_and_parse_test_doc () ~text:"Definition x := 3." in
+  [%test_eq: bool] true (Document.diags_dirty parsed_document);
+  let doc = Document.clear_diags_dirty parsed_document in
+  [%test_eq: bool] false (Document.diags_dirty doc);
+  [%test_eq: bool] true (Document.diags_dirty (Document.shift_feedbacks_and_checking_errors ~start:0 ~offset:1 doc));
+  let end_ = (Document.range_of_document doc).end_ in
+  let doc = Document.apply_text_edits doc [Lsp.Types.Range.{ start = end_; end_ }, " Definition y := 4."] in
+  [%test_eq: bool] false (Document.diags_dirty doc);
+  let Document.{parsed_document} = validate_document doc in
+  [%test_eq: bool] true (Document.diags_dirty parsed_document)

@@ -58,8 +58,8 @@ type parsed_ast = {
 }
 
 type parsing_error = {
-  start: int; 
-  stop: int; 
+  start: int;
+  stop: int;
   msg: Pp.t Loc.located;
   qf: Quickfix.t list option;
   str: string;
@@ -171,6 +171,16 @@ val range_of_id_with_blank_space : document -> sentence_id -> Range.t
 
 val range_of_document : document -> Range.t
 (** [range_of_document doc] returns a Range object corresponding to the whole document *)
+
+val diags_dirty : document -> bool
+(** [diags_dirty doc] flags whenever something changed that can alter the diagnostics the client sees, e.g.:
+    a checking error appearing or disappearing, an Error/Warning feedback, a parse, or a shift of positions.
+    Info, Debug and Notice feedback does not set it.
+    Callers can use it to skip recomputing and republishing diagnostics when nothing changed. *)
+
+val clear_diags_dirty : document -> document
+(** [clear_diags_dirty doc] resets the flag. Call it after publishing the
+    diagnostics of [doc]. *)
 
 val all_feedback : document -> (sentence_id * feedback_message) list
 (** [all_feedback doc] returns all sentences with a feedback *)
