@@ -108,10 +108,10 @@ let take_deferred_requests pred =
 let has_deferred_requests path =
   List.exists (fun deferred -> deferred.path = path) !deferred_requests
 
-let cancel_parsing_waiter path =
+let release_parsed_event_for_path path =
   match Hashtbl.find_opt states path with
   | None -> ()
-  | Some { st } -> Dm.DocumentManager.cancel_await_parsed st
+  | Some { st } -> Dm.DocumentManager.release_parsed_event st
 
 let cancel_deferred_requests pred =
   let cancelled = take_deferred_requests pred in
@@ -124,15 +124,15 @@ let cancel_deferred_requests pred =
   ) cancelled;
   List.iter (fun deferred ->
     if not (has_deferred_requests deferred.path) then
-      cancel_parsing_waiter deferred.path
+      release_parsed_event_for_path deferred.path
   ) cancelled
 
 let cancel_deferred_request id =
   cancel_deferred_requests (fun deferred ->
     Jsonrpc.Id.equal deferred.request.id id)
 
-let ensure_parsing_waiter path st =
-  match Dm.DocumentManager.await_parsed st with
+let ensure_parsed_event path st =
+  match Dm.DocumentManager.await_parsed_event st with
   | None -> []
   | Some event -> [Sel.Event.map (fun () -> ResumeDeferredRequests path) event]
 
@@ -621,7 +621,7 @@ let deferred_request_target : type a. a Request.Client.t -> string option =
 
 let defer_request request path st =
   deferred_requests := !deferred_requests @ [{ request; path }];
-  ensure_parsing_waiter path st
+  ensure_parsed_event path st
 
 let output_success : type a. Jsonrpc.Request.t -> a Request.Client.t -> a -> unit =
   fun request typed_request response ->
@@ -669,7 +669,7 @@ let resume_deferred_requests path =
   else
     match Hashtbl.find_opt states path with
     | Some { st } when Dm.DocumentManager.is_parsing st ->
-      ensure_parsing_waiter path st
+      ensure_parsed_event path st
     | _ -> release_deferred_requests path
 
 let dispatch_std_notification =
