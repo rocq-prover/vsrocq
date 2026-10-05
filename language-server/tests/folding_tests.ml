@@ -348,7 +348,7 @@ let%test_unit "folding.cache_edit_invalidates_and_recomputes" =
     (phys_equal entries_before_edit entries_after_edit)
     false
 
-let%test_unit "document_manager.await_parsed" =
+let%test_unit "document_manager.await_parsed_event" =
   let st, _events = em_init_test_doc ~text:"Definition x := 0." in
   let document = DocumentManager.Internal.document st in
   let sentence = first_sentence document in
@@ -356,22 +356,22 @@ let%test_unit "document_manager.await_parsed" =
   let parsing_st, events =
     DocumentManager.apply_text_edits st [(range, "Definition y := 0.")]
   in
-  let waiter =
-    match DocumentManager.await_parsed parsing_st with
+  let parsed_event =
+    match DocumentManager.await_parsed_event parsing_st with
     | Some event -> event
-    | None -> failwith "expected parsing waiter"
+    | None -> failwith "expected parsed event"
   in
   [%test_eq: bool]
-    (Option.is_none (DocumentManager.await_parsed parsing_st))
+    (Option.is_none (DocumentManager.await_parsed_event parsing_st))
     true;
   ignore (handle_events parsing_st events);
-  let waiter = Sel.Event.map (fun () -> true) waiter in
+  let parsed_event = Sel.Event.map (fun () -> true) parsed_event in
   let lower_priority =
     Sel.now ~priority:PriorityManager.execution false
   in
   let ready, _remaining =
     Sel.pop_timeout ~stop_after_being_idle_for:0.3
-      (Sel.Todo.add Sel.Todo.empty [lower_priority; waiter])
+      (Sel.Todo.add Sel.Todo.empty [lower_priority; parsed_event])
   in
   [%test_eq: bool option] ready (Some true)
 

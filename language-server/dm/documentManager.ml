@@ -42,7 +42,7 @@ type state = {
   feedback_pipe : feedback_pipe;
   pending_feedback : feedback_data list;
   checking_state : CheckingManager.state;
-  parsing_waiter : unit Sel.Promise.handler option ref;
+  parsed_resolver : unit Sel.Promise.handler option ref;
 }
 type event =
   | ParseBegin
@@ -69,28 +69,28 @@ type events = event Sel.Event.t list
 
 let is_parsing st =  st.document_state = Parsing
 
-let resolve_parsing_waiter st =
-  match !(st.parsing_waiter) with
+let signal_parsed st =
+  match !(st.parsed_resolver) with
   | None -> ()
   | Some resolver ->
-    st.parsing_waiter := None;
+    st.parsed_resolver := None;
     Sel.Promise.fulfill resolver ()
 
-let await_parsed st =
+let await_parsed_event st =
   match st.document_state with
   | Parsed -> Some (Sel.now ())
   | Parsing ->
-    match !(st.parsing_waiter) with
+    match !(st.parsed_resolver) with
     | Some _ -> None
     | None ->
       let promise, resolver = Sel.Promise.make () in
-      st.parsing_waiter := Some resolver;
+      st.parsed_resolver := Some resolver;
       Some (Sel.On.promise ~priority:PriorityManager.parsing
         ~name:"document parsed" promise (function
         | Sel.Promise.Fulfilled () -> ()
         | Sel.Promise.Rejected exn -> raise exn))
 
-let cancel_await_parsed = resolve_parsing_waiter
+let release_parsed_event = signal_parsed
 
 [%%if lsp < (1,19,0) ]
 let message_of_string x = x
@@ -282,7 +282,7 @@ let validate_document state (Document.{unchanged_id; invalid_ids; previous_docum
   let state = Stateid.Set.fold invalidate_checked invalid_ids state in
   let checking_state = CheckingManager.reset_overview state.checking_state previous_document unchanged_id in
   let state = { state with checking_state; document_state = Parsed } in
-  resolve_parsing_waiter state;
+  signal_parsed state;
   state
 
 [%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
@@ -333,17 +333,17 @@ let init init_vs ~opts uri ~text =
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in
   let parsebegin_event = mk_parsing_begin_event () in
-  let state = { uri; opts; init_vs; document; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; checking_state; parsing_waiter = ref None } in
+  let state = { uri; opts; init_vs; document; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; checking_state; parsed_resolver = ref None } in
   state, [parsebegin_event;feedback_event]
 
-let reset { uri; opts; init_vs; document; checking_state; feedback_pipe; parsing_waiter } =
+let reset { uri; opts; init_vs; document; checking_state; feedback_pipe; parsed_resolver } =
   Utilities.feedback_pipe_cleanup feedback_pipe;
   let text = RawDocument.text @@ Document.raw_document document in
   let doc_id = Utilities.fresh_doc_id () in
   let document = Document.create_document ~doc_id init_vs.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.reset checking_state init_vs ~feedback_pipe in
-  let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; parsing_waiter } in
+  let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; parsed_resolver } in
   let parsebegin_event = mk_parsing_begin_event () in
   state, [parsebegin_event;feedback_event]
 
