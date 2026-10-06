@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   build-extension:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -35,6 +36,7 @@ jobs:
     - run: npm run package
 
   nix-dev-build:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     strategy:
       fail-fast: false
       matrix:
@@ -83,6 +85,7 @@ jobs:
       run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
   install-opam:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     strategy:
       fail-fast: false
       matrix:
@@ -195,6 +198,7 @@ jobs:
       run: opam exec -- vsrocqtop -v
 
   dev-setup-opam:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -251,6 +255,7 @@ jobs:
 
 
   create-release:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [build-extension, nix-dev-build, install-opam, dev-setup-opam]
@@ -278,6 +283,7 @@ jobs:
           generate_release_notes: true
 
   publish-extension:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     # Dry run: it packages the extension and checks that both marketplace
     # actions accept the result, with a stub token. It depends on
     # build-extension so that it cannot report success while packaging is
