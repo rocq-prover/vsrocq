@@ -354,34 +354,3 @@ let%test_unit "documentProofs.theorem_without_proof_no_ltac" =
   let st = handle_dm_events todo st in
   let proofs = DocumentManager.get_document_proofs st in
   [%test_eq: int] (List.length proofs) 1
-
-let%test_unit "diags_dirty.no_errors" =
-  let st, _init_events = em_init_test_doc ~text:"Definition x := 1. Definition y := 2." in
-  let st = DocumentManager.clear_diags_dirty st in
-  let events = DocumentManager.interpret_to_end () in
-  let st = handle_dm_events Sel.Todo.(add empty events) st in
-  let doc = DocumentManager.Internal.document st in
-  let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
-  [%test_pred: bool] Fn.id (Document.is_checked doc s1.id && Document.is_checked doc s2.id);
-  [%test_eq: bool] false (DocumentManager.diags_dirty st)
-
-let%test_unit "diags_dirty.checked_transitions" =
-  let st, _init_events = em_init_test_doc ~text:"Definition x := true. Definition y : nat := x." in
-  let st = DocumentManager.clear_diags_dirty st in
-  let events = DocumentManager.interpret_to_end () in
-  let st = handle_dm_events Sel.Todo.(add empty events) st in
-  [%test_eq: bool] true (DocumentManager.diags_dirty st);
-  let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
-  let doc = Document.clear_diags_dirty (DocumentManager.Internal.document st) in
-  let checked id = Option.value_exn (Option.value_exn (Document.get_sentence doc id)).Document.checked in
-  let success = checked s1.id in
-  let failure = checked s2.id in
-  [%test_pred: bool] Fn.id (Option.is_some (Document.error doc s2.id));
-  let dirty = Document.diags_dirty in
-  let unchecked id = Document.clear_diags_dirty (Document.set_unchecked doc id) in
-  [%test_eq: bool] false (dirty (Document.set_unchecked doc s1.id));
-  [%test_eq: bool] true (dirty (Document.set_unchecked doc s2.id));
-  [%test_eq: bool] false (dirty (Document.update_checked (unchecked s1.id) (s1.id, success)));
-  [%test_eq: bool] true (dirty (Document.update_checked (unchecked s2.id) (s2.id, failure)));
-  (* the new error may differ from the old one *)
-  [%test_eq: bool] true (dirty (Document.update_checked doc (s2.id, failure)))

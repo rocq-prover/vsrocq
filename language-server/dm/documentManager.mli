@@ -113,15 +113,6 @@ val all_diagnostics : state -> Diagnostic.t list
 (** all_diagnostics [doc] returns the diagnostics corresponding to the sentences
     that have been executed in [doc]. *)
 
-val diags_dirty : state -> bool
-(** [diags_dirty st] is true when [all_diagnostics] could return something
-    different since the last [clear_diags_dirty], not counting Info, Debug and
-    Notice feedback. Lets callers skip republishing when nothing changed;
-    see [Document.diags_dirty]. *)
-
-val clear_diags_dirty : state -> state
-(** [clear_diags_dirty st] resets the flag; see [Document.clear_diags_dirty]. *)
-
 val get_completions : state -> Position.t -> completion_item list 
 
 val handle_event : event -> state -> (state,event) handled_event

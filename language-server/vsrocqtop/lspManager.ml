@@ -222,27 +222,10 @@ let send_error_notification message =
   let notification = Lsp.Server_notification.ShowMessage params in
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Lsp.Server_notification.to_jsonrpc notification
 
-(* Stores [st] with the flag cleared, but only if [st] is the stored state, so
-   a caller passing some other state never overwrites the stored one. *)
-let mark_diagnostics_published uri st =
-  let path = DocumentUri.to_path uri in
-  match Hashtbl.find_opt states path with
-  | Some tab when tab.st == st ->
-    Hashtbl.replace states path { tab with st = Dm.DocumentManager.clear_diags_dirty st }
-  | _ -> ()
-
 let update_view uri st =
   if (Dm.ExecutionManager.is_diagnostics_enabled ()) then (
     send_highlights uri st;
-    if !full_diagnostics || Dm.DocumentManager.diags_dirty st then begin
-    (* update_view runs once per executed sentence, and publish_diagnostics walks
-       the whole document every time. Diagnostics rarely change from one sentence
-       to the next, so this skips publishing unless Document.diags_dirty is set, and
-       clears the flag after publishing. With diagnostics.full Info/Notice feedback
-       are also shown, so it always publishes. *)
-      publish_diagnostics uri st;
-      mark_diagnostics_published uri st
-    end
+    publish_diagnostics uri st;
   )
 
 let replace_state path st visible = Hashtbl.replace states path { st; visible}

@@ -75,11 +75,6 @@ type sentence = {
 
 type document = {
   sentences_by_id : sentence SM.t;
-  (* flag to inform whether something might change the diagnostics:
-     a checking error appearing or disappearing, an Error/Warning feedback,
-     a parse, or a shift of positions. Callers can use it to skip
-     recomputing and republishing diagnostics when nothing changed. *)
-  diags_dirty : bool;
   sentences_by_end : sentence_id LM.t;
   parsing_errors_by_end : parsing_error LM.t;
   comments_by_end : comment LM.t;
@@ -168,10 +163,6 @@ let range_of_document document : Range.t =
 let schedule doc = doc.schedule
 
 let raw_document doc = doc.raw_doc
-
-let diags_dirty doc = doc.diags_dirty
-
-let clear_diags_dirty doc = { doc with diags_dirty = false }
 
 let parse_errors parsed =
   List.map snd (LM.bindings parsed.parsing_errors_by_end)
@@ -391,58 +382,35 @@ let is_qed = function
      not completed. Here we double check this invariant. *)
   | _ -> false
 
-let is_failure = function Some (Failure _) -> true | _ -> false
-
-(* A change of `checked` can only alter the diagnostics if either side is a
-   failure. Failure -> Failure also counts, since the error may differ.
-   None -> Success changes nothing. *)
-let mark_dirty_if_failure ~before ~after parsed =
-  if is_failure before || is_failure after then { parsed with diags_dirty = true }
-  else parsed
-
 let update_checked parsed (id, v) =
   match SM.find_opt id parsed.sentences_by_id with
   | None -> parsed
   | Some ({ checked; ast } as s) ->
-      let accept =
-        match checked with
-        | None | Some (Failure _) -> true
-        | Some (Success _) -> is_qed ast
-      in
-      if not accept then begin
-        log (fun () -> "Ignoring bad update for checked status, possibly a bug");
-        parsed
-      end else
-        let parsed =
-          { parsed with sentences_by_id = SM.add id { s with checked = Some v} parsed.sentences_by_id } in
-        mark_dirty_if_failure ~before:checked ~after:(Some v) parsed
+      match checked with
+      | None | Some (Failure _)->
+          { parsed with sentences_by_id = SM.add id { s with checked = Some v} parsed.sentences_by_id }
+      | Some (Success _) when is_qed ast ->
+          { parsed with sentences_by_id = SM.add id { s with checked = Some v} parsed.sentences_by_id }
+      | _ -> log (fun () -> "Ignoring bad update for checked status, possibly a bug"); parsed
 
 let set_unchecked parsed id =
   match SM.find_opt id parsed.sentences_by_id with
   | None -> parsed
   | Some s ->
-    let parsed =
-      { parsed with sentences_by_id = SM.add id { s with checked = None } parsed.sentences_by_id } in
-    mark_dirty_if_failure ~before:s.checked ~after:None parsed
+    { parsed with sentences_by_id = SM.add id { s with checked = None } parsed.sentences_by_id }
 
 let is_checked parsed id =
   match SM.find_opt id parsed.sentences_by_id with
   | None -> false
   | Some { checked } -> not(checked = None)
 
-let append_feedback parsed id (lvl, _, _, msg as fb) =
+let append_feedback parsed id (_, _, _, msg as fb) =
   match SM.find_opt id parsed.sentences_by_id with
   | None ->
     log (fun () -> "Received feedback on non-existing state id " ^ Stateid.to_string id ^ ": " ^ Pp.string_of_ppcmds msg);
     parsed
   | Some s ->
-      let parsed =
-        match lvl with
-        | Feedback.(Error | Warning) -> { parsed with diags_dirty = true }
-        | Feedback.(Info | Debug | Notice) -> parsed
-      in
       { parsed with sentences_by_id = SM.add id { s with messages = s.messages @ [fb] } parsed.sentences_by_id }
-
 
 let shift_sentence ~start ~offset s =
   let messages = CList.Smart.map (Utilities.shift_feedback ~start ~offset) s.messages in
@@ -451,8 +419,7 @@ let shift_sentence ~start ~offset s =
   else { s with messages; checked }
 
 let shift_feedbacks_and_checking_errors ~start ~offset parsed =
-  { parsed with sentences_by_id = SM.map (shift_sentence ~start ~offset) parsed.sentences_by_id;
-                diags_dirty = true }
+  { parsed with sentences_by_id = SM.map (shift_sentence ~start ~offset) parsed.sentences_by_id }
 
 let string_of_parsed_ast { tokens } =
   (* TODO implement printer for vernac_entry *)
@@ -821,8 +788,7 @@ let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; p
     List.fold_left (fun acc (comment : comment) -> LM.add comment.stop comment acc) comments new_comments
   in
   let parsed_loc = pos_at_end document in
-  let parsed_document = {document with parsed_loc; parsing_errors_by_end; comments_by_end;
-                         diags_dirty = true} in
+  let parsed_document = {document with parsed_loc; parsing_errors_by_end; comments_by_end} in
   Some {parsed_document; unchanged_id; invalid_ids; previous_document}
 
 let handle_event document = function
@@ -843,7 +809,6 @@ let create_document ~doc_id init_synterp_state text =
       parsed_loc = -1;
       raw_doc;
       sentences_by_id = SM.empty;
-      diags_dirty = true;
       sentences_by_end = LM.empty;
       parsing_errors_by_end = LM.empty;
       comments_by_end = LM.empty;
