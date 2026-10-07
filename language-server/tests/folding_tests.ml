@@ -335,7 +335,8 @@ let%test_unit "folding.cache_edit_invalidates_and_recomputes" =
   let range = Document.range_of_id document sentence.id in
   let parsing_st, events = DocumentManager.apply_text_edits st [(range, "Definition y := 0.")] in
   assert_no_cached_folding_entries parsing_st;
-  ignore (DocumentManager.get_document_symbols parsing_st);
+  let parsing_symbols = DocumentManager.get_document_symbols parsing_st in
+  ignore (assert_symbol ~kind:Lsp.Types.SymbolKind.Variable "x" parsing_symbols);
   assert_no_cached_folding_entries parsing_st;
   let st = handle_events parsing_st events in
   assert_no_cached_folding_entries st;
@@ -346,6 +347,56 @@ let%test_unit "folding.cache_edit_invalidates_and_recomputes" =
   [%test_eq: bool]
     (phys_equal entries_before_edit entries_after_edit)
     false
+
+let%test_unit "document_manager.await_parsed_event" =
+  let st, _events = em_init_test_doc ~text:"Definition x := 0." in
+  let document = DocumentManager.Internal.document st in
+  let sentence = first_sentence document in
+  let range = Document.range_of_id document sentence.id in
+  let parsing_st, events =
+    DocumentManager.apply_text_edits st [(range, "Definition y := 0.")]
+  in
+  let parsed_event =
+    match DocumentManager.await_parsed_event parsing_st with
+    | Some event -> event
+    | None -> failwith "expected parsed event"
+  in
+  [%test_eq: bool]
+    (Option.is_none (DocumentManager.await_parsed_event parsing_st))
+    true;
+  ignore (handle_events parsing_st events);
+  let parsed_event = Sel.Event.map (fun () -> true) parsed_event in
+  let lower_priority =
+    Sel.now ~priority:PriorityManager.execution false
+  in
+  let ready, _remaining =
+    Sel.pop_timeout ~stop_after_being_idle_for:0.3
+      (Sel.Todo.add Sel.Todo.empty [lower_priority; parsed_event])
+  in
+  [%test_eq: bool option] ready (Some true)
+
+let%test_unit "document.stale_parse_event_ignored" =
+  let first_st, _events = init_test_doc ~text:"Definition old := 0." in
+  let first_doc = DocumentManager.Internal.document first_st in
+  let _first_doc, events = Document.validate_document first_doc in
+  let stale_event =
+    let ready, _remaining =
+      Sel.pop_timeout ~stop_after_being_idle_for:1.0
+        (Sel.Todo.add Sel.Todo.empty events)
+    in
+    match ready with
+    | Some event -> event
+    | None -> failwith "expected parse event"
+  in
+  let second_st, _events = init_test_doc ~text:"Definition fresh := 0." in
+  let second_doc = DocumentManager.Internal.document second_st in
+  [%test_eq: bool] (Document.id first_doc <> Document.id second_doc) true;
+  let resulting_doc, next_events, parsing_end =
+    Document.handle_event second_doc stale_event
+  in
+  [%test_eq: bool] (phys_equal resulting_doc second_doc) true;
+  [%test_eq: bool] (List.is_empty next_events) true;
+  [%test_eq: bool] (Option.is_none parsing_end) true
 
 let%test_unit "folding.cache_reset_invalidates_unchanged_text" =
   let st, _events = em_init_test_doc ~text:"Definition x := 0." in
