@@ -54,6 +54,9 @@ val highlight :
   Lsp.Types.Position.t ->
   Lsp.Types.Range.t list
 
+val definition_supported : bool
+(** [false] on Rocq versions where [jump_to_definition] always returns [None]. *)
+
 val jump_to_definition :
   Document.document ->
   Vernacstate.t ->

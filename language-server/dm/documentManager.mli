@@ -133,6 +133,9 @@ val highlight : state -> Position.t -> Range.t list
 
 val jump_to_definition : state -> Position.t -> (Range.t * string) option
 
+val definition_supported : bool
+(** [false] on Rocq versions where [jump_to_definition] always returns [None]. *)
+
 val check : state -> Position.t -> pattern:string -> (pp,error) Result.t
 
 val locate : state -> Position.t -> pattern:string -> (pp, error) Result.t

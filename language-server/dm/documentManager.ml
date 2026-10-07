@@ -403,6 +403,8 @@ let jump_to_definition st pos =
   let vs = rocq_state_for st pos in
   QueryManager.jump_to_definition st.document vs pos
 
+let definition_supported = QueryManager.definition_supported
+
 let hover st pos =
   QueryManager.hover st.document pos
 

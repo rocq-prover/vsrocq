@@ -189,8 +189,10 @@ let highlight document pos =
   | Some token -> log (fun () -> "highlight: token at cursor is not an identifier: " ^ Tok.extract_string false token); []
 
 [%%if rocq ="8.18" || rocq ="8.19" || rocq ="8.20"]
+let definition_supported = false
 let jump_to_definition _ _ _ = None
 [%%else]
+let definition_supported = true
 let jump_to_definition document vs pos  =
   let _side_effect_needed_ = context_of_vernac_state vs in
   let raw = Document.raw_document document in
