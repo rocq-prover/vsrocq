@@ -119,7 +119,7 @@ export function activate(context: ExtensionContext) {
                 case ToolChainErrorCode.launchError:
                     window
                         .showErrorMessage(
-                            "Could not launch language server" + err.message,
+                            "Could not launch language server",
                             { modal: true, detail: err.message },
                             { title: "Get Rocq", id: 0 },
                             {
