@@ -90,4 +90,6 @@ module Internal : sig
 
 
   val is_remotely_executed : state -> sentence_id -> bool
+
+  val updates_change_diagnostics : document -> document_updates -> bool
 end

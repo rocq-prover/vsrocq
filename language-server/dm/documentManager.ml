@@ -63,7 +63,7 @@ let inject_doc_events events = List.map inject_doc_event events
 
 let mk_parsing_begin_event () =
   Sel.now ~undup:(=) ~priority:PriorityManager.launch_parsing ParseBegin
-  
+
 type events = event Sel.Event.t list
 
 let is_parsing st =  st.document_state = Parsing
@@ -88,7 +88,7 @@ let make_diagnostic doc range oloc message severity code =
   Diagnostic.create ?code ?data ~range ~message:(message_of_string message) ~severity ()
 
 let mk_diag st (id,(lvl,oloc,qf,msg)) =
-  let code = 
+  let code =
     match qf with
     | [] -> None
     | qf ->
@@ -109,7 +109,7 @@ let mk_diag st (id,(lvl,oloc,qf,msg)) =
     make_diagnostic st.document (Document.range_of_id st.document id) oloc (Pp.string_of_ppcmds msg) lvl code
 
 let mk_error_diag st (id,(oloc,msg,qf)) = (* mk_diag st (id,(Feedback.Error,oloc, msg)) *)
-  let code = 
+  let code =
     match qf with
     | None -> None
     | Some qf ->
@@ -136,7 +136,7 @@ let mk_parsing_error_diag st Document.{ msg = (oloc,msg); start; stop; qf } =
   let start = RawDocument.position_of_loc doc start in
   let end_ = RawDocument.position_of_loc doc stop in
   let range = Range.{ start; end_ } in
-  let code = 
+  let code =
     match qf with
     | None -> None
     | Some qf ->
@@ -161,7 +161,7 @@ let all_diagnostics st =
   let all_feedback = Document.all_feedback st.document in
   (* we are resilient to a state where invalidate was not called yet *)
   let exists (id,_) = Option.has_some (Document.get_sentence st.document id) in
-  let not_info (_, (lvl, _, _, _)) = 
+  let not_info (_, (lvl, _, _, _)) =
     match lvl with
     | Feedback.Info -> false
     | _ -> true
@@ -180,7 +180,7 @@ let get_info_messages st pos =
   with
   | None -> log (fun () -> "get_messages: Could not find id");[]
   | Some id -> log (fun () -> "get_messages: Found id");
-    let info (lvl, _, _, _) = 
+    let info (lvl, _, _, _) =
       match lvl with
       | Feedback.Info -> true
       | _ -> false
@@ -267,14 +267,14 @@ let dirpath_of_top = Coqinit.dirpath_of_top
 
 [%%if rocq ="8.18" || rocq ="8.19"]
 let start_library ~doc_id uri ~opts init_vs =
-  ProverThread.run ~doc_id ~name:"start_library" (fun () -> 
+  ProverThread.run ~doc_id ~name:"start_library" (fun () ->
     Vernacstate.unfreeze_full_state init_vs;
     let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
     Coqinit.start_library ~top opts;
     Vernacstate.freeze_full_state ()) |> Result.fold ~ok:(fun x -> x) ~error:(fun x -> CErrors.user_err x)
 [%%else]
 let start_library ~doc_id uri ~opts init_vs =
-  ProverThread.run ~doc_id ~name:"start_library" (fun () -> 
+  ProverThread.run ~doc_id ~name:"start_library" (fun () ->
     Vernacstate.unfreeze_full_state init_vs;
     let top = dirpath_of_top (TopPhysical (DocumentUri.to_path uri)) in
     let intern = Vernacinterp.fs_intern in
@@ -351,30 +351,35 @@ let handle_event ev st =
   match ev with
   | LocalFeedback l ->
      let state = handle_feedback_events st l in
-     make_handled_event ~state ~update_view:true ~events:[local_feedback state.feedback_pipe.sel_feedback_queue] ()
+     (* Feedback only shows up as diagnostics, and Info feedback never does (see [all_diagnostics]) *)
+     let should_show (_, _, (lvl, _, _, _)) = lvl <> Feedback.Info in
+     let view_update = { highlights = false; diagnostics = List.exists should_show l } in
+     make_handled_event ~state:(state, view_update) ~events:[local_feedback state.feedback_pipe.sel_feedback_queue] ()
   | ParseBegin ->
     let document, events = Document.validate_document st.document in
     let state = {st with document; document_state = Parsing; folding_entries_cache = ref None} in
     let events = inject_doc_events events in
-    make_handled_event ~state ~update_view:true ~events ()
+    make_handled_event ~state:(state, full_view_update) ~events ()
   | DocumentEvent ev ->
     let document, events, parsing_end_info = Document.handle_event st.document ev in
     begin match parsing_end_info with
     | None ->
       let state = {st with document} in
       let events = inject_doc_events events in
-      make_handled_event ~state ~update_view:false ~events ()
+      make_handled_event ~state:(state, no_view_update) ~events ()
     | Some parsing_end_info ->
       let st = validate_document st parsing_end_info in
       let checking_state, events = CheckingManager.validate_document st.document st.checking_state in
       let state = handle_feedback_events { st with checking_state; pending_feedback = [] } st.pending_feedback in
-      make_handled_event ~state ~events:(inject_im_events events) ~update_view:true ()
+      make_handled_event ~state:(state, full_view_update) ~events:(inject_im_events events) ()
     end
   | InteractionManagerEvent ev ->
-    let updates, he = CheckingManager.handle_event ~uri:st.uri st.document st.checking_state ev in
+    let updates, handled_event = CheckingManager.handle_event ~uri:st.uri st.document st.checking_state ev in
     let st = { st with document = List.fold_left Document.update_checked st.document updates } in
-    lift_handled_event (function None -> Some st | Some checking_state -> Some { st with checking_state })
-      inject_im_events he
+    (* CheckingManager returns a state whenever there are [updates], so the
+       document changes only together with the checking state *)
+    lift_handled_event (fun checking_state -> { st with checking_state })
+      inject_im_events handled_event
 
 let rocq_state_for st pos =
   let loc = RawDocument.loc_of_position (Document.raw_document st.document) pos in
@@ -456,12 +461,12 @@ let reset_to_top st =
   { st with checking_state = CheckingManager.reset_to_top st.checking_state }
 
 module Internal = struct
-          
+
   let document st = st.document
 
   let get_proof st id = CheckingManager.Internal.get_proof st.document st.checking_state id
-          
-  let raw_document st = 
+
+  let raw_document st =
     Document.raw_document st.document
 
   let observe_id st = CheckingManager.get_observe_id st.checking_state
