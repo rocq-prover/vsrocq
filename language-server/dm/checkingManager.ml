@@ -631,7 +631,7 @@ let get_string_messages document id =
   | None -> feedback
 
 (* Moving the observe point changes the highlights only in Manual mode. *)
-let update_if_manual mode = { highlights = (mode = Settings.Mode.Manual); diagnostics = false }
+let highlight_if_manual mode = { highlights = (mode = Settings.Mode.Manual); diagnostics = false }
 
 let handle_event ~uri document st ev =
   let { block_on_first_error; check_mode; pp_mode } = !settings in
@@ -676,16 +676,16 @@ let handle_event ~uri document st ev =
       ([], make_handled_event ~notification ())
   | InterpretTo (mode, End) ->
       let state, events = real_interpret_to_end document st mode in
-      ([], make_handled_event ~state:(state, update_if_manual mode) ~events ())
+      ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
   | InterpretTo (mode, Next) ->
       let state, events = real_interpret_to_next document st mode in
-      ([], make_handled_event ~state:(state, update_if_manual mode) ~events ())
+      ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
   | InterpretTo (mode, Point (p, point_interp_mode)) ->
       let state, events = real_interpret_to_position document st p mode ~point_interp_mode in
-      ([], make_handled_event ~state:(state, update_if_manual mode) ~events ())
+      ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
   | InterpretTo (mode, Previous) ->
       let state, events = real_interpret_to_previous document st mode in
-      ([], make_handled_event ~state:(state, update_if_manual mode) ~events ())
+      ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
 
 let interrupt_execution st =
   Option.iter Sel.Event.cancel st.exec_event_cancel_handle;
