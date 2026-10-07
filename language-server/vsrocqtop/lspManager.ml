@@ -298,7 +298,10 @@ let textDocumentDidOpen params =
   let Lsp.Types.DidOpenTextDocumentParams.{ textDocument = { uri; text } } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
   | None -> open_new_document uri text
-  | Some { st } -> update_view uri st; []
+  | Some { st } ->
+    replace_state (DocumentUri.to_path uri) st true;
+    update_view uri st;
+    []
 
 let textDocumentDidChange params =
   let Lsp.Types.DidChangeTextDocumentParams.{ textDocument; contentChanges } = params in
