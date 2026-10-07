@@ -82,7 +82,7 @@ type document = {
   parsed_loc : int;
   raw_doc : RawDocument.t;
   init_synterp_state : Vernacstate.Synterp.t;
-  parse_revision : int;
+  parse_revision : int; (* number used to distinguish events for specific text revisions (between updates) *)
   doc_id : document_id; (* Rocq specific identifier, used for feedback & co *)
 }
 
