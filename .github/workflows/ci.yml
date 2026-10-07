@@ -108,14 +108,12 @@ jobs:
       run: |
         if [ "`echo "${{ matrix.coq }}" | sed 's/dev$//'`" != "${{ matrix.coq }}" ]; then
           opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev
-          opam install rocq-core.dev
+        fi
+        if [ "${{ startsWith(matrix.coq,'8') }}" = "true" ]; then
+          opam pin add coq-core ${{ matrix.coq }}
+          opam pin add coq-stdlib ${{ matrix.coq }}
         else
-          if [ "${{ startsWith(matrix.coq,'8') }}" = "true" ]; then
-            opam pin add coq-core ${{ matrix.coq }}
-            opam pin add coq-stdlib ${{ matrix.coq }}
-          else
-            opam pin add rocq-core ${{ matrix.coq }}  
-          fi
+          opam pin add rocq-core ${{ matrix.coq }}
         fi
         opam pin add vsrocq-language-server ./language-server/ --with-doc --with-test -y
 
