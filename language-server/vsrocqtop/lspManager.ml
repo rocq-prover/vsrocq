@@ -222,10 +222,10 @@ let send_error_notification message =
   let notification = Lsp.Server_notification.ShowMessage params in
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Lsp.Server_notification.to_jsonrpc notification
 
-let update_view uri st =
+let update_view ?(update=Dm.Types.full_view_update) uri st =
   if (Dm.ExecutionManager.is_diagnostics_enabled ()) then (
-    send_highlights uri st;
-    publish_diagnostics uri st;
+    if update.highlights then send_highlights uri st;
+    if update.diagnostics then publish_diagnostics uri st;
   )
 
 let replace_state path st visible = Hashtbl.replace states path { st; visible}
@@ -644,9 +644,9 @@ let handle_event = function
     let events = handled_event.events in
     begin match handled_event.state with
       | None -> ()
-      | Some st ->
+      | Some (st, update) ->
         replace_state (DocumentUri.to_path uri) st visible;
-        if handled_event.update_view then update_view uri st
+        update_view ~update uri st
     end;
     Option.iter output_notification handled_event.notification;
     inject_dm_events (uri, events)

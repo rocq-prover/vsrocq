@@ -403,7 +403,7 @@ let observe document st ~background id ~block_on_first_error : state * event Sel
               (st, events)
         end
       | [] ->
-        
+
         (st, [ mk_proof_view_event id ]))
 
 let interpret_to document st id check_mode =
@@ -499,16 +499,27 @@ let interpret_in_background document st =
 let validate_document document st =
   if !settings.check_mode = Settings.Mode.Continuous then interpret_in_background document st else st, []
 
-let execution_finished st id started block_events =
+let is_failure = function Failure _ -> true | Success _ -> false
+
+let was_failure document id =
+  match Document.get_sentence document id with
+  | Some { checked = Some v } -> is_failure v
+  | Some { checked = None } | None -> false
+
+(* Checking results only change the diagnostics when they add or remove an
+   error: a sentence going from unchecked to [Success] shows nothing new.
+   [document] must be the one before the [updates] are applied. *)
+let updates_change_diagnostics document updates =
+  List.exists (fun (id, v) -> is_failure v || was_failure document id) updates
+
+let execution_finished st id started ~diagnostics block_events =
   let time = Unix.gettimeofday () -. started in
   log (fun () -> Printf.sprintf "ExecuteToLoc %d ends after %2.3f" (Stateid.to_int id) time);
-  (* We update the state to trigger a publication of diagnostics *)
-  let update_view = true in
-  let state = Some st in
+  let state = Some (st, { highlights = true; diagnostics }) in
   let pv_event = mk_proof_view_event id in
-  { state; events = [ pv_event ] @ block_events; update_view; notification = None }
+  { state; events = [ pv_event ] @ block_events; notification = None }
 
-let post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error = 
+let post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error ~diagnostics =
   let st, tasks, block_events =
     match (block, exec_error) with
     | false, _ | _, None ->
@@ -520,14 +531,13 @@ let post_execute document st id started background proof_view_event task tasks b
         (st, [], mk_block_on_error_event error_range error_id background)
   in
   match tasks with
-  | [] -> execution_finished st id started block_events
+  | [] -> execution_finished st id started ~diagnostics block_events
   | task :: tasks ->
       let event = mk_execution_event background (Execute { id; vst_for_next_task; task; tasks; started }) in
       let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
-      let state = Some { st with exec_event_cancel_handle } in
-      let update_view = true in
+      let state = Some ({ st with exec_event_cancel_handle }, { highlights = true; diagnostics }) in
       let events = proof_view_event @ inject_em_events events @ block_events @ [ event ] in
-      { state; events; update_view; notification = None }
+      { state; events; notification = None }
 
 let execute document st id vst_for_next_task started task tasks background block =
   let time = Unix.gettimeofday () -. started in
@@ -545,7 +555,7 @@ let execute document st id vst_for_next_task started task tasks background block
   match Document.get_sentence document id with
   | None ->
       log (fun () -> Printf.sprintf "ExecuteToLoc %d stops after %2.3f, sentences invalidated" (Stateid.to_int id) time);
-      ([], { state = Some st; events = []; update_view = true; notification = None })
+      ([], { state = None; events = []; notification = None })
       (* Sentences have been invalidate, probably because the user edited while executing *)
   | Some _ ->
       log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
@@ -553,30 +563,34 @@ let execute document st id vst_for_next_task started task tasks background block
       let st = { st with execution_state } in
       match result with
       | Done { updates; vs = vst_for_next_task; events; exec_error } ->
-        updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error
+        let diagnostics = updates_change_diagnostics document updates in
+        updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error ~diagnostics
       | WillDo(promise,k) ->
-        [],{state=Some st; events=[mk_execution_promise_event background id started proof_view_event promise k task tasks block]; update_view=true; notification=None}
+        let events = [mk_execution_promise_event background id started proof_view_event promise k task tasks block] in
+        [], { state = Some (st, no_view_update); events; notification=None}
 
 let execute_promise document st id started background proof_view_event task tasks block { ExecutionManager.updates; vs = vst_for_next_task; events; exec_error } =
-  updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error
+  updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error ~diagnostics:(updates_change_diagnostics document updates)
 
 let handle_execution_manager_event document st ev =
   let id, document_update, execution_state_update, events =
     ExecutionManager.handle_event document ev st.execution_state
   in
   let updates = match document_update with None -> [] | Some (id, v) -> [ (id, v) ] in
-  let st =
-    match (id, execution_state_update) with
-    | Some id, Some execution_state ->
+  (* Only an event about a sentence changes the state, and the [updates]
+     always come with that sentence's [id] *)
+  let state =
+    Option.map (fun id ->
         let st = update_processed id st document in
-        Some { st with execution_state }
-    | Some id, None ->
-        let st = update_processed id st document in
-        Some st
-    | _, _ -> Option.map (fun execution_state -> { st with execution_state }) execution_state_update
+        let st =
+          match execution_state_update with
+          | Some execution_state -> { st with execution_state }
+          | None -> st
+        in
+        (st, { highlights = true; diagnostics = updates_change_diagnostics document updates }))
+      id
   in
-  let update_view = true in
-  (updates, { state = st; events = inject_em_events events; update_view; notification = None })
+  (updates, { state; events = inject_em_events events; notification = None })
 
 let vernac_state_of_sentence document id =
   Document.get_sentence document id |> fun x -> Option.bind x (fun x -> Utilities.get_vernac_state x.Document.checked)
@@ -616,6 +630,9 @@ let get_string_messages document id =
   | Some (_oloc, msg, _) -> (DiagnosticSeverity.Error, Pp.string_of_ppcmds msg) :: feedback
   | None -> feedback
 
+(* Moving the observe point changes the highlights only in Manual mode. *)
+let highlight_if_manual mode = { highlights = (mode = Settings.Mode.Manual); diagnostics = false }
+
 let handle_event ~uri document st ev =
   let { block_on_first_error; check_mode; pp_mode } = !settings in
   let background = check_mode = Settings.Mode.Continuous in
@@ -627,7 +644,7 @@ let handle_event ~uri document st ev =
   | ExecutionManagerEvent ev -> handle_execution_manager_event document st ev
   | Observe id ->
       let state, events = observe document st id ~block_on_first_error ~background in
-      ([], make_handled_event ~state ~update_view:true ~events ())
+      ([], make_handled_event ~state:(state, { highlights = true; diagnostics = false }) ~events ())
   | SendProofView (Some id) when Document.has_sentence document id ->
       let proof, pp_proof =
         ProverThread.try_run ~doc_id:st.doc_id ~name:"SendProofView" ~timeout:1.0 (fun () ->
@@ -642,33 +659,33 @@ let handle_event ~uri document st ev =
       let range = Document.range_of_id document id in
       let params = Notification.Server.ProofViewParams.{ proof; messages; pp_proof; pp_messages; range } in
       let notification = Notification.Server.ProofView params in
-      ([], make_handled_event ~state:st ~notification ~update_view:true ())
+      ([], make_handled_event ~notification ())
   | SendProofView _ ->
       let params =
         Notification.Server.ProofViewParams.
           { proof = None; pp_proof = None; messages = []; pp_messages = []; range = Range.top () }
       in
       let notification = Notification.Server.ProofView params in
-      ([], make_handled_event ~state:st ~notification ~update_view:true ())
+      ([], make_handled_event ~notification ())
   | SendBlockOnError id ->
       let range = Document.range_of_id document id in
       let notification = Notification.Server.BlockOnError { uri; range } in
-      ([], make_handled_event ~state:st ~notification ())
+      ([], make_handled_event ~notification ())
   | SendMoveCursor range ->
       let notification = Notification.Server.MoveCursor { uri; range } in
-      ([], make_handled_event ~state:st ~notification ())
+      ([], make_handled_event ~notification ())
   | InterpretTo (mode, End) ->
       let state, events = real_interpret_to_end document st mode in
-      ([], make_handled_event ~state ~events ())
+      ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
   | InterpretTo (mode, Next) ->
       let state, events = real_interpret_to_next document st mode in
-      ([], make_handled_event ~state ~events ())
+      ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
   | InterpretTo (mode, Point (p, point_interp_mode)) ->
       let state, events = real_interpret_to_position document st p mode ~point_interp_mode in
-      ([], make_handled_event ~state ~events ())
+      ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
   | InterpretTo (mode, Previous) ->
       let state, events = real_interpret_to_previous document st mode in
-      ([], make_handled_event ~state ~events ())
+      ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
 
 let interrupt_execution st =
   Option.iter Sel.Event.cancel st.exec_event_cancel_handle;
@@ -676,5 +693,6 @@ let interrupt_execution st =
 
 module Internal = struct
   let is_remotely_executed st id = ExecutionManager.is_remotely_executed st.execution_state id
+  let updates_change_diagnostics = updates_change_diagnostics
   let get_proof = get_proof
 end

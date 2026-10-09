@@ -154,7 +154,7 @@ let () = CheckingManager.(set_options {
   preempt = true;
 })
 
-let rec handle_dm_events n (events : DocumentManager.event Sel.Todo.t) st =
+let rec handle_dm_events ?(on_view=fun _ -> ()) n (events : DocumentManager.event Sel.Todo.t) st =
   if n <= 0 then (Stdlib.Format.eprintf "handle_dm_events run out of steps:\nTodo = %a\n" (Sel.Todo.pp DocumentManager.pp_event) events; Stdlib.exit 1)
   else if Sel.Todo.is_empty events then st, events
     
@@ -169,10 +169,10 @@ let rec handle_dm_events n (events : DocumentManager.event Sel.Todo.t) st =
       let st, new_events =
         match DocumentManager.handle_event ev st with
         | { Types.state = None; events = events' } -> st, events'
-        | { Types.state = Some st; events = events' } -> st, events'
+        | { Types.state = Some (st, view); events = events' } -> on_view view; st, events'
       in
       let todo = Sel.Todo.add remaining new_events in
-      handle_dm_events (n-1) todo st
+      handle_dm_events ~on_view (n-1) todo st
   end
  
 
@@ -254,6 +254,13 @@ let dm_init_and_parse_test_doc ?steps ~text () = fst @@ whole_init_and_parse_tes
 let em_init_test_doc ~text =
   let dm, init_events = openDoc test_uri ~text in
   handle_dm_events 100 Sel.Todo.(add empty init_events) dm
+
+(* Like [handle_dm_events], also returning the view updates the events
+   reported, in order *)
+let handle_dm_events_views e st =
+  let views = ref [] in
+  let st, _ = handle_dm_events ~on_view:(fun v -> views := v :: !views) 100 e st in
+  st, List.rev !views
 
 let handle_dm_events e st = fst @@ handle_dm_events 100 e st
   

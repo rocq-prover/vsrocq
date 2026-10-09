@@ -354,3 +354,67 @@ let%test_unit "documentProofs.theorem_without_proof_no_ltac" =
   let st = handle_dm_events todo st in
   let proofs = DocumentManager.get_document_proofs st in
   [%test_eq: int] (List.length proofs) 1
+
+let reports_highlights views = List.exists views ~f:(fun (v : Types.view_update) -> v.highlights)
+let reports_diagnostics views = List.exists views ~f:(fun (v : Types.view_update) -> v.diagnostics)
+
+let%test_unit "view_update.no_errors" =
+  let st, init_events = em_init_test_doc ~text:"Definition x := 1. Definition y := 2." in
+  let todo = Sel.Todo.(add init_events (DocumentManager.interpret_to_end ())) in
+  let st, views = handle_dm_events_views todo st in
+  check_no_diag st;
+  [%test_eq: bool] true (reports_highlights views);
+  (* "x is defined" is Info feedback, never shown as a diagnostic *)
+  [%test_eq: bool] false (reports_diagnostics views)
+
+let%test_unit "view_update.checking_error" =
+  let st, init_events = em_init_test_doc ~text:"Definition x : nat := true. Definition y := 2." in
+  let todo = Sel.Todo.(add init_events (DocumentManager.interpret_to_end ())) in
+  let st, views = handle_dm_events_views todo st in
+  [%test_pred: bool] (fun b -> b) (not (List.is_empty (DocumentManager.all_diagnostics st)));
+  [%test_eq: bool] true (reports_diagnostics views)
+
+let%test_unit "view_update.warning_feedback" =
+  let st, init_events = em_init_test_doc ~text:"Set Silly. Definition y := 2." in
+  let todo = Sel.Todo.(add init_events (DocumentManager.interpret_to_end ())) in
+  let _st, views = handle_dm_events_views todo st in
+  [%test_eq: bool] true (reports_diagnostics views)
+
+let%test_unit "view_update.notice_feedback" =
+  (* Notice is shown when diagnostics.full is set *)
+  let st, init_events = em_init_test_doc ~text:"Check nat." in
+  let todo = Sel.Todo.(add init_events (DocumentManager.interpret_to_end ())) in
+  let _st, views = handle_dm_events_views todo st in
+  [%test_eq: bool] true (reports_diagnostics views)
+
+let%test_unit "view_update.updates_change_diagnostics" =
+  let st, init_events = em_init_test_doc ~text:"Definition x := 1. Definition y : nat := true." in
+  let todo = Sel.Todo.(add init_events (DocumentManager.interpret_to_end ())) in
+  let st = handle_dm_events todo st in
+  let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
+  let doc = DocumentManager.Internal.document st in
+  let checked id = Option.value_exn (Option.value_exn (Document.get_sentence doc id)).Document.checked in
+  let success = checked s1.id in
+  let failure = checked s2.id in
+  [%test_pred: bool] (fun b -> b) (Option.is_some (Document.error doc s2.id));
+  let changes = CheckingManager.Internal.updates_change_diagnostics in
+  [%test_eq: bool] false (changes doc []);
+  [%test_eq: bool] false (changes (Document.set_unchecked doc s1.id) [ (s1.id, success) ]);
+  [%test_eq: bool] false (changes doc [ (s1.id, success) ]);
+  [%test_eq: bool] true (changes doc [ (s1.id, failure) ]);
+  (* fixing an error removes its diagnostic *)
+  [%test_eq: bool] true (changes doc [ (s2.id, success) ]);
+  (* the new error may differ from the old one *)
+  [%test_eq: bool] true (changes doc [ (s2.id, failure) ])
+
+let%test_unit "view_update.step_backward_to_top" =
+  (* Going back to Top emits no Observe: the move itself must refresh the
+     highlights, which in Manual mode stop at the observe point *)
+  let st, init_events = em_init_test_doc ~text:"Definition x := 1." in
+  let todo = Sel.Todo.(add init_events (DocumentManager.interpret_to_next ())) in
+  let st = handle_dm_events todo st in
+  [%test_pred: bool] (fun b -> b) (Option.is_some (DocumentManager.Internal.observe_id st));
+  let todo = Sel.Todo.(add empty (DocumentManager.interpret_to_previous ())) in
+  let st, views = handle_dm_events_views todo st in
+  [%test_pred: bool] (fun b -> b) (Option.is_none (DocumentManager.Internal.observe_id st));
+  [%test_eq: bool] true (reports_highlights views)
