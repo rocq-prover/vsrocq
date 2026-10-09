@@ -141,7 +141,7 @@
             "scope": "workspace",
             "type": "number",
             "default": 4,
-            "description": "Sets the memory limit over which we discard the execution state of documents which have been saved (in Gb). "
+            "description": "Memory limit (in Gb) before the server discards the execution state of closed documents. Checked each time a document is closed."
           },
           "vsrocq.interrupt.preempt": {
             "scope": "workspace",

@@ -164,31 +164,35 @@ After installation and activation of the extension:
 #### Rocq configuration
 * `"vsrocq.path": ""` -- specify the path to `vsrocqtop` (e.g. `path/to/vsrocq/bin/vsrocqtop`)
 * `"vsrocq.args": []` -- an array of strings specifying additional command line arguments for `vsrocqtop` (typically accepts the same flags as `rocqtop`)
-* `"vsrocq-language-server.trace.server": off | messages | verbose` -- Toggles the tracing of communications between the server and client
+* `"vsrocq-language-server.trace.server": off | messages | compact | verbose` -- Toggles the tracing of communications between the server and client (defaults to `off`)
 
 #### Memory management (since >= 2.1.7)
-* `"vsrocq.memory.limit: int` -- specifies the memory limit (in Gb) over which when a user closes a tab, the corresponding document state is discarded in the server to free up memory. Defaults to 4Gb.
+* `"vsrocq.memory.limit": int` -- specifies how much memory (in Gb) the server can use before it discards the execution state of closed documents. The check runs each time a document is closed. Defaults to 4Gb.
+
+#### Interrupts
+* `"vsrocq.interrupt.preempt": bool` -- Lets hovering and other queries preempt checking tasks (defaults to `false`; recommended for Rocq >= 9.3)
 
 #### Goal and info view panel
-* `"vsrocq.goals.display": Tabs | List` -- Decide whether to display goals in separate tabs or as a list of collapsibles.
-* `"vsrocq.goals.messages.full": bool` -- A toggle to include warnings and errors in the proof view (defaults to `false`)
+* `"vsrocq.goals.auto": bool` -- A toggle to automatically display the goal view when navigating a Rocq document (defaults to `true`)
+* `"vsrocq.goals.display": Tabs | List` -- Decide whether to display goals in separate tabs or as a list of collapsibles (defaults to `List`)
+* `"vsrocq.goals.messages.full": bool` -- A toggle to include warnings and errors in the proof view (defaults to `true`)
 * `"vsrocq.goals.maxDepth": int` -- A setting to determine at which point the goal display starts elliding. Defaults to 17. (since version >= 2.1.7)
 
 #### Proof checking
-* `"vsrocq.proof.mode": Continuous | Manual` -- Decide whether documents should checked continuously or using the classic navigation commmands (defaults to `Manual`)
-* `"vsrocq.proof.pointInterpretationMode": Cursor | NextCommand` -- Determines the point to which the proof should be check to when using the 'Interpret to point' command.
-* `"vsrocq.proof.cursor.sticky": bool` -- a toggle to specify whether the cursor should move as Rocq interactively navigates a document (step forward, backward, etc...)
-* `"vsrocq.proof.delegation": None | Skip | Delegate` -- Decides which delegation strategy should be used by the server.
+* `"vsrocq.proof.mode": 0 | 1` -- Decide whether documents should be checked using the classic navigation commands (`0`, Manual) or continuously (`1`, Continuous). Defaults to `0`.
+* `"vsrocq.proof.pointInterpretationMode": 0 | 1` -- Determines the point to which the proof should be checked when using the 'Interpret to point' command: up to the last command before the cursor (`0`, Cursor) or through the command after the cursor (`1`, NextCommand). Defaults to `0`.
+* `"vsrocq.proof.cursor.sticky": bool` -- a toggle to specify whether the cursor should move as Rocq interactively navigates a document (step forward, backward, etc...). Defaults to `true`.
+* `"vsrocq.proof.delegation": None | Skip | Delegate` -- Decides which delegation strategy should be used by the server (defaults to `None`).
   `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers
   to delegate proofs.
-* `"vsrocq.proof.workers": int` -- Determines how many workers should be used for proof checking
-* `"vsrocq.proof.block": bool` -- Determines if the the execution of a document should halt on first error.  Defaults to true (since version >= 2.1.7).
+* `"vsrocq.proof.workers": int` -- Determines how many workers should be used for proof checking in `Delegate` mode (defaults to `1`)
+* `"vsrocq.proof.block": bool` -- Determines if the execution of a document should halt on the first error.  Defaults to `true` (since version >= 2.1.7).
 * `"vsrocq.proof.display-buttons": bool` -- A toggle to control whether buttons related to Rocq (step forward/back, reset, etc.) are displayed in the editor actions menu (defaults to `true`)
 
 #### Code completion (experimental)
 * `"vsrocq.completion.enable": bool` -- Toggle code completion (defaults to `false`)
-* `"vsrocq.completion.algorithm": StructuredSplitUnification | SplitTypeIntersection` -- Which completion algorithm to use
-* `"vsrocq.completion.unificationLimit": int` -- Sets the limit for how many theorems unification is attempted
+* `"vsrocq.completion.algorithm": 0 | 1` -- Which completion ranking algorithm to use: `0` (SplitTypeIntersection) or `1` (StructuredSplitUnification). Defaults to `1`.
+* `"vsrocq.completion.unificationLimit": int` -- Sets the limit for how many theorems unification is attempted (defaults to `100`)
 
 #### Diagnostics
 * `"vsrocq.diagnostics.full": bool` -- Toggles the printing of `Info` level diagnostics (defaults to `false`)
