@@ -49,12 +49,9 @@ let Dm.Types.Log log = Dm.Log.mk_log "lspManager"
 
 let conf_request_id = max_int
 
-let rocq_version =
-  String.map (fun c -> if c = '+' then '-' else c) Coq_config.version
-
 let server_info = InitializeResult.create_serverInfo
   ~name:"vsrocq-language-server"
-  ~version:("2.5.0" ^ "+" ^ rocq_version)
+  ~version:"2.5.0"
   ()
 
 type lsp_event =
@@ -169,6 +166,12 @@ let do_initialize params =
   let definitionProvider = `Bool true in
   let foldingRangeProvider = `Bool true in
   let selectionRangeProvider = `Bool true in
+  let experimental = `Assoc [
+    "rocq", `Assoc [
+      "version", `String Coq_config.version;
+      "ocamlVersion", `String Coq_config.caml_version;
+    ]
+  ] in
   let capabilities = ServerCapabilities.create
     ~textDocumentSync
     ~completionProvider
@@ -178,6 +181,7 @@ let do_initialize params =
     ~documentHighlightProvider
     ~foldingRangeProvider
     ~selectionRangeProvider
+    ~experimental
   ()
   in
   let initialize_result = Lsp.Types.InitializeResult.{
