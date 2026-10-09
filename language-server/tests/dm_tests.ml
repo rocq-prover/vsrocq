@@ -354,3 +354,65 @@ let%test_unit "documentProofs.theorem_without_proof_no_ltac" =
   let st = handle_dm_events todo st in
   let proofs = DocumentManager.get_document_proofs st in
   [%test_eq: int] (List.length proofs) 1
+
+(* Handles events until the first [Execute] of a run has been handled. That
+   [Execute] sends its sentence to the prover thread, so the event left to
+   continue the run is the [ExecutePromise] waiting for the result. The event
+   type is abstract, so it is recognized by its printed form. *)
+let handle_dm_events_until_first_execute todo st =
+  let rec loop n todo st =
+    if n <= 0 then failwith "no Execute event handled";
+    match Sel.pop_timeout ~stop_after_being_idle_for:0.3 todo with
+    | None, _ -> failwith "no Execute event handled"
+    | Some ev, remaining ->
+      let printed = Stdlib.Format.asprintf "%a" DocumentManager.pp_event ev in
+      let { Types.state; events; _ } = DocumentManager.handle_event ev st in
+      let st = Option.value state ~default:st in
+      let todo = Sel.Todo.add remaining events in
+      if String.is_substring printed ~substring:"ExecuteToLoc" then st, todo
+      else loop (n-1) todo st
+  in
+  loop 100 todo st
+
+let cancel_text = "Definition x := 0. Definition y := 1. Definition z := 2."
+
+let%test_unit "cancel.edit_while_sentence_in_prover" =
+  let st, init_events = em_init_test_doc ~text:cancel_text in
+  let events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add init_events events) in
+  let st, todo = handle_dm_events_until_first_execute todo st in
+  let raw = DocumentManager.Internal.raw_document st in
+  let end_ = RawDocument.position_of_loc raw (String.length cancel_text) in
+  let st, events = DocumentManager.apply_text_edits st [Lsp.Types.Range.{ start = end_; end_ }, " "] in
+  let st = handle_dm_events (Sel.Todo.add todo events) st in
+  let st, (_, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
+  [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s2.id) false;
+  [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s3.id) false;
+  (* A new run is not affected by the cancelled one. *)
+  let st = handle_dm_events Sel.Todo.(add empty (DocumentManager.interpret_to_end ())) st in
+  [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s3.id) true
+
+let%test_unit "cancel.interpret_to_point_while_sentence_in_prover" =
+  let st, init_events = em_init_test_doc ~text:cancel_text in
+  let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
+  let events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add init_events events) in
+  let st, todo = handle_dm_events_until_first_execute todo st in
+  let doc = DocumentManager.Internal.document st in
+  let s1_end = (Document.range_of_id doc s1.id).end_ in
+  let events = DocumentManager.interpret_to_position s1_end in
+  let st = handle_dm_events (Sel.Todo.add todo events) st in
+  [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s1.id) true;
+  [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s2.id) false;
+  [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s3.id) false
+
+let%test_unit "cancel.interrupt_while_sentence_in_prover" =
+  let st, init_events = em_init_test_doc ~text:cancel_text in
+  let st, (_, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
+  let events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add init_events events) in
+  let st, todo = handle_dm_events_until_first_execute todo st in
+  DocumentManager.interrupt_execution st;
+  let st = handle_dm_events todo st in
+  [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s2.id) false;
+  [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s3.id) false
