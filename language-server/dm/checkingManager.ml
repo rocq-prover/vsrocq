@@ -555,7 +555,9 @@ let execute document st id vst_for_next_task started task tasks background block
       | Done { updates; vs = vst_for_next_task; events; exec_error } ->
         updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error
       | WillDo(promise,k) ->
-        [],{state=Some st; events=[mk_execution_promise_event background id started proof_view_event promise k task tasks block]; update_view=true; notification=None}
+        let event = mk_execution_promise_event background id started proof_view_event promise k task tasks block in
+        let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
+        [],{state=Some { st with exec_event_cancel_handle }; events=[event]; update_view=true; notification=None}
 
 let execute_promise document st id started background proof_view_event task tasks block { ExecutionManager.updates; vs = vst_for_next_task; events; exec_error } =
   updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error
@@ -669,6 +671,9 @@ let handle_event ~uri document st ev =
   | InterpretTo (mode, Previous) ->
       let state, events = real_interpret_to_previous document st mode in
       ([], make_handled_event ~state ~events ())
+
+let cancel_execution st =
+  Option.iter Sel.Event.cancel st.exec_event_cancel_handle
 
 let interrupt_execution st =
   Option.iter Sel.Event.cancel st.exec_event_cancel_handle;

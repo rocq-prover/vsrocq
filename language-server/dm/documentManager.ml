@@ -323,7 +323,9 @@ let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
 
 let apply_text_edits state edits =
   (* Until we fix https://github.com/rocq-prover/rocq/issues/22041, this should stay commented:
-     CheckingManager.interrupt_execution state.checking_state; *)
+     CheckingManager.interrupt_execution state.checking_state.
+     Cancelling the event at least *)
+  CheckingManager.cancel_execution state.checking_state;
   let apply_edit_and_shift_diagnostics_locs_and_overview state (range, new_text as edit) =
     let document = Document.apply_text_edit state.document edit in
     let edit_start = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.start in

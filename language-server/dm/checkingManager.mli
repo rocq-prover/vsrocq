@@ -40,6 +40,7 @@ val reset_to_top : state -> state
 (** [reset_to_top state] updates the state to make the observe_id Top *)
 
 val interrupt_execution : state -> unit
+val cancel_execution : state -> unit
 
 val get_observe_id : state -> sentence_id option
 val reset_overview : state -> document -> sentence_id option -> state
