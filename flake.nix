@@ -20,7 +20,7 @@
     flake-utils.lib.eachDefaultSystem (system: let
       lib = nixpkgs-unstable.lib;
       pkgs = nixpkgs-unstable.legacyPackages.${system};
-      version = "2.5.0";
+      version = "2.5.1";
       defaultTarget = "8-20";
       client = {
         name = "vsrocq-client";
