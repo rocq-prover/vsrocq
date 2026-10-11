@@ -99,7 +99,18 @@ export default class VsRocqToolchainManager implements Disposable {
     }
 
     private async searchForVsrocqtopInPath(): Promise<string> {
-        return (await which("vsrocqtop", { nothrow: true })) ?? "";
+        const vsrocqtopPath = await which("vsrocqtop", { nothrow: true });
+        if (vsrocqtopPath) {
+            return vsrocqtopPath;
+        }
+
+        return new Promise((resolve) => {
+            exec(
+                "opam exec -- vsrocqtop -v",
+                { cwd: workspace.rootPath },
+                (error) => resolve(error ? "" : "opam exec -- vsrocqtop"),
+            );
+        });
     }
 
     // Launch the vsrocqtop -where command with the found exec and provided args
