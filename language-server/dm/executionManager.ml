@@ -70,6 +70,8 @@ type prepared_task =
   | PSkip of { id: sentence_id; error: Pp.t option }
   | PBlock of { id: sentence_id; synterp : Vernacstate.Synterp.t; error: Pp.t Loc.located }
   | PExec of executable_sentence
+  (** Termination of a skipped proof *)
+  | PSkippedProofTerminator of executable_sentence
   | PQuery of executable_sentence
   | PDelegate of delegated_task
 
@@ -104,6 +106,7 @@ let get_id_of_executed_task task =
   | PSkip {id} -> id
   | PBlock {id} -> id
   | PExec {id} -> id
+  | PSkippedProofTerminator {id} -> id
   | PQuery {id} -> id
   | PDelegate {terminator_id} -> terminator_id
 
@@ -129,16 +132,16 @@ let inject_proof_event = Sel.Event.map (fun x -> ProofWorkerEvent x)
 let inject_proof_events st l =
   (st, List.map inject_proof_event l)
 
-let interp_error_recovery strategy st : Vernacstate.t =
+let interp_error_recovery strategy st : Vernacstate.t option =
   match strategy with
-  | RSkip -> st
+  | RSkip -> None
   | RAdmitted ->
     let f = Declare.Proof.save_admitted in
     let open Vernacstate in (* shadows Declare *)
     let { Interp.lemmas; program; _ } = st.interp in
     match lemmas with
     | None -> (* if Lemma failed *)
-        st
+        None
     | Some lemmas ->
         let proof = Vernacstate.LemmaStack.get_top lemmas in
         let pm = NeList.head program in
@@ -154,11 +157,11 @@ let interp_error_recovery strategy st : Vernacstate.t =
           let program = NeList.map_head (fun _ -> pm) program in
           Vernacstate.Declare.set (lemmas,program) [@ocaml.warning "-3"];
           let interp = Vernacstate.Interp.freeze_interp_state () in
-          { st with interp }
+          Some { st with interp }
         | Error (Sys.Break, _ as exn) ->
           Exninfo.iraise exn
         | Error(_,_) ->
-          st
+          None
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
 let ensure_not_parsing () = Flags.in_synterp_phase := false
@@ -167,7 +170,7 @@ let ensure_not_parsing () = ()
 [%%endif]
 
 (* just a wrapper around vernac interp *)
-let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
+let interp_ast ~doc_id ~state_id ~st ~error_recovery ~accept_recovered_error ast =
     ensure_not_parsing ();
     Feedback.set_id_for_feedback doc_id state_id;
     ParTactic.set_id_for_feedback doc_id state_id;
@@ -184,9 +187,15 @@ let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
         let loc = Loc.get_loc info in
         let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
         let msg = CErrors.iprint (e, info) in
-        let status = error loc (Some qf) msg st in
-        let st = interp_error_recovery error_recovery st in
-        st, status
+        let failure_status = error loc (Some qf) msg st in
+        let recovery = interp_error_recovery error_recovery st in
+        match recovery with
+          | None -> st, failure_status
+          | Some st ->
+            if accept_recovered_error then
+              st, success st
+            else
+              st, failure_status
 
 (* This adapts the Future API with our event model *)
 [%%if rocq = "8.18"]
@@ -246,7 +255,8 @@ let id_of_last_task ~default l =
   id_of_first_task ~default (List.rev l)
 
 let view_task = function
-  | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } -> `Local id
+  | PSkip { id } | PExec { id } | PSkippedProofTerminator { id }
+  | PQuery { id } | PBlock { id } -> `Local id
   | PDelegate { opener_id; terminator_id; tasks } ->
       let first = id_of_first_task ~default:opener_id tasks in
       let last = id_of_last_task ~default:terminator_id tasks in
@@ -340,12 +350,13 @@ let prepare_task task : prepared_task list =
           List.map (fun x -> PExec x) tasks @ [PExec terminator]
       | SkipProofs ->
           log.debug (fun () -> Printf.sprintf "skipping proof made of %d tasks" (List.length tasks));
-          [PExec terminator]
+          [PSkippedProofTerminator terminator]
 
 let id_of_prepared_task = function
   | PSkip { id } -> id
   | PBlock { id } -> id
   | PExec ex -> ex.id
+  | PSkippedProofTerminator ex -> ex.id
   | PQuery ex -> ex.id
   | PDelegate { terminator_id } -> terminator_id
 
@@ -357,7 +368,8 @@ let purge_state = function
 let worker_execute ~doc_id ~send_back vs { id; ast; synterp; error_recovery } =
   let vs = { vs with Vernacstate.synterp } in
   log.debug (fun () -> "worker interp " ^ Stateid.to_string id);
-  let vs, v = interp_ast ~doc_id ~state_id:id ~st:vs ~error_recovery ast in
+  let vs, v = interp_ast ~doc_id ~state_id:id ~st:vs ~error_recovery
+    ~accept_recovered_error:false ast in
   send_back (ProofJob.UpdateExecStatus (id,purge_state v));
   vs
 
@@ -408,9 +420,9 @@ type execution_result =
 
 let interrupt_execution { feedback_pipe = { doc_id } } = ProverThread.interrupt ~doc_id
 
-let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
+let promise_execution ~doc_id ~state_id ~st ~error_recovery ~accept_recovered_error ast =
   let promise = ProverThread.eventually_run ~doc_id ~name:"promise_execution" (fun () -> 
-    interp_ast ~doc_id ~state_id ~st ~error_recovery ast) in
+    interp_ast ~doc_id ~state_id ~st ~error_recovery ~accept_recovered_error ast) in
   let promise_to_result p =
     match p with
     | Sel.Promise.Rejected e -> raise e (* bug in vsrocq *)
@@ -440,6 +452,16 @@ let complete_proof ~doc_id vernac_st assign =
   |> assign
           
 
+let execute_local st document vs ~accept_recovered_error { id; ast; synterp; error_recovery } =
+  let vs = { vs with Vernacstate.synterp } in
+  if is_locally_executed id document then
+    let vs, exec_error = get_vs_and_exec_error id document in
+    log.debug (fun () -> Format.asprintf "skipping execution of already executed %s" (Stateid.to_string id));
+    st, Done { updates = []; vs; events = []; exec_error }
+  else
+    st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery
+      ~accept_recovered_error ast
+
 let execute st document vs task : state * execution_result =
   match task with
   | PBlock { id; synterp; error = err} ->
@@ -456,17 +478,14 @@ let execute st document vs task : state * execution_result =
       in
       let updates = [id, v] in
       st, Done { updates; vs; events = []; exec_error = None }
-  | PExec { id; ast; synterp; error_recovery } ->
-      let vs = { vs with Vernacstate.synterp } in
-      if is_locally_executed id document then
-        let vs, exec_error = get_vs_and_exec_error id document in
-        log.debug (fun () -> Format.asprintf "skipping execution of already executed %s" (Stateid.to_string id));
-        st, Done { updates = []; vs; events = []; exec_error }
-      else
-        st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
+  | PExec ex ->
+      execute_local st document vs ~accept_recovered_error:false ex
+  | PSkippedProofTerminator ex ->
+      execute_local st document vs ~accept_recovered_error:true ex
   | PQuery { id; ast; synterp; error_recovery } ->
       let vs = { vs with Vernacstate.synterp } in
-      st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
+      st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery
+        ~accept_recovered_error:false ast
   | PDelegate { terminator_id; opener_id; last_step_id; tasks; proof_using } ->
       match find_fulfilled_opt document opener_id with
       | Some (Success _) ->
@@ -565,4 +584,3 @@ module ProofWorkerProcess = struct
     worker_main job ~send_back
   let log = ProofWorker.log
 end
-
