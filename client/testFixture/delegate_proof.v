@@ -4,3 +4,4 @@ Proof.
   apply foobar.
   idtac.
 Qed.
+Check x.

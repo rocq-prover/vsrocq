@@ -37,6 +37,8 @@ let%test_unit "exec: finished proof skip" =
   let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
+  [%test_eq: int]
+    0 (List.length (Document.all_checking_errors (DocumentManager.Internal.document st)));
   check_diag st [
     D (s4.id,Information,".*True.*")
   ];
@@ -64,9 +66,8 @@ let%test_unit "exec: unfinished proof skip" =
   let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
-  check_diag st [
-    D (s2.id,Error,".*incomplete proof.*")
-  ];
+  [%test_eq: int]
+    0 (List.length (Document.all_checking_errors (DocumentManager.Internal.document st)));
   check_diag st [
     D (s3.id,Information,".*True.*")
   ];
