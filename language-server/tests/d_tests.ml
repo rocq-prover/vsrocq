@@ -71,7 +71,7 @@ let %test_unit "document: invalidate proof" =
   [%test_pred: sentence_id] (fun x -> not (Stateid.Set.mem x deps)) r1.id;
   [%test_pred: sentence_id] (fun x -> not (Stateid.Set.mem x deps)) r2.id;
   [%test_pred: sentence_id] (fun x -> not (Stateid.Set.mem x deps)) r3.id;
-  [%test_pred: sentence_id] (fun x -> not (Stateid.Set.mem x deps)) r5.id;
+  [%test_pred: sentence_id] (fun x -> Stateid.Set.mem x deps) r5.id;
   ()
 
 
