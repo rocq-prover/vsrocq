@@ -176,6 +176,13 @@ on the opam repository.
 
 After the opam package has been published (PR merged by opam maintainers), the user should then use ```publish-extension.yml``` to publish the extensions on the vscode marketplace as well as vscodium.
 
+# CI update
+
+Te version of nixpkgs used in the CI is pinned by flake, to update it to current nixpkgs-unstable, do
+```shell
+nix flake update
+```
+
 # CI/CD pipeline for release process
 
 The CI pipeline (```ci.yml```) handles creating the draft release (with a tarball archive) when a tag is pushed. This is done in the ```create-release``` job.
