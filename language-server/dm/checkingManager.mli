@@ -23,6 +23,7 @@ type settings = {
   pp_mode : Protocol.Settings.Goals.PrettyPrint.t;
   point_interp_mode:Protocol.Settings.PointInterpretationMode.t;
   preempt : bool;
+  memory_limit : int;
 }
 
 val set_options : settings -> unit

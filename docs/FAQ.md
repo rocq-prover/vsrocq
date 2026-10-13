@@ -132,7 +132,7 @@ Welcome to the VsRocq FAQ! This document aims to answer common questions and hel
 
     This is a common frustration and can have several causes:
 
-    - **Memory Usage:** `vsrocqtop` can be memory-intensive, especially with large files or libraries like MetaCoq. Try increasing the memory limit for your VS Code/system if possible, or close other demanding applications. VsRocq has a setting `"vsrocq.memory.limit"` (default 4GB) that attempts to free memory by discarding states of closed documents when the limit is hit, but this might not always prevent high usage during active processing.
+    - **Memory Usage:** `vsrocqtop` can be memory-intensive, especially with large files or libraries like MetaCoq. VsRocq has a setting `"vsrocq.memory.limit"` (default 4GB): once the server's heap exceeds it, execution states of non-visible documents are discarded and any running computation exceeding the limit is interrupted and reported as an error (for example a `Compute` that produces a huge value). Lower the limit to be safer, or raise it for legitimately heavy developments.
     - **Diagnosing Crashes:**
       - Check the **"Rocq Language Server" output channel** in VS Code for error messages and backtraces.
       - For more detail, add `"-vsrocq-d", "all"` and `"-bt"` to `"vsrocq.args"` in your `settings.json`.

@@ -152,6 +152,7 @@ let () = CheckingManager.(set_options {
   pp_mode = Protocol.Settings.Goals.PrettyPrint.Pp;
   point_interp_mode = Protocol.Settings.PointInterpretationMode.Cursor;
   preempt = true;
+  memory_limit = -1;
 })
 
 let rec handle_dm_events n (events : DocumentManager.event Sel.Todo.t) st =

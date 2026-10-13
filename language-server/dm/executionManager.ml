@@ -422,7 +422,14 @@ let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
           let updates = [state_id, v] in
           let exec_error = exec_error_of_execution_status state_id v in
           { updates; vs; events = []; exec_error }
-      | Aborted e -> CErrors.user_err e (* bug in vsrocq *)
+      | Aborted e ->
+          (* Surface the abort (timeout, out-of-memory, internal error) as a
+             sentence error instead of raising in the event loop, which used
+             to kill the server. *)
+          let v = error_no_resiliency None None e in
+          let updates = [state_id, v] in
+          let exec_error = exec_error_of_execution_status state_id v in
+          { updates; vs = st; events = []; exec_error }
       | Interrupted ->
           let v = error_no_resiliency None None Pp.(str "Interrupted by the user") in
           let updates = [state_id, v] in
