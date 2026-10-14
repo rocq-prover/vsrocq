@@ -103,10 +103,7 @@ export default class VsRocqToolchainManager implements Disposable {
 
     private async searchForVsrocqtop(): Promise<string | undefined> {
         const vsrocqtopPath = await which("vsrocqtop", { nothrow: true });
-        if (vsrocqtopPath) {
-            return vsrocqtopPath;
-        }
-        return undefined;
+        return vsrocqtopPath || undefined;
     }
 
     private async searchForVsrocqtopWithOpam(): Promise<string | undefined> {
