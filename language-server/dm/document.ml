@@ -16,7 +16,7 @@ open Types
 open Lsp.Types
 open Scheduler
 
-let Log log = Log.mk_log "document"
+let log = Log.mk_log "document"
 
 module LM = Map.Make (Int)
 
@@ -391,7 +391,7 @@ let update_checked parsed (id, v) =
           { parsed with sentences_by_id = SM.add id { s with checked = Some v} parsed.sentences_by_id }
       | Some (Success _) when is_qed ast ->
           { parsed with sentences_by_id = SM.add id { s with checked = Some v} parsed.sentences_by_id }
-      | _ -> log (fun () -> "Ignoring bad update for checked status, possibly a bug"); parsed
+      | _ -> log.error (fun () -> Printf.sprintf "sentence %s is already checked, ignoring its new status (possibly a bug)" (Stateid.to_string id)); parsed
 
 let set_unchecked parsed id =
   match SM.find_opt id parsed.sentences_by_id with
@@ -407,7 +407,7 @@ let is_checked parsed id =
 let append_feedback parsed id (_, _, _, msg as fb) =
   match SM.find_opt id parsed.sentences_by_id with
   | None ->
-    log (fun () -> "Received feedback on non-existing state id " ^ Stateid.to_string id ^ ": " ^ Pp.string_of_ppcmds msg);
+    log.debug (fun () -> "Received feedback on non-existing state id " ^ Stateid.to_string id ^ ": " ^ Pp.string_of_ppcmds msg);
     parsed
   | Some s ->
       { parsed with sentences_by_id = SM.add id { s with messages = s.messages @ [fb] } parsed.sentences_by_id }
@@ -431,7 +431,7 @@ let string_of_parsed_ast = function
 
 let patch_sentence parsed scheduler_state_before id ({ parsing_start; ast; start; stop; synterp_state } : pre_sentence) =
   let old_sentence = SM.find id parsed.sentences_by_id in
-  log (fun () -> Format.sprintf "Patching sentence %s , %s" (Stateid.to_string id) (string_of_parsed_ast old_sentence.ast));
+  log.debug (fun () -> Format.sprintf "Patching sentence %s , %s" (Stateid.to_string id) (string_of_parsed_ast old_sentence.ast));
   let scheduler_state_after, schedule =
     match ast with
     | Error {msg} ->
@@ -617,7 +617,7 @@ let get_entry ast =
 
 
 let rec handle_parse_error id start parsing_start msg qf ({stream; errors; parsed;} as parse_state) synterp_state =
-  log (fun () -> "handling parse error at " ^ string_of_int start);
+  log.debug (fun () -> "handling parse error at " ^ string_of_int start);
   let stop = Stream.count stream in
   let str = String.sub (RawDocument.text parse_state.raw) parsing_start (stop - parsing_start) in
   let parsing_error = { msg; start; stop; qf; str} in
@@ -630,7 +630,7 @@ let rec handle_parse_error id start parsing_start msg qf ({stream; errors; parse
 
 and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as parse_state) : bool * parse_state =
   let start = Stream.count stream in
-  log (fun () -> "Start of parse is: " ^ (string_of_int start));
+  log.debug (fun () -> "Start of parse is: " ^ (string_of_int start));
   begin
     (* FIXME should we save lexer state? *)
     match parse_one_sentence ?loc stream ~st:synterp_state with
@@ -649,7 +649,7 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as pa
       let tokens = stream_tok [] lex ast_loc in
       begin
         try
-          log (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
+          log.debug (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
           Feedback.set_id_for_feedback parse_state.previous_document.doc_id id;
           let entry = get_entry ast in
           let classification = Vernac_classifier.classify_vernac ast in
@@ -734,7 +734,7 @@ let invalidate top_edit top_id parsed_doc new_sentences =
     | Equal _ :: diffs
     | Added _ :: diffs -> remove_old parsed_doc invalid_ids diffs in
   let (_,_synterp_state,scheduler_state) = state_at_pos parsed_doc top_edit in
-  log (fun () ->
+  log.debug (fun () ->
     let sentence_strings = LM.bindings @@ LM.map (fun s -> string_of_parsed_ast (sentence_of_id parsed_doc s).ast) parsed_doc.sentences_by_end in
     let sentence_strings = List.map (fun s -> snd s) sentence_strings in
     let sentence_string = String.concat " " sentence_strings in
@@ -747,7 +747,7 @@ let invalidate top_edit top_id parsed_doc new_sentences =
   let parsed_doc, invalid_ids = remove_old parsed_doc Stateid.Set.empty diff in
   let parsed_doc = add_new_or_patch parsed_doc scheduler_state diff in
   let unchanged_id = unchanged_id top_id diff in
-  log (fun () -> "diff:\n" ^ string_of_diff parsed_doc diff);
+  log.debug (fun () -> "diff:\n" ^ string_of_diff parsed_doc diff);
   unchanged_id, invalid_ids, parsed_doc
 
 (** Validate document when raw text has changed *)
@@ -762,7 +762,7 @@ let validate_document ({ parsed_loc; raw_doc; cancel_handle; doc_id } as documen
   let text = RawDocument.text raw_doc in
   let stream = Stream.of_string text in
   while Stream.count stream < stop do Stream.junk () stream done;
-  log (fun () -> Format.sprintf "Parsing more from pos %i" stop);
+  log.debug (fun () -> Format.sprintf "Parsing more from pos %i" stop);
   let started = Unix.gettimeofday () in
   let parsed_state = {stop; top_id;synterp_state; stream; raw=raw_doc; parsed=[]; errors=[]; parsed_comments=[]; loc=None; started; previous_document=document} in
   let event = create_parse_event ~doc_id parsed_state in
@@ -772,12 +772,12 @@ let validate_document ({ parsed_loc; raw_doc; cancel_handle; doc_id } as documen
 let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; previous_document} document =
   let end_ = Unix.gettimeofday ()in
   let time = end_ -. started in
-  log (fun () -> Format.sprintf "Parsing phase ended in %5.3f" time);
+  log.debug (fun () -> Format.sprintf "Parsing phase ended in %5.3f" time);
   let new_sentences = List.rev parsed in
   let new_comments = List.rev parsed_comments in
   let new_errors = errors in
-  log (fun () -> Format.sprintf "%i new sentences" (List.length new_sentences));
-  log (fun () -> Format.sprintf "%i new comments" (List.length new_comments));
+  log.debug (fun () -> Format.sprintf "%i new sentences" (List.length new_sentences));
+  log.debug (fun () -> Format.sprintf "%i new comments" (List.length new_comments));
   let errors = parsing_errors_before document stop in
   let comments = comments_before document stop in
   let unchanged_id, invalid_ids, document = invalidate (stop+1) top_id document new_sentences in

@@ -12,9 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
-
-let Log log = Log.mk_log "delegationManager"
+let log = Log.mk_log "delegationManager"
 
 type sentence_id = Stateid.t
 
@@ -37,7 +35,7 @@ let abort_on_unix_error f x =
   try
     f x
   with Unix.Unix_error(e,f,p) ->
-    Printf.eprintf "Error: %s: %s: %s\n%!" f p (Unix.error_message e);
+    log.error (fun () -> Printf.sprintf "%s %s failed, exiting: %s" f p (Unix.error_message e));
     exit 3
 
 
@@ -105,7 +103,7 @@ module type Worker = sig
   val setup_plumbing : options -> ((job_update_request -> unit) * job_t)
   
   (* CDebug aware print *)
-  val log : ?force:bool -> (unit -> string) -> unit
+  val log : Log.t
     
 end
 
@@ -121,7 +119,7 @@ let write_value link (x:worker_message) = write_value_gen link x
 
 let write_value_job link (x:Job.t) = write_value_gen link x
 
-let Log log_worker = Log.mk_log ("worker." ^ Job.name)
+let log_worker = Log.mk_log ("worker." ^ Job.name)
 
 let install_feedback_worker ~feedback_cleanup link =
   feedback_cleanup ();
@@ -195,7 +193,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
     bind chan (ADDR_INET (Unix.inet_addr_loopback,0));
     listen chan 1;
     let address = getsockname chan in
-    log (fun () -> "forking...");
+    log.debug (fun () -> "forking...");
     flush_all ();
     let null = openfile "/dev/null" [O_RDWR] 0o640 in
     let pid = fork () in
@@ -212,7 +210,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
         let link = { write_to; read_from } in
         install_feedback_worker ~feedback_cleanup link;
         install_debug_worker link;
-        log_worker (fun () -> "borning...");
+        log_worker.debug (fun () -> "borning...");
         Ok (Worker link, [])
     end else
       (* Parent process *)
@@ -220,12 +218,12 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
       match accept_timeout chan with
       | None ->
           close chan;
-          log (fun () -> Printf.sprintf "forked pid %d did not connect back" pid);
+          log.error (fun () -> Printf.sprintf "worker %d did not connect back in time, killing it" pid);
           Unix.kill pid 9;
           Error ("worker did not connect back", [worker_ends pid])
       | Some (worker, _worker_addr) ->
           close chan;
-          log (fun () -> Printf.sprintf "forked pid %d called back" pid);
+          log.debug (fun () -> Printf.sprintf "forked pid %d called back" pid);
           let read_from = worker in
           let write_to = worker in
           let link = { write_to; read_from } in
@@ -252,7 +250,7 @@ let create_process_worker procname cancellation_handle job =
     let pid = create_process procname args null stdout stderr in
     close null;
     let () = cancellation_handle := Some pid in
-    log (fun () -> Printf.sprintf "created worker %d, waiting on port %d" pid port);
+    log.debug (fun () -> Printf.sprintf "created worker %d, waiting on port %d" pid port);
     match accept_timeout chan with
     | Some(worker, _worker_addr) ->
         close chan;
@@ -261,13 +259,13 @@ let create_process_worker procname cancellation_handle job =
         let link = { write_to; read_from } in
         install_feedback_worker ~feedback_cleanup:(fun _ -> ()) link;
         install_debug_worker link;
-        log (fun () -> "sending job");
+        log.debug (fun () -> "sending job");
         write_value_job link job;
         flush_all ();
-        log (fun () -> "sent");
+        log.debug (fun () -> "sent");
         Ok [worker_progress link; worker_ends pid]
     | None ->
-        log (fun () -> Printf.sprintf "child process %d did not connect back" pid);
+        log.error (fun () -> Printf.sprintf "worker %d did not connect back in time, killing it" pid);
         Unix.kill pid 9;
         Error ("worker did not connect back", [worker_ends pid])
   with Unix_error(e,f,p) ->
@@ -278,12 +276,15 @@ let create_process_worker procname cancellation_handle job =
 
 let handle_event = function
   | WorkerIOError e ->
-     log (fun () -> "worker IO Error: " ^ Printexc.to_string e);
+     begin match e with
+     | End_of_file -> log.debug (fun () -> "worker closed its connection")
+     | e -> log.error (fun () -> Printf.sprintf "lost the connection to a worker, freeing its slot: %s" (Printexc.to_string e))
+     end;
      if Queue.length pool < !current_pool_size then
       Queue.push () pool;
      (None, [])
   | WorkerEnd (pid, _status) ->
-      log (fun () -> Printf.sprintf "worker %d went on holidays" pid);
+      log.debug (fun () -> Printf.sprintf "worker %d went on holidays" pid);
       if Queue.length pool < !current_pool_size then
         Queue.push () pool;
       (None,[])
@@ -291,28 +292,28 @@ let handle_event = function
       Log.handle_event d;
       (None, [worker_progress link])
   | WorkerProgress { link; update_request = Job_update u } ->
-      log (fun () -> "worker progress");
+      log.debug (fun () -> "worker progress");
       (Some u, [worker_progress link])
   | WorkerStart (feedback_cleanup, (feedback_route,cancellation_handle),job,action,procname) ->
-    log (fun () -> "worker starts");
+    log.debug (fun () -> "worker starts");
     if Sys.os_type = "Unix" then
       match fork_worker ~feedback_cleanup cancellation_handle with
       | Ok(Master, events) ->
-        log (fun () -> "worker spawned (fork)");
+        log.debug (fun () -> "worker spawned (fork)");
         (None, events)
       | Ok(Worker link, _) ->
         action job ~send_back:(fun j -> abort_on_unix_error write_value link (Job_update j));
         exit 0
       | Error(msg, cleanup_events) ->
-        log (fun () -> "worker did not spawn: " ^ msg);
+        log.error (fun () -> Printf.sprintf "cannot start a worker, reporting the error on the sentence: %s" msg);
         (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
     else
       match create_process_worker procname cancellation_handle job with
       | Ok events ->
-          log (fun () -> "worker spawned (create_process)");
+          log.debug (fun () -> "worker spawned (create_process)");
           (None, events)
       | Error(msg, cleanup_events) ->
-          log (fun () -> "worker did not spawn: " ^ msg);
+          log.error (fun () -> Printf.sprintf "cannot start a worker, reporting the error on the sentence: %s" msg);
           (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
 
 
@@ -324,7 +325,7 @@ let setup_plumbing port =
     let open Unix in
     let chan = socket PF_INET SOCK_STREAM 0 in
     let address = ADDR_INET (inet_addr_loopback,port) in
-    log_worker (fun () -> "connecting to " ^ string_of_int port);
+    log_worker.debug (fun () -> "connecting to " ^ string_of_int port);
     connect chan address;
     let read_from = chan in
     let write_to = chan in
@@ -333,17 +334,17 @@ let setup_plumbing port =
     match Sel.(pop Todo.(add empty [Sel.On.ocaml_value read_from (fun x -> x)])) with
     | Ok (job : Job.t), _ -> ((fun x -> write_value link (Job_update x)), job)
     | Error exn, _ ->
-      log_worker (fun () -> "error receiving job: " ^ Printexc.to_string exn);
+      log_worker.error (fun () -> "error receiving job: " ^ Printexc.to_string exn);
       exit 1
   with Unix.Unix_error(code,syscall,param) ->
-    log_worker (fun () -> Printf.sprintf "error starting: %s: %s: %s" syscall param (Unix.error_message code));
+    log_worker.error (fun () -> Printf.sprintf "error starting: %s: %s: %s" syscall param (Unix.error_message code));
     exit 1
 
 let parse_options extra_args =
   match extra_args with
   | [ o ; port ] when o = option_name -> int_of_string port, []
   | _ ->
-    Printf.eprintf "unknown arguments: %s" (String.concat " " extra_args);
+    log_worker.error (fun () -> "unknown arguments: " ^ String.concat " " extra_args);
     exit 2
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
