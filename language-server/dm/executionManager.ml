@@ -16,7 +16,7 @@ open Protocol
 open Scheduler
 open Types
 
-let Log log = Log.mk_log "executionManager"
+let log = Log.mk_log "executionManager"
 
 let () = Memprof_limits.start_memprof_limits ()
 
@@ -233,9 +233,7 @@ let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
   let control = [] (* FIXME *) in
   let opaque = Vernacexpr.Opaque in
   let pending = CAst.make @@ Vernacexpr.Proved (opaque, None) in
-  (* log (fun () -> "calling interp_qed_delayed done"); *)
   let interp = Vernacinterp.interp_qed_delayed_proof ~proof ~st ~control pending in
-  (* log (fun () -> "interp_qed_delayed done"); *)
   let st = { st with interp } in
   st, success st, assign) 
   |> Result.fold ~ok:(fun x -> x) ~error:(fun x -> CErrors.user_err x)
@@ -334,14 +332,14 @@ let prepare_task task : prepared_task list =
   | OpaqueProof { terminator; opener_id; tasks; proof_using} ->
       match !options.delegation_mode with
       | DelegateProofsToWorkers _ ->
-          log (fun () -> "delegating proofs to workers");
+          log.debug (fun () -> "delegating proofs to workers");
           let last_step_id = last_opt tasks in
           [PDelegate {terminator_id = terminator.id; opener_id; last_step_id; tasks; proof_using}]
       | CheckProofsInMaster ->
-          log (fun () -> "running the proof in master as per config");
+          log.debug (fun () -> "running the proof in master as per config");
           List.map (fun x -> PExec x) tasks @ [PExec terminator]
       | SkipProofs ->
-          log (fun () -> Printf.sprintf "skipping proof made of %d tasks" (List.length tasks));
+          log.debug (fun () -> Printf.sprintf "skipping proof made of %d tasks" (List.length tasks));
           [PExec terminator]
 
 let id_of_prepared_task = function
@@ -358,7 +356,7 @@ let purge_state = function
 (* TODO move to proper place *)
 let worker_execute ~doc_id ~send_back vs { id; ast; synterp; error_recovery } =
   let vs = { vs with Vernacstate.synterp } in
-  log (fun () -> "worker interp " ^ Stateid.to_string id);
+  log.debug (fun () -> "worker interp " ^ Stateid.to_string id);
   let vs, v = interp_ast ~doc_id ~state_id:id ~st:vs ~error_recovery ast in
   send_back (ProofJob.UpdateExecStatus (id,purge_state v));
   vs
@@ -434,7 +432,7 @@ let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
 let complete_proof ~doc_id vernac_st assign =
   ProverThread.run ~doc_id ~name:"complete_proof" (fun () ->
     Vernacstate.LemmaStack.with_top (Option.get @@ vernac_st.Vernacstate.interp.lemmas) ~f:(fun proof ->
-      log (fun () -> "Resolved future");
+      log.debug (fun () -> "Resolved future");
       Declare.Proof.return_proof proof))
   |> (function
     | Error msg -> `Exn (CErrors.UserError msg, Exninfo.null)
@@ -462,7 +460,7 @@ let execute st document vs task : state * execution_result =
       let vs = { vs with Vernacstate.synterp } in
       if is_locally_executed id document then
         let vs, exec_error = get_vs_and_exec_error id document in
-        log (fun () -> Format.asprintf "skipping execution of already executed %s" (Stateid.to_string id));
+        log.debug (fun () -> Format.asprintf "skipping execution of already executed %s" (Stateid.to_string id));
         st, Done { updates = []; vs; events = []; exec_error }
       else
         st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
@@ -479,11 +477,11 @@ let execute st document vs task : state * execution_result =
         let complete_job status =
           try match status with
           | Success None ->
-            log (fun () -> "Resolved future (without sending back the witness)");
+            log.debug (fun () -> "Resolved future (without sending back the witness)");
             assign (`Exn (Failure "no proof",Exninfo.null))
           | Success (Some vernac_st) -> complete_proof ~doc_id:st.feedback_pipe.doc_id vernac_st assign
           | Failure ((loc,err),_,_) ->
-              log (fun () -> "Aborted future");
+              log.debug (fun () -> "Aborted future");
               assign (`Exn (CErrors.UserError err, Option.fold_left Loc.add_loc Exninfo.null loc))
           with exn when CErrors.noncritical exn ->
             assign (`Exn (CErrors.UserError(Pp.str "error closing proof"), Exninfo.null))
@@ -512,14 +510,14 @@ let build_tasks_for document sch st id =
     begin match find_fulfilled_opt document id with
     | Some (Success (Some vs)) ->
       (* We reached an already computed state *)
-      log (fun () -> "Reached computed state " ^ Stateid.to_string id);
+      log.debug (fun () -> "Reached computed state " ^ Stateid.to_string id);
       vs, tasks, st, None
     | Some (Failure((loc, _),_,Some vs)) ->
       (* We try to be resilient to an error *)
-      log (fun () -> "Failure resiliency on state " ^ Stateid.to_string id);
+      log.debug (fun () -> "Failure resiliency on state " ^ Stateid.to_string id);
       vs, tasks, st, Some (id, loc)
     | _ ->
-      log (fun () -> "Non (locally) computed state " ^ Stateid.to_string id);
+      log.debug (fun () -> "Non (locally) computed state " ^ Stateid.to_string id);
       let (base_id, task) = task_for_sentence sch id in
       begin match base_id with
       | None -> (* task should be executed in initial state *)
@@ -541,7 +539,7 @@ let invalidate1 st id =
   with Not_found -> st
 
 let invalidate st id =
-  log (fun () -> "Invalidating: " ^ Stateid.to_string id);
+  log.debug (fun () -> "Invalidating: " ^ Stateid.to_string id);
   let st = invalidate1 st id in
   let old_jobs = Queue.copy st.jobs in
   let removed = ref [] in
