@@ -28,7 +28,7 @@ export default class VsRocqToolchainManager implements Disposable {
         Client.writeToVsrocqChannel("[Toolchain] Searching for vsrocqtop");
         return new Promise(
             (resolve, reject: (reason: ToolchainError) => void) => {
-                this.vsrocqtopPath().then((vsrocqtopPath) => {
+                this.vsrocqtopCmd().then((vsrocqtopPath) => {
                     if (vsrocqtopPath) {
                         Client.writeToVsrocqChannel(
                             "[Toolchain] Found path: " + vsrocqtopPath,
@@ -86,20 +86,34 @@ export default class VsRocqToolchainManager implements Disposable {
         return this._versionFullOutput;
     }
 
-    private async vsrocqtopPath(): Promise<string> {
+    private async vsrocqtopCmd(): Promise<string | undefined> {
         const vsrocqtopPath = getConfigurationOption("path");
         if (vsrocqtopPath) {
             Client.writeToVsrocqChannel(
                 "[Toolchain] Path set in user settings",
             );
             return vsrocqtopPath;
-        } else {
-            return await this.searchForVsrocqtopInPath();
         }
+        const vsrocqtopWithOpam = await this.searchForVsrocqtopWithOpam();
+        if (vsrocqtopWithOpam) {
+            return vsrocqtopWithOpam;
+        }
+        return await this.searchForVsrocqtop();
     }
 
-    private async searchForVsrocqtopInPath(): Promise<string> {
-        return (await which("vsrocqtop", { nothrow: true })) ?? "";
+    private async searchForVsrocqtop(): Promise<string | undefined> {
+        const vsrocqtopPath = await which("vsrocqtop", { nothrow: true });
+        return vsrocqtopPath || undefined;
+    }
+
+    private async searchForVsrocqtopWithOpam(): Promise<string | undefined> {
+        return new Promise<string | undefined>((resolve) => {
+            exec(
+                "opam exec -- vsrocqtop -v",
+                { cwd: workspace.rootPath },
+                (error) => resolve(error ? undefined : "opam exec -- vsrocqtop"),
+            );
+        });
     }
 
     // Launch the vsrocqtop -where command with the found exec and provided args
