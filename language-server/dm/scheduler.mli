@@ -56,7 +56,7 @@ val schedule_errored_sentence : sentence_id -> Pp.t Loc.located -> Vernacstate.S
 
 val schedule_sentence : sentence_id * (Synterp.vernac_control_entry * Vernacextend.vernac_classification * Vernacstate.Synterp.t) -> state -> schedule -> state * schedule
 (** Identifies the structure of the document and dependencies between sentences
-    in order to easily compute the tasks to interpret the a sentence.
+    in order to easily compute the tasks to interpret a sentence.
     Input sentence is None on parsing error. *)
 
 val task_for_sentence : schedule -> sentence_id -> sentence_id option * task

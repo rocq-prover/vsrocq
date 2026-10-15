@@ -249,13 +249,20 @@ let validate_document state (Document.{unchanged_id; invalid_ids; previous_docum
   let state = {state with document=parsed_document; folding_entries_cache = ref None} in
   (* this should be made in Document *)
   let old_schedule = Document.schedule previous_document in
-  let rec invalidate_checked id state =
+  (* A sentence can be a dependent of several sentences. For example, an opaque
+     Qed is a dependent of its opener and of each proof step. Skips the
+     sentences in [visited], because otherwise the walk reaches a sentence once
+     per path to it, and the number of paths grows exponentially with the
+     number of proofs before it. *)
+  let rec invalidate_checked id (visited, state) =
+    if Stateid.Set.mem id visited then (visited, state) else
+    let visited = Stateid.Set.add id visited in
     let checking_state = CheckingManager.invalidate state.checking_state id in
     let document = Document.set_unchecked state.document id in
     let state = { state with document; checking_state } in
     let deps = Scheduler.dependents old_schedule id in
-    Stateid.Set.fold invalidate_checked deps state in
-  let state = Stateid.Set.fold invalidate_checked invalid_ids state in
+    Stateid.Set.fold invalidate_checked deps (visited, state) in
+  let _, state = Stateid.Set.fold invalidate_checked invalid_ids (Stateid.Set.empty, state) in
   let checking_state = CheckingManager.reset_overview state.checking_state previous_document unchanged_id in
   { state with checking_state; document_state = Parsed }
 

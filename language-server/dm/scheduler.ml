@@ -183,6 +183,7 @@ let is_opaque_flat_proof terminator section_depth block =
       if section_depth = 0 then Some Vernacexpr.SsEmpty
       else find_proof_using_annotation block
 
+(* Returns the base, the updated scheduler state, and the task for sentence [id]. *)
 let push_state id ast synterp classif st =
   let open Vernacextend in
   let ex_sentence = { id; ast; classif; synterp; error_recovery = RSkip } in
@@ -237,32 +238,46 @@ let schedule_errored_sentence id error synterp schedule =
   let dependencies = SM.add id Stateid.Set.empty schedule.dependencies in
   {tasks; dependencies}
 
+(* Updates the count of open sections after the sentence [ast]. *)
+let update_section_depth (ast : Synterp.vernac_control_entry) st =
+  let open Vernacexpr in
+  match ast.CAst.v.expr with
+  | VernacSynterp (EVernacBeginSection _) -> { st with section_depth = st.section_depth + 1 }
+  (* The max guards against an End without a matching Section. *)
+  | VernacSynterp (EVernacEndSegment _) -> { st with section_depth = max 0 (st.section_depth - 1) }
+  | _ -> st
+
+(* Adds [dependent] to the sentences that must be invalidated when [sentence]
+   changes. *)
+let add_dependent dependencies sentence dependent =
+  let update = function
+  | Some dependents -> Some (Stateid.Set.add dependent dependents)
+  | None -> Some (Stateid.Set.singleton dependent)
+  in
+  SM.update sentence update dependencies
+
 let schedule_sentence (id, (ast, classif, synterp_st)) st schedule =
-  let base, st, task = 
-      let open Vernacexpr in
-      let (base, st, task) = push_state id ast synterp_st classif st in
-      begin match ast.CAst.v.expr with
-      | VernacSynterp (EVernacBeginSection _) ->
-        (base, { st with section_depth = st.section_depth + 1 }, task)
-      | VernacSynterp (EVernacEndSegment _) ->
-        (base, { st with section_depth = max 0 (st.section_depth - 1) }, task)
-      | _ -> (base, st, task)
-      end
-  in
-(*
-  log (fun () -> "Scheduled " ^ (Stateid.to_string id) ^ " based on " ^ (match base with Some id -> Stateid.to_string id | None -> "no state"));
-  log (fun () -> "New scheduler state: " ^ string_of_state st);
-  *)
+  (* push_state needs the section depth from before the sentence [id], so the
+     depth update for a Section or End must come after it. *)
+  let base, st, task = push_state id ast synterp_st classif st in
+  let st = update_section_depth ast st in
+  (* [base] is the sentence whose resulting state the task runs from. *)
   let tasks = SM.add id (base, task) schedule.tasks in
-  let add_dep deps x id =
-    let upd = function
-    | Some deps -> Some (Stateid.Set.add id deps)
-    | None -> Some (Stateid.Set.singleton id)
-    in
-    SM.update x upd deps
+  (* Changing the base invalidates [id]. *)
+  let dependencies = match base with
+    | Some base_id -> add_dependent schedule.dependencies base_id id
+    | None -> schedule.dependencies
   in
-  let dependencies = Option.cata (fun x -> add_dep schedule.dependencies x id) schedule.dependencies base in
-  (* This new sentence impacts no sentence (yet) *)
+  (* For an opaque proof, the base is the opener, so the dependency above does
+     not cover the proof steps. Adds the Qed to the dependents of each step, so
+     that editing a step invalidates it. *)
+  let dependencies = match task with
+    | OpaqueProof { tasks } ->
+      List.fold_left (fun dependencies task -> add_dependent dependencies task.id id) dependencies tasks
+    | Skip _ | Block _ | Exec _ | Query _ -> dependencies
+  in
+  (* Starts [id] with no dependents. Each later sentence adds itself when it is
+     scheduled. *)
   let dependencies = SM.add id Stateid.Set.empty dependencies in
   st, { tasks; dependencies }
 
