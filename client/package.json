@@ -141,7 +141,7 @@
             "scope": "workspace",
             "type": "number",
             "default": 4,
-            "description": "Sets the memory limit over which we discard the execution state of documents which have been saved (in Gb). "
+            "description": "Sets the memory limit (in Gb) for the Rocq server. Once the server's heap exceeds it, execution states of non-visible documents are discarded and any running computation that exceeds the limit is interrupted and reported as an error. "
           },
           "vsrocq.interrupt.preempt": {
             "scope": "workspace",

@@ -27,6 +27,7 @@ type settings = {
   pp_mode : Protocol.Settings.Goals.PrettyPrint.t;
   point_interp_mode:Protocol.Settings.PointInterpretationMode.t;
   preempt : bool;
+  memory_limit : int;
 }
 
 let settings : settings ref = ref {
@@ -36,11 +37,12 @@ let settings : settings ref = ref {
   point_interp_mode = Settings.PointInterpretationMode.Cursor;
   block_on_first_error = true;
   preempt = false;
+  memory_limit = -1;
 }
 
 let set_options s =
   settings := s;
-  ProverThread.set_options ~preempt:s.preempt
+  ProverThread.set_options ~preempt:s.preempt ~memory_limit:s.memory_limit
 
 let (Log log) = Log.mk_log "checkingManager"
 

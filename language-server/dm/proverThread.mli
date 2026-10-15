@@ -13,8 +13,11 @@
 (**************************************************************************)
 
 (** if [~preempt] is [false] the [run] and [try_run] APIs enqueue the job rather
-    than forcibly interrupting any running job *)
-val set_options : preempt:bool -> unit
+    than forcibly interrupting any running job.
+
+    [~memory_limit] is a global memory limit in kiB (a negative value disables
+    it); jobs exceeding it are interrupted and reported as aborted. *)
+val set_options : preempt:bool -> memory_limit:int -> unit
 
 (**
 
