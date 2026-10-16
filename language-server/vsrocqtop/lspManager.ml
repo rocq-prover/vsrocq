@@ -166,6 +166,12 @@ let do_initialize params =
   let definitionProvider = `Bool Dm.DocumentManager.definition_supported in
   let foldingRangeProvider = `Bool true in
   let selectionRangeProvider = `Bool true in
+  let experimental = `Assoc [
+    "rocq", `Assoc [
+      "version", `String Coq_config.version;
+      "ocamlVersion", `String Coq_config.caml_version;
+    ]
+  ] in
   let capabilities = ServerCapabilities.create
     ~textDocumentSync
     ~completionProvider
@@ -175,6 +181,7 @@ let do_initialize params =
     ~documentHighlightProvider
     ~foldingRangeProvider
     ~selectionRangeProvider
+    ~experimental
   ()
   in
   let initialize_result = Lsp.Types.InitializeResult.{
