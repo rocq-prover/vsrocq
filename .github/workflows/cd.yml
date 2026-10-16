@@ -21,7 +21,7 @@ jobs:
         ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
     - name: Install opam-publish
-      run: opam install -y -j 2 opam-publish=2.5.0
+      run: opam install -y -j 2 opam-publish
 
     - name: Inject slug/short variables
       uses: rlespinasse/github-slug-action@v4
