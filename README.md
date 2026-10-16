@@ -17,32 +17,35 @@ If you are running an Coq < 8.18 you should use [VsCoq Legacy](https://github.co
 
 ## Installing VsRocq
 
-To use VsRocq, you need to (1) install the VsRocq language server
-and (2) install and configure the VsRocq extension in either VS Code or VSCodium.
+To use VsRocq, you need to:
+1. Install the VsRocq language server, and
+2. install and configure the VsRocq extension, in either VS Code or VSCodium.
+
+The VS Code extension and the opam package `vsrocq-language-server` are installed and updated separately, and they may stop working if their versions don't match.
+To check which versions you have, run **Rocq: Troubleshooting: Show setup** from the command palette (F1).
+See the [troubleshooting](#troubleshooting) section in case of problems.
+
 
 ### Installing the language server
 
-**Version check (recommended).** Before installing the language server, check the installed VsRocq extension version in VS Code (Extensions view → “VsRocq” → version).
-The VS Code extension and the opam package `vsrocq-language-server` are released independently; if their versions are mismatched, the language server may fail during LSP initialization and commands like "Interpret to point" may appear to do nothing.
+**Installation (Opam)**
 
-After creating an opam switch, pin Rocq,
-and install the `vsrocq-language-server` package:
+After creating an opam switch, pin Rocq, and install the `vsrocq-language-server` package:
 ```shell
 $ opam pin add rocq-core 9.1.0 # replace with correct version
 # For Coq 8.x: use coq / coq-core packages instead of rocq-core
 $ opam install vsrocq-language-server.2.3.4 # replace "2.3.4" with correct version
 ```
 
-or on nixos
+**Installation (nixos)**
 
 ```shell
 nix profile install nixpkgs#coq_8_18 nixpkgs#coqPackages_8_18.vscoq-language-server
 ```
 
-If you need a pre-release version, pin a specific release tarball (see "Pre-release versions" below).
+**Verify installation**
 
-After installation, check that you have `vsrocqtop` in your shell
-and note the path to this executable:
+After the previous steps, check that you have `vsrocqtop` in your shell:
 ```shell
 $ which vsrocqtop
 ```
@@ -50,36 +53,63 @@ $ which vsrocqtop
 
 #### Pre-release versions
 
-We often roll out pre-release versions. To get the correct language server version please pin the git repo. For example,
+We often roll out pre-release versions. To get the correct language server version please pin the git repository. For example,
 for pre-release ```v2.3.1```:
 ```shell
 $ opam pin add vsrocq-language-server.2.3.1  https://github.com/rocq-prover/vsrocq/releases/download/v2.3.1/vsrocq-language-server-2.3.1.tar.gz
 ```
-When pinning a pre-release language server, ensure you also select the matching VsRocq extension version in VS Code.
+When pinning a pre-release language server, ensure you also select the same VsRocq extension version in VS Code.
 
 #### Using a Local Version of Rocq
 
-See the developers [documentation](https://github.com/rocq-prover/vsrocq/blob/main/docs/developers.md#composing-the-build-with-rocq)
+See the developers [documentation](https://github.com/rocq-prover/vsrocq/blob/main/docs/developers.md#composing-the-build-with-rocq).
 
 ### Installing and configuring the extension
 
-To install the [VS Code](https://marketplace.visualstudio.com/items?itemName=rocq-prover.vsrocq)
-or [VSCodium extension](https://open-vsx.org/extension/rocq-prover/vsrocq), first run `code`
-or `codium`. Then press F1 to open the command palette, start typing
-"Extensions: Install Extension", press enter, and search for "vsrocq". Switch to
-the **pre-release version** of the extension and enable it. Finally, go to the extension
-settings and enter the `vsrocqtop` full path from above in the field "Vsrocq: Path".
+Install VsRocq from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=rocq-prover.vsrocq)
+or, for VSCodium, from [Open VSX](https://open-vsx.org/extension/rocq-prover/vsrocq).
+In the Extensions view, search for "vsrocq" and pick the one published by `rocq-prover`.
+If you haven't installed an extension before, see the VS Code guide on
+[installing extensions](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace).
 
-If you want asynchronous processing of Rocq files, you can go to
-the "Proof: Mode" and select "Continuous". Otherwise, processing will step by step and top-down as in VsCoq1.
+By default, VsRocq uses the `vsrocqtop` found in your `PATH`, so no further
+configuration is needed. If VsRocq can't find it, see
+[Language server not found](#troubleshooting).
 
 #### Pre-release versions
 
-In VsCode, from the extensions page, either use the drop down menu from the ```Uninstall``` button and select ```Install another version```, or click on ```Switch to pre-release```.
+To install a [pre-release version](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_install-a-pre-release-extension-version)
+or a [specific version](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_install-an-extension)
+of the extension, see the VS Code guide.
+Make sure you also install the same language server version.
 
 ### Troubleshooting
 
-Check out the [FAQ](./docs/FAQ.md) for common issues and troubleshooting tips.
+We list some common problems here, otherwise check out the [FAQ](./docs/FAQ.md) for more issues and troubleshooting tips.
+
+**Server and extension versions mismatch**
+
+The VS Code extension and the opam package `vsrocq-language-server` are installed and updated separately, and they may stop working if their versions don't match.
+To check your versions, run **Rocq: Troubleshooting: Show setup** from the command palette (F1).
+If the command isn't available, check them separately:
+- The extension version: in the Extensions view, under "VsRocq".
+- The language server and Rocq versions installed in your current opam switch:
+  ```shell
+  $ opam list vsrocq-language-server rocq-core coq-core
+  ```
+
+If they differ, install the same version of both.
+
+**Language server not found**
+
+If VsRocq shows a "No language server found" error even though `which vsrocqtop`
+works in your shell, VS Code is probably not seeing the same `PATH` as your shell.
+This happens, for example, when VS Code is started from the desktop instead of a
+terminal where the opam environment is loaded.
+To fix it, either start VS Code from that terminal (`code .`), or set the full path
+to `vsrocqtop` (the output of `which vsrocqtop`) in the "Vsrocq: Path" setting
+(`vsrocq.path`).
+
 
 #### Known problems
 
@@ -92,7 +122,7 @@ This could be due to an old ```vscode``` version. Make sure ```vscode``` is up t
 
 #### Getting help
 
-If you are unable to set-up vsrocq, feel free to contact us on the ```VsRocq Devs and Users``` [channel in zulip](https://rocq-prover.zulipchat.com/#narrow/channel/237662-VsRocq-devs-.26-users).
+If you are unable to set-up VsRocq, feel free to contact us on the ```VsRocq Devs and Users``` [channel in zulip](https://rocq-prover.zulipchat.com/#narrow/channel/237662-VsRocq-devs-.26-users).
 
 ## Features
 * Syntax highlighting
@@ -103,6 +133,7 @@ Vsrocq allows users to opt for continuous checking, see the goal panel update as
 ![](gif/continuous-mode.gif)
 
 By default, vsrocq is configured to use classic step by step checking mode.
+To switch between the two, change the "Proof: Mode" setting (`vsrocq.proof.mode`).
 ![](gif/manual-mode.gif)
 
 * Customisable goal panel
