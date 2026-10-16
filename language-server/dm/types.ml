@@ -121,17 +121,31 @@ type sentence_checking_result =
 type document_updates =
   (sentence_id * sentence_checking_result) list
 
+(* Which parts of the view changed with an event, so only those are sent to
+   the client again *)
+type view_update = {
+    highlights: bool;
+    diagnostics: bool;
+}
+let no_view_update = { highlights = false; diagnostics = false }
+let full_view_update = { highlights = true; diagnostics = true }
+
+(* [state] is [None] when the event did not change the state,
+   [Some (st, no_view_update)] when it changed only internally, and
+   [Some (st, view)] when it changed what the client shows. A view update
+   always comes with a new state. [notification] is sent in all cases. *)
 type ('state,'event) handled_event = {
-    state : 'state option;
+    state : ('state * view_update) option;
     events: 'event Sel.Event.t list;
-    update_view: bool;
     notification: Protocol.ExtProtocol.Notification.Server.t option;
 }
-let make_handled_event ?state ?(events=[]) ?(update_view=false) ?notification () =
-  { state ; events; update_view; notification; }
 
-let lift_handled_event update_state inject_events { state; events; update_view; notification } =
-  { state = update_state state; events = inject_events events; update_view; notification }
+let make_handled_event ?state ?(events=[]) ?notification () =
+  { state ; events; notification; }
+
+let lift_handled_event update_state inject_events { state; events; notification } =
+  let state = Option.map (fun (st, view) -> update_state st, view) state in
+  { state; events = inject_events events; notification }
 
 type 'a interruptible_result =
   Terminated of 'a | Aborted of Pp.t | Interrupted
