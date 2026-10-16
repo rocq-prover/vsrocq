@@ -6,7 +6,7 @@
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     # Keep this revision in sync with PIN_COQ in the CI workflow.
-    rocq-master.url = "github:rocq-prover/rocq/5358976838128ff6125ee64e3b3d08dac45fc2f3";
+    rocq-master.url = "github:rocq-prover/rocq/00ed9de9ed67e449ae8e85c225c7064c7492f70e";
     rocq-master.inputs.nixpkgs.follows = "nixpkgs-unstable";
     rocq-master.inputs.flake-utils.follows = "flake-utils";
   };
