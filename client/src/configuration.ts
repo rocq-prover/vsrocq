@@ -34,6 +34,29 @@ export function getConfigurationOption<
     return obj;
 }
 
+// A path into the configuration object and the type of the value at that path.
+// Exported so a wrapper around `setConfigurationOption` keeps the link between
+// the two.
+export type ConfigPath = AllPaths<NestedScopedConfigs>;
+export type ConfigValue<P extends ConfigPath> = GetDotAccess<
+    NestedScopedConfigs,
+    P
+>;
+
+// Sets a configuration option, typed the same way as `getConfigurationOption`.
+// Writes to the workspace settings when a workspace is open and to the user
+// settings otherwise. `undefined` removes the setting. The write is
+// asynchronous, so a read before the returned promise settles can still see
+// the old value.
+export async function setConfigurationOption<P extends ConfigPath>(
+    path: [...P],
+    value: ConfigValue<P> | undefined,
+): Promise<void> {
+    await vscode.workspace
+        .getConfiguration("vsrocq")
+        .update(path.join("."), value);
+}
+
 export function sendConfiguration(client: LanguageClient) {
     const config = getConfigurationOption();
     client.sendNotification("workspace/didChangeConfiguration", {
