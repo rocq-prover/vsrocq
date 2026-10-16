@@ -12,7 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-let Dm.Types.Log log = Dm.Log.mk_log "args"
+let log = Dm.Log.mk_log "args"
 
 let rec skip_xd acc = function
 | [] -> (), List.rev acc
@@ -66,10 +66,29 @@ let parse_extra _ x =
     fst @@ Coqinit.parse_arguments ~initial_args ~parse_extra (List.tl (Array.to_list Sys.argv))
 [%%endif]
 
-let get_local_args dir =
+type lookup =
+  | Server_start of string
+  | Document of string
+
+let log_no_project lookup =
+  log.info (fun () -> match lookup with
+    | Server_start dir -> Printf.sprintf "no project file found for the server's working directory %s, starting with default arguments" dir
+    | Document path -> Printf.sprintf "no project file found for %s, checking it with default arguments" path)
+
+let log_success lookup f args =
+  log.info (fun () -> match lookup with
+    | Server_start _ -> Printf.sprintf "starting with arguments from project file %s: %s" f (String.concat " " args)
+    | Document path -> Printf.sprintf "checking %s with arguments from project file %s: %s" path f (String.concat " " args))
+
+
+let get_local_args lookup =
+  let dir = match lookup with
+    | Server_start dir -> dir
+    | Document path -> Filename.dirname path
+  in
   let without_project_file = List.exists ((=) "-without-project-file") (Array.to_list Sys.argv) in
   if without_project_file then (
-    log (fun () -> "Not looking for project file since -without-project-file is set");
+    log.debug (fun () -> "Not looking for project file since -without-project-file is set");
     parse_args_default ()
   ) else (
     let find_project_file = CoqProject_file.find_project_file ~from:dir in
@@ -79,11 +98,11 @@ let get_local_args dir =
     in
     match project_file with
     | None ->
-      log (fun () -> Printf.sprintf "No project file found for %s" dir);
+      log_no_project lookup;
       parse_args_default ()
     | Some f ->
       let project = CoqProject_file.read_project_file ~warning_fn:(fun _ -> ()) f in
       let args = CoqProject_file.coqtop_args_from_project project in
-      log (fun () -> Printf.sprintf "Arguments from project file %s: %s" f (String.concat " " args));
+      log_success lookup f args;
       parse_args_with_rocq_project args
   )

@@ -87,8 +87,7 @@ module type Worker = sig
    (* the sentence ids of the remote_mapping being delegated *)
    val setup_plumbing : options -> ((job_update_request -> unit) * job_t)
    
-   (* CDebug aware print *)
-   val log : ?force:bool -> (unit -> string) -> unit
+   val log : Log.t
    
 end
 

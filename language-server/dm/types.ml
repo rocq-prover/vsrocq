@@ -96,8 +96,6 @@ type error = {
   message: string;
 }
 
-type 'a log = Log : 'a -> 'a log
-
 type feedback_message = Feedback.level * Loc.t option * Quickfix.t list * Pp.t
 
 type document_id = int

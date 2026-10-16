@@ -45,7 +45,7 @@ let full_diagnostics = ref false
 let full_messages = ref false
 
 
-let Dm.Types.Log log = Dm.Log.mk_log "lspManager"
+let log = Dm.Log.mk_log "lspManager"
 
 let conf_request_id = max_int
 
@@ -70,18 +70,21 @@ let lsp : event Sel.Event.t =
   Sel.On.httpcle ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" Unix.stdin (function
     | Ok buff ->
       begin
-        log (fun () -> "UI req ready");
+        log.debug (fun () -> "UI req ready");
         try LspManagerEvent (Receive (Some (Jsonrpc.Packet.t_of_yojson (Yojson.Safe.from_string (Bytes.to_string buff)))))
         with
         | Jsonrpc.Json.Of_json (msg, json) ->
-          log (fun () -> "failed to decode json: " ^ msg ^ " in " ^ Yojson.Safe.to_string json);
+          log.error (fun () -> Printf.sprintf "cannot decode message, ignoring it: %s in %s" msg (Yojson.Safe.to_string json));
           LspManagerEvent (Receive None)
         | exn ->
-          log (fun () -> "failed to decode json: " ^ Printexc.to_string exn);
+          log.error (fun () -> Printf.sprintf "cannot parse message as JSON, ignoring it: %s" (Printexc.to_string exn));
           LspManagerEvent (Receive None)
       end
     | Error exn ->
-        log (fun () -> ("failed to read message: " ^ Printexc.to_string exn));
+        begin match exn with
+        | End_of_file -> log.info (fun () -> "client closed the connection, exiting")
+        | exn -> log.error (fun () -> Printf.sprintf "cannot read from the client, exiting: %s" (Printexc.to_string exn))
+        end;
         (* do not remove this line otherwise the server stays running in some scenarios *)
         exit 0)
 
@@ -90,7 +93,7 @@ let output_json obj =
   let msg  = Yojson.Safe.to_string ~std:true obj in
   let size = String.length msg in
   let s = Printf.sprintf "Content-Length: %d\r\n\r\n%s" size msg in
-  log (fun () -> "sent: " ^ Yojson.Safe.pretty_to_string ~std:true obj);
+  log.debug (fun () -> "sent: " ^ Yojson.Safe.pretty_to_string ~std:true obj);
   ignore(Unix.write_substring Unix.stdout s 0 (String.length s)) (* TODO ERROR *)
 
 let output_notification notif =
@@ -154,7 +157,7 @@ let send_configuration_request () =
 let do_initialize params =
   let Lsp.Types.InitializeParams.{ initializationOptions } = params in
   begin match initializationOptions with
-  | None -> log (fun () -> "Failed to decode initialization options")
+  | None -> log.info (fun () -> "client sent no initialization options, using default settings")
   | Some initializationOptions ->
     do_configuration @@ Settings.t_of_yojson initializationOptions;
   end;
@@ -181,7 +184,7 @@ let do_initialize params =
     capabilities = capabilities;
     serverInfo = Some server_info;
   } in
-  log ~force:true (fun () -> "---------------- initialized --------------");
+  log.info (fun () -> "---------------- initialized --------------");
   let debug_events = Dm.Log.lsp_initialization_done () |> inject_debug_events in
   Ok initialize_result, debug_events@[Sel.now @@ LspManagerEvent (send_configuration_request ())]
 
@@ -235,7 +238,7 @@ let replace_state path st visible = Hashtbl.replace states path { st; visible}
    means depends on the handler's return shape, hence the variants below. *)
 let with_document_or ~default handler uri f =
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[" ^ handler ^ "] ignoring event on non existent document"); default
+  | None -> log.debug (fun () -> "[" ^ handler ^ "] ignoring event on non existent document"); default
   | Some tab -> f tab
 
 let document_does_not_exist = Error { message = "Document does not exist"; code = None }
@@ -246,7 +249,7 @@ let with_document handler uri f = with_document_or ~default:[] handler uri f
 (* For request handlers replying with a result and events. *)
 let with_document_request handler uri f = with_document_or ~default:(document_does_not_exist, []) handler uri f
 
-let log_notification method_ = log (fun () -> "Received notification: " ^ method_)
+let log_notification method_ = log.debug (fun () -> "Received notification: " ^ method_)
 
 let run_documents () =
   let interpret_doc_in_bg path { st : Dm.DocumentManager.state ; visible } events =
@@ -283,9 +286,7 @@ let init_document local_args vst =
 
 let open_new_document uri text =
   let vst = get_init_state () in
-  let fname = DocumentUri.to_path uri in
-  let dir = Filename.dirname fname in
-  let local_args = Args.get_local_args dir in
+  let local_args = Args.get_local_args (Args.Document (DocumentUri.to_path uri)) in
   let vst = init_document local_args vst in
   let st, events = try Dm.DocumentManager.init vst ~opts:(Coqargs.injection_commands local_args) uri ~text with
     e -> raise e
@@ -324,7 +325,7 @@ let purge_invisible_tabs () =
   Hashtbl.filter_map_inplace (fun u ({ visible } as v) ->
     if visible then Some v
     else begin
-      log (fun () -> "purging tab " ^ u);
+      log.info (fun () -> Printf.sprintf "memory above limit, dropping the state of closed document %s (it rechecks on reopen)" u);
       None
     end)
   states
@@ -338,7 +339,7 @@ let consider_purge_invisible_tabs () =
     Vernacstate.Interp.invalidate_cache ();
     Gc.compact ();
     let new_usage = current_memory_usage () in
-    log (fun () -> Printf.sprintf  "memory footprint %d -> %d" usage new_usage);
+    log.info (fun () -> Printf.sprintf "memory footprint %d -> %d (limit %d)" usage new_usage !max_memory_usage);
   end
 
 let textDocumentDidClose params =
@@ -365,7 +366,7 @@ let textDocumentDefinition params =
   let Lsp.Types.DefinitionParams.{ textDocument; position } = params in
   let@ { st } = with_document_request "textDocumentDefinition" textDocument.uri in
   match Dm.DocumentManager.jump_to_definition st position with
-  | None -> log (fun () -> "[textDocumentDefinition] could not find symbol location"); Ok None, []
+  | None -> log.debug (fun () -> "[textDocumentDefinition] could not find symbol location"); Ok None, []
   | Some (range, uri) ->
     let uri = DocumentUri.of_path uri in
     let location = Location.create ~range:range ~uri:uri in
@@ -435,7 +436,7 @@ let textDocumentCompletion params =
 let documentFoldingRange params =
   let Lsp.Types.FoldingRangeParams.{ textDocument = { uri } } = params in
   let@ { st } = with_document_or ~default:document_does_not_exist "documentFoldingRange" uri in
-  log (fun () -> "[documentFoldingRange] getting folding ranges");
+  log.debug (fun () -> "[documentFoldingRange] getting folding ranges");
   if Dm.DocumentManager.is_parsing st then
     Error {code=(Some Jsonrpc.Response.Error.Code.ServerCancelled); message="Parsing not finished"}
   else
@@ -445,15 +446,15 @@ let documentFoldingRange params =
 let documentSelectionRanges params =
   let Lsp.Types.SelectionRangeParams.{ textDocument = { uri }; positions } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log (fun () -> "[documentSelectionRanges] ignoring event on non existent document"); Ok []
+  | None -> log.debug (fun () -> "[documentSelectionRanges] ignoring event on non existent document"); Ok []
   | Some { st } ->
-    log (fun () -> "[documentSelectionRanges] getting selection ranges");
+    log.debug (fun () -> "[documentSelectionRanges] getting selection ranges");
     Ok (List.map (fun pos -> Dm.DocumentManager.get_selection_range st pos) positions)
 
 let documentSymbol params =
   let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri} } = params in
   let@ { st } = with_document_request "documentSymbol" uri in
-  log (fun () -> "[documentSymbol] getting symbols");
+  log.debug (fun () -> "[documentSymbol] getting symbols");
   if Dm.DocumentManager.is_parsing st then
     (* Making use of the error codes: the ServerCancelled error code indicates
        that the server is busy and the client should resend the request later.
@@ -579,7 +580,7 @@ let dispatch_std_notification =
   | Initialized -> []
   | Exit ->
     do_exit ()
-  | UnknownNotification _ | _ -> log (fun () -> "Received unknown notification"); []
+  | UnknownNotification _ | _ -> log.debug (fun () -> "Received unknown notification"); []
 
 let dispatch_notification =
   let open Notification.Client in function
@@ -596,12 +597,15 @@ let handle_lsp_event = function
     lsp :: (* the event is recurrent *)
     begin try
       let json = Jsonrpc.Packet.yojson_of_t rpc in
-      log (fun () -> "received: " ^ Yojson.Safe.pretty_to_string ~std:true json);
+      log.debug (fun () -> "received: " ^ Yojson.Safe.pretty_to_string ~std:true json);
       begin match rpc with
       | Request req ->
-          log (fun () -> "ui request: " ^ req.method_);
+          log.debug (fun () -> "ui request: " ^ req.method_);
           begin match Request.Client.t_of_jsonrpc req with
-          | Error(e) -> log (fun () -> "Error decoding request: " ^ e); []
+          | Error(e) ->
+            log.error (fun () -> Printf.sprintf "cannot decode request %s (id %s), not answering it: %s"
+              req.method_ (Yojson.Safe.to_string (Jsonrpc.Id.yojson_of_t req.id)) e);
+            []
           | Ok(Pack r) ->
             let resp, events = dispatch_request r in
             begin match resp with
@@ -617,16 +621,16 @@ let handle_lsp_event = function
       | Notification notif ->
         begin match Notification.Client.of_jsonrpc notif with
         | Ok notif -> dispatch_notification notif
-        | Error e -> log (fun () -> "error decoding notification: " ^ e); []
+        | Error e -> log.error (fun () -> Printf.sprintf "cannot decode notification %s, ignoring it: %s" notif.method_ e); []
         end
       | Response { id; _ } ->
-          log (fun () -> "ignoring unknown response to request " ^ Yojson.Safe.to_string (Jsonrpc.Id.yojson_of_t id));
+          log.debug (fun () -> "ignoring unknown response to request " ^ Yojson.Safe.to_string (Jsonrpc.Id.yojson_of_t id));
           []
-      | Batch_response _ -> log (fun () -> "Unsupported batch response received"); []
-      | Batch_call _ -> log (fun () -> "Unsupported batch call received"); []
+      | Batch_response _ -> log.debug (fun () -> "Unsupported batch response received"); []
+      | Batch_call _ -> log.debug (fun () -> "Unsupported batch call received"); []
       end
-    with Ppx_yojson_conv_lib__Yojson_conv.Of_yojson_error(_exn, json) ->
-      log (fun () -> "error parsing json: " ^ Yojson.Safe.pretty_to_string json);
+    with Ppx_yojson_conv_lib__Yojson_conv.Of_yojson_error(exn, json) ->
+      log.error (fun () -> Printf.sprintf "cannot decode message, ignoring it: %s in %s" (Printexc.to_string exn) (Yojson.Safe.to_string json));
       []
     end
   | Send jsonrpc ->

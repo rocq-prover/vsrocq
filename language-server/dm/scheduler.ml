@@ -14,7 +14,7 @@
 
 open Types
 
-let Log log = Log.mk_log "scheduler"
+let log = Log.mk_log "scheduler"
 
 module SM = CMap.Make (Stateid)
 
@@ -148,7 +148,7 @@ let flatten_proof_block st =
 let find_proof_using (ast : Synterp.vernac_control_entry) =
   match ast.CAst.v.expr with
   | VernacSynPure(VernacProof(_,Some e)) -> Some e
-  | _ -> log (fun () -> "no ast for proof using, looking at a default");
+  | _ -> log.debug (fun () -> "no ast for proof using, looking at a default");
       None
   (* FIXME: once https://github.com/rocq-prover/rocq/pull/21887 gets in, we can really do this:
        Proof_using.get_default_proof_using ()
@@ -190,7 +190,7 @@ let push_state id ast synterp classif st =
   | VtStartProof opener_type ->
     base_id st, open_proof_block ex_sentence opener_type st, Exec ex_sentence
   | VtQed terminator_type ->
-    log (fun () -> "scheduling a qed");
+    log.debug (fun () -> "scheduling a qed");
     begin match st.proof_blocks with
     | [] -> (* can happen on ill-formed documents *)
       base_id st, push_ex_sentence ex_sentence st, Exec ex_sentence
@@ -198,13 +198,13 @@ let push_state id ast synterp classif st =
       (* TODO do not delegate if command with side effect inside the proof or nested lemmas *)
       match is_opaque_flat_proof terminator_type st.section_depth block with
       | Some proof_using ->
-        log (fun () -> "opaque proof");
+        log.debug (fun () -> "opaque proof");
         let terminator = { ex_sentence with error_recovery = RAdmitted } in
         let tasks = List.rev block.proof_sentences in
         let st = { st with proof_blocks = pop } in
         base_id st, push_ex_sentence ex_sentence st, OpaqueProof { terminator; opener_id = block.opener_id; tasks; proof_using }
       | None ->
-        log (fun () -> "not an opaque proof");
+        log.debug (fun () -> "not an opaque proof");
         let st = flatten_proof_block st in
         base_id st, push_ex_sentence ex_sentence st, Exec ex_sentence
     end
@@ -249,10 +249,6 @@ let schedule_sentence (id, (ast, classif, synterp_st)) st schedule =
       | _ -> (base, st, task)
       end
   in
-(*
-  log (fun () -> "Scheduled " ^ (Stateid.to_string id) ^ " based on " ^ (match base with Some id -> Stateid.to_string id | None -> "no state"));
-  log (fun () -> "New scheduler state: " ^ string_of_state st);
-  *)
   let tasks = SM.add id (base, task) schedule.tasks in
   let add_dep deps x id =
     let upd = function

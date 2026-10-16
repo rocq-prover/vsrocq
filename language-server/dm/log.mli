@@ -12,9 +12,18 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
+(* One logger per source. [debug] lines print only when the source is
+   selected with [-vsrocq-d] or [VSROCQ_ARGS], or before initialization
+   when [init] is selected; [info] and [error] lines always print. Until
+   the server answers initialize, printed lines are queued and written
+   after the response, except [error] lines, which go to stderr at once. *)
+type t = {
+  debug : (unit -> string) -> unit;
+  info : (unit -> string) -> unit;
+  error : (unit -> string) -> unit;
+}
 
-val mk_log : string -> (?force:bool -> (unit -> string) -> unit) log
+val mk_log : string -> t
 val logs : unit -> string list
 
 type event = string

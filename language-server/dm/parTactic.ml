@@ -12,9 +12,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Types
-
-let Log log = Log.mk_log "parTactic"
+let log = Log.mk_log "parTactic"
 	
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
 let merge_ustate sigma uc = Evd.merge_universe_context sigma uc
@@ -62,7 +60,7 @@ let assign_tac ~abstract res : unit Proofview.tactic =
       (if abstract then Abstract.tclABSTRACT None else (fun x -> x))
           (push_state uc <*> Tactics.exact_no_check (EConstr.of_constr pt))
     with Not_found ->
-      log (fun () -> "nothing for " ^ Pp.string_of_ppcmds @@ Evar.print gid);
+      log.debug (fun () -> "nothing for " ^ Pp.string_of_ppcmds @@ Evar.print gid);
       tclUNIT ()
   end)
 
@@ -96,14 +94,14 @@ let worker_solve_one_goal { TacticJob.state; ast; goalno; goal } ~send_back =
     let EvarInfo evi = Evd.find sigma goal in
     match Evd.(evar_body evi) with
     | Evd.Evar_empty ->
-        log (fun () -> "no progress on goal " ^ pr_goal goal);
+        log.debug (fun () -> "no progress on goal " ^ pr_goal goal);
         send_back (TacticJob.UpdateSolution (goal,TacticJob.NoProgress))
     | Evd.Evar_defined t ->
         let t = Evarutil.nf_evar sigma t in
         let evars = Evarutil.undefined_evars_of_term sigma t in
         if Evar.Set.is_empty evars then
           let t = EConstr.Unsafe.to_constr t in
-          log (fun () -> "closed goal " ^ pr_goal goal);
+          log.debug (fun () -> "closed goal " ^ pr_goal goal);
           send_back (TacticJob.UpdateSolution (goal,TacticJob.Solved(t, get_ustate sigma)))
         else
           CErrors.user_err
@@ -133,11 +131,11 @@ let interp_par ~pstate ~info ast ~abstract : Declare.Proof.t =
         e, job_id
       ) 0) in
   let rec wait acc evs =
-    log (fun () -> "waiting for events: " ^ string_of_int @@ Sel.Todo.size evs);
+    log.debug (fun () -> "waiting for events: " ^ string_of_int @@ Sel.Todo.size evs);
     let more_ready, evs = Sel.pop_opt evs in
     match more_ready with
     | None ->
-        if Sel.Todo.is_empty evs then (log (fun () -> "done waiting for tactic workers"); acc)
+        if Sel.Todo.is_empty evs then (log.debug (fun () -> "done waiting for tactic workers"); acc)
         else wait acc evs (* should be assert false *)
     | Some ev ->
       let result, more_events = TacticWorker.handle_event ev in
@@ -145,16 +143,16 @@ let interp_par ~pstate ~info ast ~abstract : Declare.Proof.t =
       match result with
       | None -> wait acc evs
       | Some(TacticJob.UpdateSolution(ev,TacticJob.Solved(c,u))) ->
-          log (fun () -> "got solution for evar " ^ Pp.string_of_ppcmds @@ Evar.print ev);
+          log.debug (fun () -> "got solution for evar " ^ Pp.string_of_ppcmds @@ Evar.print ev);
           wait acc evs
       | Some(TacticJob.AppendFeedback _) ->
-          log (fun () -> "got feedback");
+          log.debug (fun () -> "got feedback");
           wait acc evs
       | Some(TacticJob.UpdateSolution(ev,TacticJob.NoProgress)) ->
-          log (fun () -> "got no progress for " ^ Pp.string_of_ppcmds @@ Evar.print ev);
+          log.debug (fun () -> "got no progress for " ^ Pp.string_of_ppcmds @@ Evar.print ev);
           wait acc evs
       | Some(TacticJob.UpdateSolution(ev,TacticJob.Error err)) ->
-          log (fun () -> "got error for " ^ Pp.string_of_ppcmds @@ Evar.print ev);
+          log.debug (fun () -> "got error for " ^ Pp.string_of_ppcmds @@ Evar.print ev);
           List.iter DelegationManager.cancel_job job_ids;
           CErrors.user_err err in
   let results = wait [] Sel.Todo.(add empty events) in

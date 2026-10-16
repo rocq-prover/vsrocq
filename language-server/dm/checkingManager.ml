@@ -42,7 +42,7 @@ let set_options s =
   settings := s;
   ProverThread.set_options ~preempt:s.preempt
 
-let (Log log) = Log.mk_log "checkingManager"
+let log = Log.mk_log "checkingManager"
 
 type interp_target = Next | Previous | Point of Position.t * Settings.PointInterpretationMode.t | End
 
@@ -187,7 +187,7 @@ let update_processed id state document =
       (* assert false delegated sentences born as such, cannot become it later *)
     end
   | None ->
-      log (fun () -> "Trying to get overview with non-existing state id " ^ Stateid.to_string id);
+      log.debug (fun () -> "Trying to get overview with non-existing state id " ^ Stateid.to_string id);
       state
 
 let update_processed_when_checked id state document =
@@ -201,7 +201,7 @@ let update_processed_when_checked id state document =
       | None -> state
     end
   | None ->
-      log (fun () -> "Trying to get overview with non-existing state id " ^ Stateid.to_string id);
+      log.debug (fun () -> "Trying to get overview with non-existing state id " ^ Stateid.to_string id);
       state
 
 let update_processing task state document =
@@ -276,15 +276,15 @@ let overview st = st.overview
 
 let print_exec_overview overview =
   let { processing; processed; prepared } = overview in
-  log (fun () -> "--------- Prepared ranges ---------");
-  List.iter (fun r -> log (fun () -> Range.to_string r)) prepared;
-  log (fun () -> "-------------------------------------");
-  log (fun () -> "--------- Processing ranges ---------");
-  List.iter (fun r -> log (fun () -> Range.to_string r)) processing;
-  log (fun () -> "-------------------------------------");
-  log (fun () -> "--------- Processed ranges ---------");
-  List.iter (fun r -> log (fun () -> Range.to_string r)) processed;
-  log (fun () -> "-------------------------------------")
+  log.debug (fun () -> "--------- Prepared ranges ---------");
+  List.iter (fun r -> log.debug (fun () -> Range.to_string r)) prepared;
+  log.debug (fun () -> "-------------------------------------");
+  log.debug (fun () -> "--------- Processing ranges ---------");
+  List.iter (fun r -> log.debug (fun () -> Range.to_string r)) processing;
+  log.debug (fun () -> "-------------------------------------");
+  log.debug (fun () -> "--------- Processed ranges ---------");
+  List.iter (fun r -> log.debug (fun () -> Range.to_string r)) processed;
+  log.debug (fun () -> "-------------------------------------")
 
 let overview_until_range st range =
   let find_final_range l = List.find_opt (fun (r : Range.t) -> Range.included ~in_:r range) l in
@@ -397,7 +397,7 @@ let observe document st ~background id ~block_on_first_error : state * event Sel
               let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
               ({ st with exec_event_cancel_handle }, [ event ])
           | Some (error_id, loc), true ->
-              log (fun () -> "observe " ^ Stateid.to_string id ^" faces error " ^ Stateid.to_string error_id);
+              log.debug (fun () -> "observe " ^ Stateid.to_string id ^" faces error " ^ Stateid.to_string error_id);
               let st, error_range = state_before_error document st error_id loc in
               let events = mk_block_on_error_event error_range error_id background in
               (st, events)
@@ -480,7 +480,7 @@ let real_interpret_to_end document st check_mode =
   match Document.get_last_sentence document with
   | None -> (st, [])
   | Some { id } ->
-      log (fun () -> "interpret_to_end id = " ^ Stateid.to_string id);
+      log.debug (fun () -> "interpret_to_end id = " ^ Stateid.to_string id);
       interpret_to document st id check_mode
 
 let interpret_to_end () = mk_interp_to_event !settings.check_mode End
@@ -493,7 +493,7 @@ let interpret_in_background document st =
   match Document.get_last_sentence document with
   | None -> (st, [])
   | Some { id } ->
-      log (fun () -> "interpret_to_end id = " ^ Stateid.to_string id);
+      log.debug (fun () -> "interpret_to_end id = " ^ Stateid.to_string id);
       observe document ~background:true st id ~block_on_first_error:!settings.block_on_first_error
 
 let validate_document document st =
@@ -501,7 +501,7 @@ let validate_document document st =
 
 let execution_finished st id started block_events =
   let time = Unix.gettimeofday () -. started in
-  log (fun () -> Printf.sprintf "ExecuteToLoc %d ends after %2.3f" (Stateid.to_int id) time);
+  log.debug (fun () -> Printf.sprintf "ExecuteToLoc %d ends after %2.3f" (Stateid.to_int id) time);
   (* We update the state to trigger a publication of diagnostics *)
   let update_view = true in
   let state = Some st in
@@ -544,11 +544,11 @@ let execute document st id vst_for_next_task started task tasks background block
   in
   match Document.get_sentence document id with
   | None ->
-      log (fun () -> Printf.sprintf "ExecuteToLoc %d stops after %2.3f, sentences invalidated" (Stateid.to_int id) time);
+      log.debug (fun () -> Printf.sprintf "ExecuteToLoc %d stops after %2.3f, sentences invalidated" (Stateid.to_int id) time);
       ([], { state = Some st; events = []; update_view = true; notification = None })
       (* Sentences have been invalidate, probably because the user edited while executing *)
   | Some _ ->
-      log (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
+      log.debug (fun () -> Printf.sprintf "ExecuteToLoc %d continues after %2.3f" (Stateid.to_int id) time);
       let execution_state, result = ExecutionManager.execute st.execution_state document vst_for_next_task task in
       let st = { st with execution_state } in
       match result with
