@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   build-extension:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -35,6 +36,7 @@ jobs:
     - run: npm run package
 
   nix-dev-build:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     strategy:
       fail-fast: false
       matrix:
@@ -83,6 +85,7 @@ jobs:
       run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
   install-opam:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     strategy:
       fail-fast: false
       matrix:
@@ -143,11 +146,19 @@ jobs:
       if: runner.os == 'Linux' && failure()
       run: cat /tmp/vsrocq_init_log.* 2>/dev/null || echo "no init log was written"
 
-  install-windows:
-    if: false
+  install-opam-windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [cygwin, msys2]
+        coq: [ "9.2.0" ]
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
+    env:
+      OPAMYES: true
     steps:
+    # The runner image sets core.autocrlf=true globally, and the build reads the
+    # dune.in files through Cygwin tools, which do not tolerate CRLF.
     - name: Set git to use LF
       run: |
         git config --global core.autocrlf false
@@ -156,25 +167,38 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Build language server
-      run: .\language-server\build-windows-platform.bat
-      env:
-        COQ_VERSION: V8.18+rc1
-
-    - run: C:\ci\cygwin64\bin\bash.exe --login -c 'echo vsrocqtop=$(cygpath -m $(which vsrocqtop))' >> $Env:GITHUB_ENV
-
-    - uses: actions/setup-node@v7
+    - name: Set up OCaml
+      uses: ocaml/setup-ocaml@v3
       with:
-        node-version: 22
-        cache: npm
-        cache-dependency-path: client/package-lock.json
+        ocaml-compiler: "4.14"
+        windows-environment: ${{ matrix.environment }}
 
-    - run: cd client && npm run package && npm test
-      env:
-        VSROCQPATH: ${{ env.vsrocqtop }}
-        VSROCQARGS: "-bt"
+    - name: Install Rocq
+      run: opam pin add rocq-core ${{ matrix.coq }}
+
+    # On native Windows, opam selects the architecture the OCaml compiler
+    # targets through a package: arch-x86_64 or arch-x86_32.
+    # setup-ocaml selects the 0install solver, which swaps the package for
+    # arch-x86_32, rebuilding the compiler, and every package above it, as 32-bit mingw.
+    # The language server then does not build because vsrocqtop/lspManager.ml
+    # holds an integer literal of 4000000000, which does not fit a 31-bit int.
+    # The solution here is to name arch-x86_64 explicitly in the command.
+    #
+    # The package's `available: arch != "arm32" & arch != "x86_32"` does not
+    # catch this, because opam's `arch` variable describes the host machine,
+    # which stays x86_64, and not the compiler's target. arch-x86_32 is flagged
+    # `avoid-version`, which opam's default solver honours and 0install does not,
+    # so people installing the package by hand never get this plan.
+    - name: Install vsrocq-language-server
+      run: |
+        opam pin add vsrocq-language-server ./language-server/ --no-action
+        opam install vsrocq-language-server arch-x86_64 --with-test
+
+    - name: Check it runs
+      run: opam exec -- vsrocqtop -v
 
   dev-setup-opam:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -231,6 +255,7 @@ jobs:
 
 
   create-release:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [build-extension, nix-dev-build, install-opam, dev-setup-opam]
@@ -258,6 +283,7 @@ jobs:
           generate_release_notes: true
 
   publish-extension:
+    if: false # DO NOT MERGE: drafting only, runs just install-opam-windows
     # Dry run: it packages the extension and checks that both marketplace
     # actions accept the result, with a stub token. It depends on
     # build-extension so that it cannot report success while packaging is
