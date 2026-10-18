@@ -43,7 +43,7 @@ type rocq_job =
       document_id
       * string
       * (Memprof_limits.Token.t -> 'a interruptible_result)
-      * 'a interruptible_result Sel.Promise.handler
+      * ('a interruptible_result -> unit)
       * Memprof_limits.Token.t
       * retry ref
       -> rocq_job
@@ -82,11 +82,10 @@ let _runner =
             Queue.enqueue (Job (doc_id , name, task, resolver, Memprof_limits.Token.create (), ref false)) jobs.queue;
             Condition.signal jobs_condition;
             Mutex.unlock jobs_mutex
-
         | x ->
             Mutex.lock jobs_mutex;
             log (fun () -> Printf.sprintf "runner: job ends: %s" name);
-            Sel.Promise.fulfill resolver x;
+            resolver x;
             jobs.running <- None;
             Condition.signal jobs_condition;
             Mutex.unlock jobs_mutex
@@ -119,53 +118,49 @@ let limit f token =
       let e, info = Exninfo.capture e in
       Aborted (CErrors.iprint (e, info))
 
-let busy_wait timeout p token =
+let busy_wait timeout result token =
   let timeout = Unix.gettimeofday () +. timeout in
-  while not (Sel.Promise.is_resolved p) && Unix.gettimeofday () < timeout do
-    Unix.sleepf 0.01;
+  let pending () =
+    match Atomic.get result with None -> true | Some _ -> false
+  in
+  while pending () && Unix.gettimeofday () < timeout do
+    Unix.sleepf 0.01
   done;
   Memprof_limits.Token.set token;
-  try
-    match Sel.Promise.get p with
-    | Sel.Promise.Fulfilled x -> x
-    | Sel.Promise.Rejected e -> raise e (* bug *)
-  with Failure _ -> Aborted (Pp.str "Rocq times out")
+  match Atomic.get result with
+  | Some x -> x
+  | None -> Aborted (Pp.str "Rocq timed out")
 
+let enqueue_now ~doc_id ~name f =
+  let token = Memprof_limits.Token.create () in
+  let result = Atomic.make None in
+  let resolver x = Atomic.set result (Some x) in
+  Mutex.lock jobs_mutex;
+  Option.iter postpone_job jobs.running;
+  Queue.add_head (Job (doc_id, name, limit f, resolver, token, ref false)) jobs.queue;
+  Condition.signal jobs_condition;
+  Mutex.unlock jobs_mutex;
+  (result, token)
 
 let try_run ~doc_id ~name ~timeout f =
   log (fun () -> "main: run");
-  let token = Memprof_limits.Token.create () in
-  let promise, r = Sel.Promise.make () in
-  Mutex.lock jobs_mutex;
-  Option.iter postpone_job jobs.running;
-  Queue.add_head (Job (doc_id, name, limit f, r, token, ref false)) jobs.queue;
-  Condition.signal jobs_condition;
-  Mutex.unlock jobs_mutex;
-  busy_wait timeout promise token
+  let result, token = enqueue_now ~doc_id ~name f in
+  busy_wait timeout result token
 
 let eventually_run ~doc_id ~name f =
   log (fun () -> "main: eventually_run");
   let token = Memprof_limits.Token.create () in
   let promise, r = Sel.Promise.make () in
   Mutex.lock jobs_mutex;
-  Queue.enqueue (Job (doc_id, name, limit f, r, token, ref false)) jobs.queue;
+  Queue.enqueue (Job (doc_id, name, limit f, Sel.Promise.fulfill r, token, ref false)) jobs.queue;
   Condition.signal jobs_condition;
   Mutex.unlock jobs_mutex;
   promise
 
 let run ~doc_id ~name f =
   log (fun () -> "main: run");
-  let token = Memprof_limits.Token.create () in
-  let promise, r = Sel.Promise.make () in
-  Mutex.lock jobs_mutex;
-  Option.iter postpone_job jobs.running;
-  Queue.add_head (Job (doc_id, name, limit f, r, token, ref false)) jobs.queue;
-  Condition.signal jobs_condition;
-  Mutex.unlock jobs_mutex;
-  match busy_wait 99999. promise token with
+  let result, token = enqueue_now ~doc_id ~name f in
+  match busy_wait 99999. result token with
   | Interrupted -> assert false
   | Aborted pp -> Result.Error pp
   | Terminated x -> Result.Ok x
-
-
-
