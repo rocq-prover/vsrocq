@@ -34,7 +34,8 @@ After creating an opam switch, pin Rocq, and install the `vsrocq-language-server
 ```shell
 $ opam pin add rocq-core 9.1.0 # replace with correct version
 # For Coq 8.x: use coq / coq-core packages instead of rocq-core
-$ opam install vsrocq-language-server.2.3.4 # replace "2.3.4" with correct version
+$ opam install vsrocq-language-server
+# For a specific version, e.g. v2.3.4: opam install vsrocq-language-server.2.3.4
 ```
 
 **Installation (nixos)**
