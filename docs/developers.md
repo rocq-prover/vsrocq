@@ -146,39 +146,43 @@ want to be run by the test.
 
 # Release process
 
-To release a new version of VsRocq:
+To release a new version of VsRocq, create a new commit (and PR) with the following changes:
 
-1. First make sure to bump the version number in the three folowing files:
-    - flake.nix (look for `vsrocq_version`)
-    - client/package.json (llok for `"version":`)
-    - language-server/vsrocqtop/lspManager.ml (look for `let server_info`)
+1. First make sure to bump the version number in the four following files:
+    - `flake.nix`: look for the first `version` key
+    - `client/package.json`: look for the `version` key
+    - `client/package-lock.json`: look for the top level `version` key and the `version` key in package `vsrocq`
+    - `language-server/vsrocqtop/lspManager.ml`: look for the `server_info` let-definition
 
-1.a Don't forget to add the version requirements in
-    `client/src/utilities/versioning.ts`, look for `versionRequirements`.
+2. Add a new row in the version requirements constant `versionRequirements`, in `client/src/utilities/versioning.ts`.
 
-2. Create a signed tag for the release with the new version number
+3. Open the PR, wait for approval, and merge it with a merge commit (not squash or rebase).
+
+4. Create a signed tag on the merge commit of the release PR. Version semantics are `v2.#.#` (ex: `v2.2.2`).
+   The tag name must start with `v` (because the release workflow only runs for tags matching `v*.*.*`).
 ```shell
-    git tag -s #VERSION_NUMBER
+    git tag -s v2.X.Y -m "release 2.X.Y"
+    # To tag a specific commit instead:
+    # git tag -s v2.X.Y -m "release 2.X.Y" <commit-hash>
 ```
-3. Push
+
+5. Push the tag. This will automatically launch a workflow to generate the release.
 ```shell
-    git push origin #VERSION_NUMBER
+    git push origin v2.X.Y
 ```
 
-~~Version semantics are currently as follows: v#NUMBER+coq#COQ_VERSION (ex: v1.9.2+coq.8.18)~~
-Since we now use opt comp and support all Rocq versions, version semantics are v2.#.# (ex: v2.2.2)
-
-Once the CI has run, a draft release will be automatically created. Open the draft release and edit the change log to your liking.
+6. Once the CI has run, a **draft** release will be automatically created. Open it and edit the change log to your liking.
 Finally, light a candle, do a little prayer and click release !
 
-Publishing the release on GH fires the `cd.yxml` job that in turn opens a PR
-on the opam repository.
+7. Publishing the release on Github fires the `cd.yml` job that, in turn, opens a PR on the [opam repository](https://github.com/ocaml/opam-repository).
+   Wait for the opam maintainers to merge it.
 
-After the opam package has been published (PR merged by opam maintainers), the user should then use ```publish-extension.yml``` to publish the extensions on the vscode marketplace as well as vscodium.
+8. Once the opam package is published, run the `publish-extension.yml` workflow manually from the Actions tab (in Github) to publish the extension on the VsCode marketplace and on Open VSX (used by VsCodium).
+   In "Use workflow from", select the release tag, not `main`, and uncheck "Make this a pre-release ?", which is checked by default.
 
 # CI update
 
-Te version of nixpkgs used in the CI is pinned by flake, to update it to current nixpkgs-unstable, do
+The version of nixpkgs used in the CI is pinned by flake, to update it to current nixpkgs-unstable, do
 ```shell
 nix flake update
 ```
