@@ -49,7 +49,8 @@ let module_prefix_of_modname modname =
 let namespaced_name prefix name =
   match prefix with [] -> name | _ -> String.concat "." (prefix @ [ name ])
 
-let local_node_id ident = "local:" ^ Ident.unique_name ident
+let local_node_id prefix ident =
+  "local:" ^ namespaced_name prefix (Ident.unique_name ident)
 let external_node_id display_name = "external:" ^ display_name
 
 let ensure_display_name display_names node display_name =
@@ -65,7 +66,7 @@ let add_external_node analysis display_name =
   ({ analysis with graph; display_names }, node)
 
 let add_local_binding analysis prefix ident =
-  let node = local_node_id ident in
+  let node = local_node_id prefix ident in
   let display_name = namespaced_name prefix (Ident.name ident) in
   let graph = add_graph_node analysis.graph node in
   let local_nodes = StringSet.add node analysis.local_nodes in
@@ -140,7 +141,8 @@ let resolve_path_for_source analysis source path =
 let callsite_node_id callee_target loc =
   let start = loc.Location.loc_start in
   let finish = loc.Location.loc_end in
-  Printf.sprintf "callsite:%s:%d:%d:%d:%d" callee_target start.Lexing.pos_lnum
+  Printf.sprintf "callsite:%s:%s:%d:%d:%d:%d" callee_target start.Lexing.pos_fname
+    start.Lexing.pos_lnum
     (start.Lexing.pos_cnum - start.Lexing.pos_bol)
     finish.Lexing.pos_lnum
     (finish.Lexing.pos_cnum - finish.Lexing.pos_bol)
@@ -380,7 +382,10 @@ let load_workspace_graph input_cmt_path =
         | Implementation structure ->
             let prefix = module_prefix_of_modname cmt.cmt_modname in
             if List.hd prefix <> root_library then analysis
-            else collect_structure prefix analysis structure
+            else
+              collect_structure prefix
+                { analysis with ident_bindings = Ident.empty }
+                structure
         | _ -> analysis
       end
   in

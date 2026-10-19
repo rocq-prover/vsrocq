@@ -11,6 +11,10 @@
   static_callgraph_whitelist.txt
   (glob_files ../../dm/.dm.objs/byte/*.cmt)))
 
+(cram
+ (applies_to collision)
+ (deps (glob_files collision/.collision.objs/byte/*.cmt)))
+
 (alias
  (name documentManager)
  (deps (alias runtest)))
