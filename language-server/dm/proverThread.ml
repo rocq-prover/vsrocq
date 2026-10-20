@@ -17,7 +17,10 @@
 open Types
 
 let preempt = ref false
-let set_options ~preempt:x = preempt := x
+
+let set_options ~preempt:x ~memory_limit =
+  preempt := x;
+  Memprof_limits.set_global_memory_limit memory_limit
 
 let (Log log) = Log.mk_log "proverThread"
 
@@ -110,11 +113,28 @@ let interrupt ~doc_id =
   Queue.iter (interrupt_job_if ~doc_id) jobs.queue;
   Mutex.unlock jobs_mutex
 
+let out_of_memory =
+  Pp.str
+    "Rocq exceeded the configured memory limit (vsrocq.memory.limit); \
+     the computation was aborted"
+
 let limit f token =
-  match Terminated (Memprof_limits.limit_with_token ~token f) with
-  | Aborted _ | Interrupted -> assert false
-  | Terminated (Error _) -> Interrupted
-  | Terminated (Ok x) -> Terminated x
+  (* Each job runs under two nested limits: the global memory limit (which
+     registers this thread and interrupts it once the major heap grows past
+     the configured limit) and the cancellation token.  A memory abort
+     surfaces as [Error] from the outer wrapper; a cancellation surfaces as
+     [Ok (Error _)] from the inner one. *)
+  match
+    Memprof_limits.limit_global_memory (fun () ->
+        Memprof_limits.limit_with_token ~token f)
+  with
+  | Ok (Ok x) -> Terminated x
+  | Ok (Error _) -> Interrupted
+  | Error _ ->
+      (* Free the runaway term and shrink the major heap; otherwise every
+         subsequent job would be interrupted immediately. *)
+      Gc.compact ();
+      Aborted out_of_memory
   | exception e ->
       let e, info = Exninfo.capture e in
       Aborted (CErrors.iprint (e, info))

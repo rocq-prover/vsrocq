@@ -131,6 +131,12 @@ let do_configuration settings =
   full_diagnostics := settings.diagnostics.full;
   full_messages := settings.goals.messages.full;
   max_memory_usage := settings.memory.limit * 1000000000;
+  (* [Memory.limit] is expressed in GB; Memprof_limits expects kiB.  A
+     non-positive value disables the limit. *)
+  let memory_limit_kib =
+    if settings.memory.limit <= 0 then -1
+    else settings.memory.limit * 1000000000 / 1024
+  in
   Dm.CheckingManager.set_options {
     Dm.CheckingManager.check_mode = settings.proof.mode;
     block_on_first_error = settings.proof.block;
@@ -138,6 +144,7 @@ let do_configuration settings =
     pp_mode = Option.default Settings.Goals.PrettyPrint.Pp settings.goals.ppmode;
     diff_mode = Settings.Goals.Diff.Mode.Off;
     preempt = settings.interrupt.preempt;
+    memory_limit = memory_limit_kib;
     (* Diff mode is broken, cfr #1163 #1164 *)
     (* diff_mode := settings.goals.diff.mode; *)
   }
