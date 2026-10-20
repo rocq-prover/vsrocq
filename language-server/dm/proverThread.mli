@@ -22,6 +22,12 @@ val set_options : preempt:bool -> unit
   Vernacstate.* and then perform their work. In other words they should be
   real closures, independent from the Rocq context they are fired in.
 
+  [eventually_run] runs the thunk in the [Sel] event loop by creating a
+  promise awaiting the result.
+
+  [try_run] and [run] run the thunk and busy wait for it to finish using an
+  [Atomic] cell to read the result.
+
 *)
 
 val eventually_run :

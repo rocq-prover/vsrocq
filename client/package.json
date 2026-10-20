@@ -4,7 +4,7 @@
   "description": "VsRocq is an extension for Visual Studio Code with support for the Rocq Prover",
   "publisher": "rocq-prover",
   "license": "MIT",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/rocq-prover/vsrocq.git"
@@ -141,7 +141,7 @@
             "scope": "workspace",
             "type": "number",
             "default": 4,
-            "description": "Sets the memory limit over which we discard the execution state of documents which have been saved (in Gb). "
+            "description": "Memory limit (in Gb) before the server discards the execution state of closed documents. Checked each time a document is closed."
           },
           "vsrocq.interrupt.preempt": {
             "scope": "workspace",

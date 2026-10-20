@@ -416,3 +416,18 @@ let%test_unit "cancel.interrupt_while_sentence_in_prover" =
   let st = handle_dm_events todo st in
   [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s2.id) false;
   [%test_eq: bool] (DocumentManager.Internal.is_locally_executed st s3.id) false
+
+(* Synchronous ProverThread calls (used for proof views, hovers, queries...)
+   used to leak one pipe each, until vsrocqtop crashed in Unix.select once a file descriptor reached FD_SETSIZE. *)
+let%test_unit "proverThread.try_run.no_fd_leak" =
+  if Stdlib.Sys.unix then begin
+    let count_fds () = Stdlib.Array.length (Stdlib.Sys.readdir "/dev/fd") in
+    let before = count_fds () in
+    for _ = 1 to 100 do
+      ignore
+        (ProverThread.try_run ~doc_id:0 ~name:"fd_leak_test" ~timeout:5.0
+           (fun () -> ()))
+    done;
+    let after = count_fds () in
+    [%test_pred: int] (fun leaked -> leaked < 5) (after - before)
+  end

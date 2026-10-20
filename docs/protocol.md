@@ -4,6 +4,31 @@ vsrocq uses the [language server protocol](https://microsoft.github.io/language-
 
 We implement a few custom verbs that we detail here.
 
+## Initialization
+
+In its response to `initialize`, the server reports its own version in
+`serverInfo`, and the Rocq and OCaml versions it was built against in
+`capabilities.experimental`.
+
+```typescript
+interface ServerInfo {
+    name: "vsrocq-language-server";
+    // vsrocq version, e.g. "2.5.1"
+    version: string;
+}
+
+interface RocqInfo {
+    // Rocq version the server was compiled against, e.g. "9.2"
+    version: string;
+    // OCaml version used to compile Rocq, e.g. "4.14.2"
+    ocamlVersion: string;
+}
+
+interface ExperimentalCapabilities {
+    rocq: RocqInfo;
+}
+```
+
 ## Configuration 
 
 We handle the `workspace/configuration` and `workspace/didChangeConfiguration` notifications. 
