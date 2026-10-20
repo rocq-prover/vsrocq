@@ -22,26 +22,26 @@ type AllPaths<O> = {
               : never);
 }[keyof O & string];
 
+// A path into the configuration object and the type of the value at that path.
+// The empty path stands for the whole configuration object. Exported so a
+// wrapper around `setConfigurationOption` keeps the link between the two.
+export type ConfigPath = AllPaths<NestedScopedConfigs>;
+export type ConfigValue<P extends ConfigPath | []> = GetDotAccess<
+    NestedScopedConfigs,
+    P
+>;
+
 // A type-safe access to configuration options. The passed path is a variadic list of keys into the configuration object.
 // The error messages for invalid keys might be hard to read, but they essentially point out which key in the path is invalid.
-export function getConfigurationOption<
-    P extends AllPaths<NestedScopedConfigs> | [],
->(...path: [...P]): GetDotAccess<NestedScopedConfigs, P> {
+export function getConfigurationOption<P extends ConfigPath | []>(
+    ...path: [...P]
+): ConfigValue<P> {
     let obj = vscode.workspace.getConfiguration("vsrocq") as any;
     for (const key of path) {
         obj = obj[key];
     }
     return obj;
 }
-
-// A path into the configuration object and the type of the value at that path.
-// Exported so a wrapper around `setConfigurationOption` keeps the link between
-// the two.
-export type ConfigPath = AllPaths<NestedScopedConfigs>;
-export type ConfigValue<P extends ConfigPath> = GetDotAccess<
-    NestedScopedConfigs,
-    P
->;
 
 // Sets a configuration option, typed the same way as `getConfigurationOption`.
 // Writes to the workspace settings when a workspace is open and to the user
