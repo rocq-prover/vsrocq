@@ -20,8 +20,11 @@ suite("Should get diagnostics in the appropriate tab", function () {
         const ext = vscode.extensions.getExtension("rocq-prover.vsrocq")!;
         await ext.activate();
 
+        // `Check` is published as an Information diagnostic, which the server
+        // drops unless full diagnostics are enabled.
         await t.configure(["proof", "delegation"], "Skip");
         await t.configure(["proof", "mode"], 1);
+        await t.configure(["diagnostics", "full"], true);
 
         const doc1 = await t.openFixture("delegate_proof.v");
 

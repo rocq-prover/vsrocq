@@ -59,6 +59,22 @@ let%test_unit "exec: unfinished proof" =
     D (s3.id,Information,".*True.*")
   ]
 
+let%test_unit "exec: client fixture proof skip" =
+  let text = "Lemma x : True.\nProof.\n  idtac.\n  apply foobar.\n  idtac.\nQed.\nCheck x." in
+  let st, events = em_init_test_doc ~text in
+  let st, (s1, (s2, (s3, (s4, (s5, (s6, (s7, ()))))))) =
+    dm_parse st (P(P(P(P(P(P(P O))))))) in
+  set_delegation_mode SkipProofs;
+  let exec_events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add events exec_events) in
+  let st = handle_dm_events todo st in
+  let errors = Document.all_checking_errors (DocumentManager.Internal.document st) in
+  [%test_eq: int] 0 (List.length errors);
+  check_diag st [
+    D (s7.id,Information,".*True.*")
+  ];
+  ExecutionManager.set_default_options ()
+
 let%test_unit "exec: unfinished proof skip" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. Qed. Check x." in
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
