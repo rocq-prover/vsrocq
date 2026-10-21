@@ -11,10 +11,9 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Ppx_yojson_conv_lib.Yojson_conv.Primitives
-open Types
+let log = Log.mk_log "duneInteraction"
 
-let Log log = Log.mk_log "duneInteraction"
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 (** A Dune dependency. Only the optional [File] entry matters for validating
     that a copy action reads the source file it reports. *)
@@ -125,13 +124,13 @@ let source_of_file file =
       Fun.protect ~finally:(fun () -> close_in_noerr stdout) (fun () ->
         try Some (Yojson.Safe.from_channel stdout) with
         | error ->
-          log (fun () -> "Cannot decode Dune rules: " ^ Printexc.to_string error);
+          log.debug (fun () -> "Cannot decode Dune rules: " ^ Printexc.to_string error);
           None)
     in
     begin match snd (Unix.waitpid [] process), rules with
     | Unix.WEXITED 0, Some rules -> source_of_rules ~file rules
     | status, _ ->
-      log (fun () -> "Dune rules failed for " ^ file ^ ": " ^
+      log.debug (fun () -> "Dune rules failed for " ^ file ^ ": " ^
         match status with
         | Unix.WEXITED code -> "exit " ^ string_of_int code
         | Unix.WSIGNALED signal -> "signal " ^ string_of_int signal
@@ -140,11 +139,11 @@ let source_of_file file =
     end
   with
   | Unix.Unix_error (error, function_name, argument) ->
-    log (fun () -> "Cannot run Dune " ^ function_name ^ "(" ^ argument ^ "): " ^
+    log.debug (fun () -> "Cannot run Dune " ^ function_name ^ "(" ^ argument ^ "): " ^
       Unix.error_message error);
     None
   | Sys_error message ->
-    log (fun () -> "Cannot read Dune rules: " ^ message);
+    log.debug (fun () -> "Cannot read Dune rules: " ^ message);
     None
 
 (** Return the source file Dune copied to [file], or [file] when Dune cannot
@@ -165,7 +164,7 @@ let prefer_source file =
         | None -> None
     in
     Hashtbl.replace sources file source;
-    Option.value ~default:file source
+    Option.default file source
 
 (** Parser details exposed only for focused unit tests. *)
 module Internal = struct
