@@ -19,7 +19,7 @@ open Types
 let preempt = ref false
 let set_options ~preempt:x = preempt := x
 
-let (Log log) = Log.mk_log "proverThread"
+let log = Log.mk_log "proverThread"
 
 type retry = bool
 module Queue = struct
@@ -73,18 +73,18 @@ let _runner =
         in
 
         (* run the job *)
-        log (fun () -> Printf.sprintf "runner: job begins: %s" name);
+        log.debug (fun () -> Printf.sprintf "runner: job begins: %s" name);
         match task token with
         | Interrupted when !retry ->
             Mutex.lock jobs_mutex;
-            log (fun () -> Printf.sprintf "runner: postponing running job: %s" name);
+            log.debug (fun () -> Printf.sprintf "runner: postponing running job: %s" name);
             jobs.running <- None;
             Queue.enqueue (Job (doc_id , name, task, resolver, Memprof_limits.Token.create (), ref false)) jobs.queue;
             Condition.signal jobs_condition;
             Mutex.unlock jobs_mutex
         | x ->
             Mutex.lock jobs_mutex;
-            log (fun () -> Printf.sprintf "runner: job ends: %s" name);
+            log.debug (fun () -> Printf.sprintf "runner: job ends: %s" name);
             resolver x;
             jobs.running <- None;
             Condition.signal jobs_condition;
@@ -98,7 +98,7 @@ let interrupt_job_if ~doc_id (Job(id,_,_,_,token,_)) = if id = doc_id then Mempr
 let postpone_job (Job(_,name,_,_,token,retry)) =
   if not !preempt then ()
   else begin
-    log (fun () -> Printf.sprintf "main: postponing running job: %s" name);
+    log.debug (fun () -> Printf.sprintf "main: postponing running job: %s" name);
     retry := true;
     Memprof_limits.Token.set token
   end
@@ -143,12 +143,12 @@ let enqueue_now ~doc_id ~name f =
   (result, token)
 
 let try_run ~doc_id ~name ~timeout f =
-  log (fun () -> "main: run");
+  log.debug (fun () -> "main: run");
   let result, token = enqueue_now ~doc_id ~name f in
   busy_wait timeout result token
 
 let eventually_run ~doc_id ~name f =
-  log (fun () -> "main: eventually_run");
+  log.debug (fun () -> "main: eventually_run");
   let token = Memprof_limits.Token.create () in
   let promise, r = Sel.Promise.make () in
   Mutex.lock jobs_mutex;
@@ -158,7 +158,7 @@ let eventually_run ~doc_id ~name f =
   promise
 
 let run ~doc_id ~name f =
-  log (fun () -> "main: run");
+  log.debug (fun () -> "main: run");
   let result, token = enqueue_now ~doc_id ~name f in
   match busy_wait 99999. result token with
   | Interrupted -> assert false

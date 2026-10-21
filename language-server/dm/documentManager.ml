@@ -19,7 +19,7 @@ open Protocol.LspWrapper
 open Protocol.Printing
 open Types
 
-let Log log = Log.mk_log "documentManager"
+let log = Log.mk_log "documentManager"
 
 type blocking_error = {
   last_range: Range.t;
@@ -178,8 +178,8 @@ let get_info_messages st pos =
     (Option.bind pos (Document.find_sentence_before_pos st.document) |> Option.map (fun ({ id } : Document.sentence) -> id))
     (CheckingManager.get_observe_id st.checking_state)
   with
-  | None -> log (fun () -> "get_messages: Could not find id");[]
-  | Some id -> log (fun () -> "get_messages: Found id");
+  | None -> log.debug (fun () -> "get_messages: Could not find id");[]
+  | Some id -> log.debug (fun () -> "get_messages: Found id");
     let info (lvl, _, _, _) = 
       match lvl with
       | Feedback.Info -> true
@@ -211,7 +211,7 @@ let get_document_symbols st =
 
 let get_folding_ranges st =
   let folding_ranges = DocumentEntries.folding_ranges (entries_for_request st) in
-  log (fun () -> "Folding ranges: " ^ (string_of_int @@ List.length folding_ranges));
+  log.debug (fun () -> "Folding ranges: " ^ (string_of_int @@ List.length folding_ranges));
   folding_ranges
 
 let get_selection_range (st : state) (pos : Position.t) : SelectionRange.t =

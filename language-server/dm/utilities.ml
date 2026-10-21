@@ -14,7 +14,7 @@
 
 open Types
 
-let Log log = Log.mk_log "utilities"
+let log = Log.mk_log "utilities"
 
 let shift_loc ~start ~offset loc =
   let (loc_start, loc_stop) = Loc.unloc loc in
@@ -55,9 +55,9 @@ let feedback_pipe_cleanup { rocq_feeder; sel_feedback_queue; sel_cancellation_ha
 (** Returns the vernac state after the sentence *)
 let get_vernac_state (checked : sentence_checking_result option) =
   match checked with
-  | None -> log (fun () -> "Cannot find state for get_vernac_state"); None
-  | Some (Failure (_,_,None)) -> log (fun () -> "State requested after error with no state"); None
-  | Some (Success None) -> log (fun () -> "State requested in a remotely checked state"); None
+  | None -> log.debug (fun () -> "Cannot find state for get_vernac_state"); None
+  | Some (Failure (_,_,None)) -> log.debug (fun () -> "State requested after error with no state"); None
+  | Some (Success None) -> log.debug (fun () -> "State requested in a remotely checked state"); None
   | Some (Success (Some st))
   | Some (Failure (_,_, Some st)) -> Some st
 
