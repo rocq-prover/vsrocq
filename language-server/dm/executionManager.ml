@@ -222,6 +222,9 @@ let add_using proof proof_using _ =
 
 let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
   ProverThread.run ~doc_id ~name:"interp_qed_delayed" (fun () ->
+  (* Unlike [Vernacinterp.interp_entry], [interp_qed_delayed_proof] declares the
+     lemma in the current global state instead of installing [st]. *)
+  Vernacstate.unfreeze_full_state st;
   let lemmas = Option.get @@ st.Vernacstate.interp.lemmas in
   let f proof =
     let proof = add_using proof proof_using lemmas in
