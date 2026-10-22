@@ -778,14 +778,13 @@ let parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_sta
   then begin
     log_parsing.debug (fun () -> "End of unparsed area");
     false, { parse_state with stopped_here = Some next_start }
-  end else
-    begin
+  end else begin
     log_parsing.debug (fun () -> Printf.sprintf "Start of parse is %d <= %d" next_start parse_stop);
     (* FIXME should we save lexer state? *)
     match parse_one_sentence ?loc stream ~st:synterp_state with
     | None, _ (* EOI *) ->
-        log_parsing.debug (fun () -> "End of stream");
-        false, parse_state
+      log_parsing.debug (fun () -> "End of stream");
+      false, parse_state
     | Some ast, comments ->
       handle_parsed_sentence ~parsing_start:next_start ast comments parse_state
     | exception exn ->
