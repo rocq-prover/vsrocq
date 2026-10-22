@@ -81,14 +81,22 @@ type sentence = {
   checked : sentence_checking_result option;
 }
 
+(* The range of the last parsed text that is touched by the edits since then.
+   [start, stop) is in the offsets of the last parsed text, and
+   [shift_after_stop] is how far the text from [stop] on has moved. *)
+type pending_edits_range = {
+  start : int;
+  stop : int;
+  shift_after_stop : int;
+}
+
 type document = {
   sentences_by_id : sentence SM.t;
   sentences_by_end : sentence_id LM.t;
   parsing_errors_by_end : parsing_error LM.t;
   comments_by_end : comment LM.t;
   schedule : Scheduler.schedule;
-  (* byte offsets in the text before the edit *)
-  unparsed_range : RawDocument.edit_impact option;
+  pending_edits_range : pending_edits_range option; (* [None] when nothing changed since the last parse *)
   raw_doc : RawDocument.t;
   init_synterp_state : Vernacstate.Synterp.t;
   cancel_handle: Sel.Event.cancellation_handle option;
@@ -904,7 +912,7 @@ let invalidate top_edit top_id parsed_doc olds news (shift,after) =
   let unchanged_id = unchanged_id top_id diff in
   log_diff.debug (fun () -> Format.sprintf "Updated document:\n%s" (string_of_doc parsed_doc));
   log_diff.debug (fun () -> "unchanged id: " ^ Option.cata Stateid.to_string "none" unchanged_id);
-  unchanged_id, invalid_ids, { parsed_doc with unparsed_range = None; }
+  unchanged_id, invalid_ids, { parsed_doc with pending_edits_range = None; }
 
 let sentence_changes_grammar document id =
   match (sentence_of_id document id).ast with
@@ -933,8 +941,8 @@ let flush_sentences_before_edit raw_doc sentence_before_stop =
   stream
 
 (** Validate document when raw text has changed *)
-let validate_document ({ unparsed_range; raw_doc; cancel_handle; doc_id } as document) =
-  match unparsed_range with
+let validate_document ({ pending_edits_range; raw_doc; cancel_handle; doc_id } as document) =
+  match pending_edits_range with
   | None -> CErrors.anomaly Pp.(str "validate_document called with nothing to parse")
   | Some { start; stop; shift_after_stop } ->
   (* Cancel any previous parsing event *)
@@ -1031,7 +1039,8 @@ let handle_event document = function
 let create_document ~doc_id init_synterp_state text =
   let raw_doc = RawDocument.create text in
     {
-      unparsed_range = Some { start = 0; stop = String.length text; shift_after_stop = 0 };
+      (* Nothing is parsed yet, so the whole text is pending. *)
+      pending_edits_range = Some { start = 0; stop = String.length text; shift_after_stop = 0 };
       raw_doc;
       sentences_by_id = SM.empty;
       sentences_by_end = LM.empty;
@@ -1043,34 +1052,38 @@ let create_document ~doc_id init_synterp_state text =
       doc_id;
     }
 
-(* The unparsed range is in the offsets of the last parsed text, while an edit
-   is in the offsets of the current text: positions past the unparsed range are
-   shifted back, positions inside it are widened to the whole range. *)
-let to_parsed_offset (shift, unparsed_start, unparsed_stop) inside x =
-  if x < unparsed_start then x
-  else if x >= unparsed_stop + shift then x - shift
+(* Converts [x], an offset in the current text, to an offset in the last parsed
+   text, which the pending edits range uses. An offset before the range stays
+   as is, and one after it moves back by [shift]. An offset inside the range
+   has no counterpart in the last parsed text, so the function returns
+   [inside]. *)
+let to_parsed_offset (shift, pending_start, pending_stop) inside x =
+  if x < pending_start then x
+  else if x >= pending_stop + shift then x - shift
   else inside
 
-let apply_1edit ((shift, unparsed_start, unparsed_stop as pending),raw_doc) edit =
-  let raw_doc, { RawDocument.start; stop; shift_after_stop } = RawDocument.apply_text_edit raw_doc edit in
-  log_validate.debug (fun () -> Printf.sprintf "Text edits fom %i to %i shift %d atop (%d,%d,%d)" start stop shift_after_stop shift unparsed_start unparsed_stop);
-  let unparsed_start = min unparsed_start (to_parsed_offset pending unparsed_start start) in
-  let unparsed_stop = max unparsed_stop (to_parsed_offset pending unparsed_stop stop) in
+(* Merges [edit], in the offsets of the current text, into the pending edits
+   range [pending]. *)
+let apply_1edit (shift, pending_start, pending_stop as pending) ({ RawDocument.start; stop } as edit) =
+  let shift_after_stop = RawDocument.shift_after_stop edit in
+  log_validate.debug (fun () -> Printf.sprintf "Text edits from %i to %i shift %d atop (%d,%d,%d)" start stop shift_after_stop shift pending_start pending_stop);
+  let pending_start = min pending_start (to_parsed_offset pending pending_start start) in
+  let pending_stop = max pending_stop (to_parsed_offset pending pending_stop stop) in
   let shift = shift + shift_after_stop in
-  log_validate.debug (fun () -> Printf.sprintf "Text edits result in unparsed %i - %i with shift %d" unparsed_start unparsed_stop shift);
-  (shift, unparsed_start,unparsed_stop), raw_doc
+  log_validate.debug (fun () -> Printf.sprintf "Text edits result in pending edits range %i - %i with shift %d" pending_start pending_stop shift);
+  (shift, pending_start,pending_stop)
 
-let apply_text_edits document edits =
-  let pending = match document.unparsed_range with
+let apply_text_edit document edit =
+  let raw_doc, edit = RawDocument.apply_text_edit document.raw_doc edit in
+  let pending = match document.pending_edits_range with
+    (* An empty range, so the bounds of the first edit win the min and max. *)
     | None -> (0, max_int, min_int)
     | Some { shift_after_stop; start; stop } -> (shift_after_stop, start, stop) in
-  let (shift_after_stop, start,stop), raw_doc =
-    List.fold_left apply_1edit (pending, document.raw_doc) edits in
-  { document with raw_doc; unparsed_range = Some { shift_after_stop; start; stop} }
+  let shift_after_stop, start, stop = apply_1edit pending edit in
+  { document with raw_doc; pending_edits_range = Some { shift_after_stop; start; stop} }, edit
 
-let apply_text_edit d e = apply_text_edits d [e]
-
-let unparsed_range d = d.unparsed_range
+let apply_text_edits document edits =
+  List.fold_left (fun document edit -> fst (apply_text_edit document edit)) document edits
 
 module Internal = struct
 
