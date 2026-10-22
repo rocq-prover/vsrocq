@@ -733,7 +733,39 @@ let rec handle_parse_error id ~start ~parsing_start msg qf ({stream; errors; par
   (* TODO: we could count the \n between start and stop and increase Loc.line_nb *)
   true, parse_state
 
-and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsing_request_range} as parse_state) : bool * parse_state =
+and handle_parsed_sentence ~parsing_start ast comments
+    ({ synterp_state; stream; raw; parsed; parsed_comments; parsing_request_range } as parse_state) =
+  let id = Stateid.fresh () in
+  let stop = Stream.count stream in
+  let ast_loc = Option.get ast.CAst.loc in
+  let start = ast_loc.bp in
+  let tokens = get_raw_text_tokens raw start ast_loc.ep ast_loc in
+  try
+    log_parsing.debug (fun () -> "Parsed: " ^ Pp.string_of_ppcmds (Ppvernac.pr_vernac ast));
+    Feedback.set_id_for_feedback parse_state.previous_document.doc_id id;
+    let entry = get_entry ast in
+    let classification = Vernac_classifier.classify_vernac ast in
+    let synterp_state = Vernacstate.Synterp.freeze () in
+    let parsed_ast = Parsed { ast = entry; classification; tokens } in
+    let sentence = { id; parsing_start; ast = parsed_ast; start; stop; synterp_state } in
+    let parsed = sentence :: parsed in
+    let comments = List.map (fun ((start, stop), content) -> { start; stop; content }) comments in
+    let parsed_comments = List.append comments parsed_comments in
+    let loc = ast.loc in
+    let parsing_request_range =
+      if changes_grammar entry classification then { parsing_request_range with stop = max_int }
+      else parsing_request_range in
+    let parse_state =
+      { parse_state with parsing_request_range; parsed_comments; parsed; loc; synterp_state } in
+    true, parse_state
+  with exn ->
+    let e, info = Exninfo.capture exn in
+    let loc = get_loc_from_info_or_exn e info in
+    let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
+    handle_parse_error id ~start ~parsing_start (loc, CErrors.iprint_no_report (e, info)) (Some qf)
+      parse_state synterp_state
+
+and parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_state) : bool * parse_state =
   let next_start = Stream.count stream in
   (* Stops parsing past the edit's impact range, at a location where an old
      sentence ended. The old sentences after it then start where the new ones
@@ -755,36 +787,7 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsi
         log_parsing.debug (fun () -> "End of stream");
         false, parse_state
     | Some ast, comments ->
-      let id = Stateid.fresh () in
-      let stop = Stream.count stream in
-      let ast_loc = match ast.loc with
-        | Some lc -> lc
-        | None -> assert false
-      in
-      let start = ast_loc.bp in
-      let tokens = get_raw_text_tokens raw start ast_loc.ep ast_loc in
-      begin
-        try
-          log_parsing.debug (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
-          Feedback.set_id_for_feedback parse_state.previous_document.doc_id id;
-          let entry = get_entry ast in
-          let classification = Vernac_classifier.classify_vernac ast in
-          let synterp_state = Vernacstate.Synterp.freeze () in
-          let parsed_ast = Parsed { ast = entry; classification; tokens } in
-          let sentence = { id; parsing_start = next_start; ast = parsed_ast; start; stop; synterp_state } in
-          let parsed = sentence :: parsed in
-          let comments = List.map (fun ((start, stop), content) -> {start; stop; content}) comments in
-          let parsed_comments = List.append comments parsed_comments in
-          let loc = ast.loc in
-          let parsing_request_range = if changes_grammar entry classification then { parsing_request_range with stop = max_int } else parsing_request_range in
-          let parse_state = {parse_state with parsing_request_range; parsed_comments; parsed; loc; synterp_state} in
-          true, parse_state
-        with exn ->
-          let e, info = Exninfo.capture exn in
-          let loc = get_loc_from_info_or_exn e info in
-          let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
-          handle_parse_error id ~start ~parsing_start:next_start (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
-        end
+      handle_parsed_sentence ~parsing_start:next_start ast comments parse_state
     | exception exn ->
       let id = Stateid.fresh () in
       let e, info = Exninfo.capture exn in
