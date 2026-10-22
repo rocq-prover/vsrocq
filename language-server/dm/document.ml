@@ -82,7 +82,7 @@ type sentence = {
 }
 
 (* The range of the last parsed text that is touched by the edits since then.
-   [start, stop) is in the locations of the last parsed text, and
+   [start, stop) is a range of locations in the last parsed text, and
    [shift_after_stop] is how far the text from [stop] on has moved. *)
 type pending_edits_range = {
   start : int;
@@ -110,11 +110,14 @@ let sentence_of_id { sentences_by_id } id =
   | None -> assert false
   | Some s -> s
 
+(* The range to parse again, widened from the pending edits range to whole
+   sentences. [start] and [stop] are locations in the current text. [start] is
+   before the edits, so it is the same location in the last parsed text. *)
 type parsing_request_range = {
-    start : int; (* begin of edits *)
-    stop : int;  (* end of edits *)
-    shift_after_stop: int; (* size of edit, negative for removal *)
-  }
+  start : int; (* the end of the last sentence before the edits, where parsing starts, or -1 if there is none *)
+  stop : int; (* parsing stops at the first place at or after it where an old sentence started, [max_int] to parse to the end of the text *)
+  shift_after_stop : int; (* how far the text after the edits has moved *)
+}
 
 type parse_state = {
   started: float;
@@ -943,9 +946,9 @@ let reparse_state document ~parsing_request_range ~top_id ~synterp_state =
     previous_document = document;
   }
 
-(* Returns the end of the sentence that [loc] falls in, or [loc] if it falls in
-   none. A sentence spans from its [parsing_start], so the blank before it
-   counts as part of it. *)
+(* Returns the end of the sentence that the edit ending at [loc] touches, or
+   [loc] if it touches none. A sentence spans from its [parsing_start], so the
+   blank before it counts as part of it. *)
 let extend_to_sentence_end document loc =
   match LM.find_first_opt (fun k -> loc <= k) document.sentences_by_end with
   | Some (stop, id) when (sentence_of_id document id).parsing_start < loc -> stop
@@ -955,13 +958,14 @@ let get_pending_edits_range = function
   | None -> CErrors.anomaly Pp.(str "validate_document called without pending edits")
   | Some range -> range
 
-(** Creates the event to start parsing the text again, and cancels any pending parse. *)
-let validate_document ({ pending_edits_range; cancel_handle; doc_id } as document) =
-  let ({ start; stop; shift_after_stop } : pending_edits_range) =
-    get_pending_edits_range pending_edits_range in
-  (* Cancel any previous parsing event *)
-  Option.iter Sel.Event.cancel cancel_handle;
-  (* We take the state *strictly before* the start of the edit, to cover the case when the
+(* Widens the pending edits range to the range to parse again. Parsing may go
+   past its end, but never stops before it. Also returns the synterp state that
+   parsing starts from and the id of the sentence it resumes after, if any.
+   [document] already has the new text, but its sentences are still those of
+   the last parse, so the sentences are looked up with locations in the last
+   parsed text. The returned range is in the current text. *)
+let range_to_reparse document ({ start; stop; shift_after_stop } : pending_edits_range) =
+  (* We take the state *strictly before* the [start] of the edit, to cover the case when the
      edit starts right where a sentence ends, for example Qed.<new_edit>. A period followed by
      text no longer ends the sentence (Qed.x), so that sentence has to be parsed again. *)
   let sentence_before_edit = LM.find_last_opt (fun k -> k < start) document.sentences_by_end in
@@ -970,7 +974,15 @@ let validate_document ({ pending_edits_range; cancel_handle; doc_id } as documen
   let parse_stop =
     if edits_grammar_change document start stop then max_int
     else extend_to_sentence_end document stop + shift_after_stop in
-  let parsing_request_range = { shift_after_stop; start = parse_start; stop = parse_stop } in
+  { shift_after_stop; start = parse_start; stop = parse_stop }, synterp_state, top_id
+
+(** Creates the event to start parsing the text again, and cancels any pending parse. *)
+let validate_document ({ pending_edits_range; cancel_handle; doc_id } as document) =
+  let pending_edits_range = get_pending_edits_range pending_edits_range in
+  (* Cancel any previous parsing event *)
+  Option.iter Sel.Event.cancel cancel_handle;
+  let parsing_request_range, synterp_state, top_id = range_to_reparse document pending_edits_range in
+  let { start = parse_start; stop = parse_stop; _ } = parsing_request_range in
   log_validate.debug (fun () ->
     Format.sprintf "Parsing more from pos %i to pos %i" parse_start parse_stop);
   let parse_state = reparse_state document ~parsing_request_range ~top_id ~synterp_state in
@@ -1092,7 +1104,7 @@ let to_parsed_location ({ start; stop; shift_after_stop } : pending_edits_range)
   else if x >= stop + shift_after_stop then x - shift_after_stop
   else inside
 
-(* Merges [edit], in the locations of the current text, into the pending
+(* Merges [edit], whose locations are in the current text, into the pending
    edits range [pending]. *)
 let apply_1edit (pending : pending_edits_range) ({ RawDocument.start; stop } as edit) =
   let edit_shift = RawDocument.shift_after_stop edit in
