@@ -743,6 +743,7 @@ let handle_parsed_sentence ~parsing_start ast comments
   let tokens = get_raw_text_tokens raw start ast_loc.ep ast_loc in
   try
     log_parsing.debug (fun () -> "Parsed: " ^ Pp.string_of_ppcmds (Ppvernac.pr_vernac ast));
+    (* So that the messages that synterp emits go to this sentence *)
     Feedback.set_id_for_feedback parse_state.previous_document.doc_id id;
     let entry = get_entry ast in
     let classification = Vernac_classifier.classify_vernac ast in
@@ -753,6 +754,8 @@ let handle_parsed_sentence ~parsing_start ast comments
     let comments = List.map (fun ((start, stop), content) -> { start; stop; content }) comments in
     let parsed_comments = List.append comments parsed_comments in
     let loc = ast.loc in
+    (* A sentence that changes the grammar can change how everything after it
+       parses, so parsing goes on to the end of the text *)
     let parsing_request_range =
       if changes_grammar entry classification then { parsing_request_range with stop = max_int }
       else parsing_request_range in
@@ -768,14 +771,14 @@ let handle_parsed_sentence ~parsing_start ast comments
 
 let parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_state) : bool * parse_state =
   let next_start = Stream.count stream in
-  (* Skip parsing a sentence that's beyond the edit's impact range. The range
+  (* Stop before a sentence that starts beyond the range to parse. The range
      is in the offsets of the last parsed text, the stream in the current one. *)
   let { stop = parse_stop; shift_after_stop } = parsing_request_range in
   if parse_stop <> max_int && next_start >= parse_stop + shift_after_stop then begin
-    log_parsing.debug (fun () -> "End of unparsed area");
+    log_parsing.debug (fun () -> "End of the range to parse");
     false, { parse_state with stopped_here = Some next_start }
   end else begin
-    log_parsing.debug (fun () -> Printf.sprintf "Start of parse is %d <= %d" next_start parse_stop);
+    log_parsing.debug (fun () -> Printf.sprintf "Parsing the sentence at %d (range stop %d, shift %d)" next_start parse_stop shift_after_stop);
     (* FIXME should we save lexer state? *)
     match parse_one_sentence ?loc stream ~st:synterp_state with
     | None, _ (* EOI *) ->
