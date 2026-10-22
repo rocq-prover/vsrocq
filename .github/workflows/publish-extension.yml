@@ -33,7 +33,7 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
       - name: Pre publish phase
-        run: npm run package
+        run: npm ci && npm run build --workspaces
       - name: Publish to Open VSX Registry
         if: ${{inputs.marketplace == 'openvsx' || inputs.marketplace == 'both'}}
         uses: HaaLeo/publish-vscode-extension@v1.6.2
