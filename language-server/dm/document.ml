@@ -779,7 +779,9 @@ let parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_sta
     false, { parse_state with stopped_here = Some next_start }
   end else begin
     log_parsing.debug (fun () -> Printf.sprintf "Parsing the sentence at %d (range stop %d, shift %d)" next_start parse_stop shift_after_stop);
-    (* FIXME should we save lexer state? *)
+    (* Each sentence gets a new lexer, which starts from the initial lexer
+       state. That is the state the lexer is in after a sentence ends anyway,
+       and the keywords come from [synterp_state]. *)
     match parse_one_sentence ?loc stream ~st:synterp_state with
     | None, _ (* EOI *) ->
       log_parsing.debug (fun () -> "End of stream");
