@@ -169,9 +169,32 @@ let ensure_not_parsing () = Flags.in_synterp_phase := false
 let ensure_not_parsing () = ()
 [%%endif]
 
+(* Rocq 9.3 warns when a proof reaches Qed without a Proof command
+   (missing-proof-command). Skip mode never executes that sentence, so
+   mark the open proof as already initialized before the terminator runs.
+   [Implicit] is nullary on both 9.3 and later Rocq; [Explicit] is not. *)
+[%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
+let acknowledge_skipped_proof_command st = st
+[%%else]
+let acknowledge_skipped_proof_command st =
+  match st.Vernacstate.interp.lemmas with
+  | None -> st
+  | Some lemmas ->
+    let lemmas = Vernacstate.LemmaStack.map_top lemmas ~f:(fun proof ->
+      match Declare.Proof.has_late_init proof with
+      | Some _ -> proof
+      | None -> Declare.Proof.finish_late_init proof Declare.Proof.Implicit)
+    in
+    let interp = st.Vernacstate.interp in
+    { st with Vernacstate.interp = { interp with lemmas = Some lemmas } }
+[%%endif]
+
 (* just a wrapper around vernac interp *)
 let interp_ast ~doc_id ~state_id ~st ~error_recovery ~accept_recovered_error ast =
     ensure_not_parsing ();
+    let st =
+      if accept_recovered_error then acknowledge_skipped_proof_command st else st
+    in
     Feedback.set_id_for_feedback doc_id state_id;
     ParTactic.set_id_for_feedback doc_id state_id;
     let result =
