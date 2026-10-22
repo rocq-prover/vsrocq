@@ -721,7 +721,7 @@ let changes_grammar entry classification =
          | Vernacextend.VtProofStep _ -> false
          | _ -> true                           (* Notation, Require, Import, Section, Module, ... *)
 
-let rec handle_parse_error id ~start ~parsing_start msg qf ({stream; errors; parsed;} as parse_state) synterp_state =
+let handle_parse_error id ~start ~parsing_start msg qf ({stream; errors; parsed;} as parse_state) synterp_state =
   let stop = Stream.count stream in
   log_parsing.debug (fun () -> Printf.sprintf "handling parse error %d - %d" start stop);
   let str = String.sub (RawDocument.text parse_state.raw) parsing_start (stop - parsing_start) in
@@ -733,7 +733,7 @@ let rec handle_parse_error id ~start ~parsing_start msg qf ({stream; errors; par
   (* TODO: we could count the \n between start and stop and increase Loc.line_nb *)
   true, parse_state
 
-and handle_parsed_sentence ~parsing_start ast comments
+let handle_parsed_sentence ~parsing_start ast comments
     ({ synterp_state; stream; raw; parsed; parsed_comments; parsing_request_range } as parse_state) =
   let id = Stateid.fresh () in
   let stop = Stream.count stream in
@@ -765,7 +765,7 @@ and handle_parsed_sentence ~parsing_start ast comments
     handle_parse_error id ~start ~parsing_start (loc, CErrors.iprint_no_report (e, info)) (Some qf)
       parse_state synterp_state
 
-and parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_state) : bool * parse_state =
+let parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_state) : bool * parse_state =
   let next_start = Stream.count stream in
   (* Stops parsing past the edit's impact range, at a location where an old
      sentence ended. The old sentences after it then start where the new ones
@@ -796,7 +796,8 @@ and parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_sta
       junk_sentence_end stream;
       handle_parse_error id ~start:next_start ~parsing_start:next_start (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
   end
-and create_parse_event ~doc_id parse_state =
+
+let create_parse_event ~doc_id parse_state =
   let priority = Some PriorityManager.parsing in
   Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id ~name:"create_parse_event" (fun () -> parse_more parse_state)) (fun x -> Parse x)
 
