@@ -712,14 +712,6 @@ let rec junk_sentence_end stream =
   | [] -> ()
   | _ ->  Stream.junk () stream; junk_sentence_end stream
 
-[%%if rocq = "8.18"]
-exception E = Stream.Error
-[%%elif rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
-exception E = Grammar.Error
-[%%else]
-exception E = Grammar.ParseError
-[%%endif]
-
 [%%if rocq = "8.18" || rocq = "8.19"]
 let get_loc_from_info_or_exn e info =
   match e with
@@ -813,27 +805,13 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsi
           let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
           handle_parse_error id ~start ~parsing_start:next_start (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
         end
-    | exception (E _ as exn) ->
+    | exception exn ->
       let id = Stateid.fresh () in
       let e, info = Exninfo.capture exn in
       let loc = get_loc_from_info_or_exn e info in
       let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
       junk_sentence_end stream;
-      handle_parse_error id ~start:next_start ~parsing_start:next_start (loc, CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
-    | exception (CLexer.Error.E _ as exn) -> (* May be more problematic to handle for the diff *)
-      let id = Stateid.fresh () in
-      let e, info = Exninfo.capture exn in
-      let loc = get_loc_from_info_or_exn e info in
-      let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
-      junk_sentence_end stream;
-      handle_parse_error id ~start:next_start ~parsing_start:next_start (loc,CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
-    | exception exn ->
-      let id = Stateid.fresh () in
-      let e, info = Exninfo.capture exn in
-      let loc = Loc.get_loc @@ info in
-      let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
-      junk_sentence_end stream;
-      handle_parse_error id ~start:next_start ~parsing_start:next_start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state
+      handle_parse_error id ~start:next_start ~parsing_start:next_start (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
   end
 and create_parse_event ~doc_id parse_state =
   let priority = Some PriorityManager.parsing in
