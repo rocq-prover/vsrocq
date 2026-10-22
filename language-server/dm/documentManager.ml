@@ -321,20 +321,18 @@ let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
   let parsebegin_event = mk_parsing_begin_event () in
   state, [parsebegin_event;feedback_event]
 
-let apply_text_edits state edits =
+let apply_text_edits state = function
+  | [] -> state, []
+  | edits ->
   (* Until we fix https://github.com/rocq-prover/rocq/issues/22041, this should stay commented:
      CheckingManager.interrupt_execution state.checking_state.
      Cancelling the event at least *)
   CheckingManager.cancel_execution state.checking_state;
-  let apply_edit_and_shift_diagnostics_locs_and_overview state (range, new_text as edit) =
-    let document = Document.apply_text_edit state.document edit in
-    let edit_start = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.start in
-    let edit_stop = RawDocument.loc_of_position (Document.raw_document state.document) range.Range.end_ in
-    let edit_length = edit_stop - edit_start in
-    let start = edit_stop in
-    let offset = String.length new_text - edit_length in
-    let document = Document.shift_feedbacks_and_checking_errors ~start ~offset document in
-    let checking_state = CheckingManager.shift_overview state.checking_state ~before:state.document ~after:document ~start:edit_stop ~offset:(String.length new_text - edit_length) in
+  let apply_edit_and_shift_diagnostics_locs_and_overview state edit =
+    let document, ({ RawDocument.stop; _ } as edit) = Document.apply_text_edit state.document edit in
+    let offset = RawDocument.shift_after_stop edit in
+    let document = Document.shift_feedbacks_and_checking_errors ~start:stop ~offset document in
+    let checking_state = CheckingManager.shift_overview state.checking_state ~before:state.document ~after:document ~start:stop ~offset in
     {state with checking_state; document; document_state = Parsing; folding_entries_cache = ref None; pending_feedback = []}
   in
   let state = List.fold_left apply_edit_and_shift_diagnostics_locs_and_overview state edits in
@@ -342,6 +340,7 @@ let apply_text_edits state edits =
   state, [sel_event]
 
 let handle_feedback_event state (_, id, msg) =
+  let msg = Utilities.relocate_feedback (Document.ast_shift state.document id) msg in
   { state with document = Document.append_feedback state.document id msg }
 
 let handle_feedback_events state feedback =

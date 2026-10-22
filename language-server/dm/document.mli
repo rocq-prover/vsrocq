@@ -42,7 +42,8 @@ val create_document : doc_id:document_id -> Vernacstate.Synterp.t -> string -> d
 
 val validate_document : document -> document * events
 (** [validate_document doc] triggers the parsing of the document line by line without
-    launching any execution. *)
+    launching any execution. [doc] must have a pending edit, as left by
+    [create_document] or [apply_text_edits]; otherwise this is an anomaly. *)
 
 val handle_event : document -> event -> document * events * parsing_end_info option
 (** [handle_event dpc ev] handles a parsing event for the document. One parsing event parses one line
@@ -58,8 +59,8 @@ type parsed_ast = {
 }
 
 type parsing_error = {
-  start: int; 
-  stop: int; 
+  start: int;
+  stop: int;
   msg: Pp.t Loc.located;
   qf: Quickfix.t list option;
   str: string;
@@ -70,9 +71,9 @@ type parse_state
 val parse_errors : document -> parsing_error list
 (** [parse_errors doc] returns the list of sentences which failed to parse
     (see validate_document) together with their error message *)
-val apply_text_edit : document -> text_edit -> document
-(** [apply_text_edits doc edits] updates the text of [doc] with [edits]. The new
-    text is not parsed or executed. *)
+val apply_text_edit : document -> text_edit -> document * RawDocument.byte_edit
+(** [apply_text_edit doc edit] updates the text of [doc] with [edit] and
+    returns [edit] in byte offsets. The new text is not parsed or executed. *)
 val apply_text_edits : document -> text_edit list -> document
 (** [apply_text_edits doc edits] updates the text of [doc] with [edits]. The new
     text is not parsed or executed. *)
@@ -94,6 +95,8 @@ type sentence = {
   scheduler_state_before : Scheduler.state;
   scheduler_state_after : Scheduler.state;
   ast : sentence_state;
+  ast_shift : int; (* how far the sentence moved since [ast] was parsed; the
+                      locations inside [ast] are behind by this amount *)
   id : sentence_id;
   messages : feedback_message list;
   checked : sentence_checking_result option;
@@ -159,6 +162,11 @@ val is_sentence_above : document -> sentence_id -> sentence_id -> bool
 (** [is_sentence_above doc id1 id2] check is id1 is above id2 *)
 
 val schedule : document -> Scheduler.schedule
+
+val ast_shift : document -> sentence_id -> int
+(** [ast_shift doc id] is how far the sentence moved since it was parsed: a
+    location coming from its AST, as in the errors and feedback of its
+    execution, is behind its current position by this amount *)
 
 val has_sentence : document -> sentence_id -> bool
 (** [has_sentence doc id] tells if id is in the document *)

@@ -274,6 +274,7 @@ let handle_event document event state =
             Queue.push (x,id,fb) state.feedback_pipe.sel_feedback_queue;
             None, None, None
         | Some (ProofJob.UpdateExecStatus(id,v)) ->
+            let v = Utilities.relocate_checking_result (Document.ast_shift document id) v in
             match Document.get_sentence document id with
             | None -> None, None, None
             | Some { checked } ->
@@ -408,7 +409,9 @@ type execution_result =
 
 let interrupt_execution { feedback_pipe = { doc_id } } = ProverThread.interrupt ~doc_id
 
-let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
+(* [ast_shift] is how far the sentence moved since [ast] was parsed, see
+   [Document.ast_shift] *)
+let promise_execution ~doc_id ~state_id ~st ~error_recovery ~ast_shift ast =
   let promise = ProverThread.eventually_run ~doc_id ~name:"promise_execution" (fun () -> 
     interp_ast ~doc_id ~state_id ~st ~error_recovery ast) in
   let promise_to_result p =
@@ -417,6 +420,7 @@ let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
     | Sel.Promise.Fulfilled result ->
       match result with
       | Terminated (vs, v) ->
+          let v = Utilities.relocate_checking_result ast_shift v in
           let updates = [state_id, v] in
           let exec_error = exec_error_of_execution_status state_id v in
           { updates; vs; events = []; exec_error }
@@ -463,10 +467,12 @@ let execute st document vs task : state * execution_result =
         log.debug (fun () -> Format.asprintf "skipping execution of already executed %s" (Stateid.to_string id));
         st, Done { updates = []; vs; events = []; exec_error }
       else
-        st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
+        let ast_shift = Document.ast_shift document id in
+        st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ~ast_shift ast
   | PQuery { id; ast; synterp; error_recovery } ->
       let vs = { vs with Vernacstate.synterp } in
-      st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
+      let ast_shift = Document.ast_shift document id in
+      st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ~ast_shift ast
   | PDelegate { terminator_id; opener_id; last_step_id; tasks; proof_using } ->
       match find_fulfilled_opt document opener_id with
       | Some (Success _) ->
