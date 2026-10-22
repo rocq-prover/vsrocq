@@ -310,11 +310,6 @@ let find_sentence_before_pos document pos =
   let loc = RawDocument.loc_of_position (raw_document document) pos in
   find_sentence_before document loc
 
-let find_sentence_strictly_before parsed loc =
-  match LM.find_last_opt (fun k -> k < loc) parsed.sentences_by_end with
-  | Some (_, sentence) -> Some sentence
-  | _ -> None
-
 let find_sentence_after parsed loc =
   match LM.find_first_opt (fun k -> loc <= k) parsed.sentences_by_end with
   | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
@@ -377,10 +372,6 @@ let state_after_sentence parsed = function
 let state_at_pos parsed pos =
   state_after_sentence parsed @@
     LM.find_last_opt (fun stop -> stop <= pos) parsed.sentences_by_end
-
-let state_strictly_before parsed pos =
-  state_after_sentence parsed @@
-    LM.find_last_opt (fun stop -> stop < pos) parsed.sentences_by_end
 
 let pos_at_end parsed =
   match LM.max_binding_opt parsed.sentences_by_end with
@@ -934,43 +925,60 @@ let edits_grammar_change document start stop =
      | Some (_, id) -> (sentence_of_id document id).parsing_start <= stop && sentence_changes_grammar document id
      | None -> false
 
-let flush_sentences_before_edit raw_doc sentence_before_stop =
+let stream_from raw_doc parse_start =
   let text = RawDocument.text raw_doc in
   let stream = Stream.of_string text in
-  while Stream.count stream < sentence_before_stop do Stream.junk () stream done;
+  while Stream.count stream < parse_start do Stream.junk () stream done;
   stream
 
-(** Validate document when raw text has changed *)
+(* Returns the end of the sentence that [loc] falls in, or [loc] if it falls in
+   none. A sentence spans from its [parsing_start], so the blank before it
+   counts as part of it. *)
+let extend_to_sentence_end document loc =
+  match LM.find_first_opt (fun k -> loc <= k) document.sentences_by_end with
+  | Some (stop, id) when (sentence_of_id document id).parsing_start < loc -> stop
+  | _ -> loc
+
+let get_pending_edits_range = function
+  | None -> CErrors.anomaly Pp.(str "validate_document called without pending edits")
+  | Some range -> range
+
 let validate_document ({ pending_edits_range; raw_doc; cancel_handle; doc_id } as document) =
-  match pending_edits_range with
-  | None -> CErrors.anomaly Pp.(str "validate_document called with nothing to parse")
-  | Some { start; stop; shift_after_stop } ->
+  let ({ start; stop; shift_after_stop } : pending_edits_range) =
+    get_pending_edits_range pending_edits_range in
   (* Cancel any previous parsing event *)
   Option.iter Sel.Event.cancel cancel_handle;
   (* We take the state strictly before the `start` of the edit, to cover the case when the
-     end of the sentence is edited *)
-  (* CHECK: What to do with scheduler_state ? *)
-  let (sentence_before_stop, synterp_state, _scheduler_state) = state_strictly_before document start in
-  (* We extend the range if the edit stops inside a sentence, or in the blank
-     before it where its parsing starts *)
-  let sentence_after_stop =
-    match LM.find_first_opt (fun k -> stop <= k) document.sentences_by_end with
-    | Some (_, id) when (sentence_of_id document id).parsing_start < stop -> (sentence_of_id document id).stop
-    | _ -> stop in
-  let sentence_after_stop = if edits_grammar_change document start stop then max_int else sentence_after_stop in
-  log_validate.debug (fun () -> Format.sprintf "Parsing more from pos %i to pos %i" sentence_before_stop sentence_after_stop);
-  (* Build parse state *)
-  let top_id = find_sentence_strictly_before document start in
-  let stream = flush_sentences_before_edit raw_doc sentence_before_stop in
+     edit starts right where a sentence ends, e.g. Qed.<new_edit>. A period followed by
+     text no longer ends the sentence (Qed.x), so that sentence has to be parsed again. *)
+  let sentence_before_edit = LM.find_last_opt (fun k -> k < start) document.sentences_by_end in
+  let parse_start, synterp_state, _ = state_after_sentence document sentence_before_edit in
+  let top_id = Option.map snd sentence_before_edit in
+  let parse_stop =
+    if edits_grammar_change document start stop then max_int
+    else extend_to_sentence_end document stop in
+  let parsing_request_range = { shift_after_stop; start = parse_start; stop = parse_stop } in
+  log_validate.debug (fun () ->
+    Format.sprintf "Parsing more from pos %i to pos %i" parse_start parse_stop);
+  let stream = stream_from raw_doc parse_start in
   let started = Unix.gettimeofday () in
-  let parsing_request_range = { shift_after_stop; start = sentence_before_stop; stop = sentence_after_stop; } in
-  let parsed_state = {
-    parsing_request_range; stopped_here = None;
-    top_id;synterp_state; stream; raw=raw_doc; parsed=[]; errors=[]; parsed_comments=[]; loc=None; started; previous_document=document} in
-  (* Build Parse event *)
-  let event = create_parse_event ~doc_id parsed_state in
+  let parse_state = {
+    started;
+    parsing_request_range;
+    stopped_here = None;
+    top_id;
+    loc = None;
+    synterp_state;
+    stream;
+    raw = raw_doc;
+    parsed = [];
+    errors = [];
+    parsed_comments = [];
+    previous_document = document;
+  } in
+  let event = create_parse_event ~doc_id parse_state in
   let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
-  {document with cancel_handle}, [event]
+  { document with cancel_handle }, [event]
 
 
   (* TODO : clarify what is previous doc vs doc *)
