@@ -746,9 +746,12 @@ let changes_grammar entry classification =
          | Vernacextend.VtProofStep _ -> false
          | _ -> true                           (* Notation, Require, Import, Section, Module, ... *)
 
-let handle_parse_error id ~start ~parsing_start msg qf ({stream; errors; parsed;} as parse_state) synterp_state =
+let handle_parse_error id ~start ~parsing_start (e, info) ({stream; errors; parsed;} as parse_state) synterp_state =
   let stop = Stream.count stream in
   log_parsing.debug (fun () -> Printf.sprintf "handling parse error %d - %d" start stop);
+  let loc = get_loc_from_info_or_exn e info in
+  let msg = loc, CErrors.iprint_no_report (e, info) in
+  let qf = Some (Result.value ~default:[] @@ Quickfix.from_exception e) in
   let str = String.sub (RawDocument.text parse_state.raw) parsing_start (stop - parsing_start) in
   let parsing_error = { msg; start; stop; qf; str} in
   let sentence = { id; parsing_start; ast = Error parsing_error; start; stop; synterp_state } in
@@ -790,11 +793,8 @@ let handle_parsed_sentence ~parsing_start ast comments
       { parse_state with parsing_request_range; parsed_comments; parsed; loc; synterp_state } in
     true, parse_state
   with exn ->
-    let e, info = Exninfo.capture exn in
-    let loc = get_loc_from_info_or_exn e info in
-    let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
-    handle_parse_error id ~start ~parsing_start (loc, CErrors.iprint_no_report (e, info)) (Some qf)
-      parse_state synterp_state
+    let iexn = Exninfo.capture exn in
+    handle_parse_error id ~start ~parsing_start iexn parse_state synterp_state
 
 let parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_state) : bool * parse_state =
   let next_start = Stream.count stream in
@@ -814,12 +814,10 @@ let parse_more ({loc; synterp_state; stream; parsing_request_range} as parse_sta
     | Some ast, comments ->
       handle_parsed_sentence ~parsing_start:next_start ast comments parse_state
     | exception exn ->
+      let iexn = Exninfo.capture exn in
       let id = Stateid.fresh () in
-      let e, info = Exninfo.capture exn in
-      let loc = get_loc_from_info_or_exn e info in
-      let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
       junk_sentence_end stream;
-      handle_parse_error id ~start:next_start ~parsing_start:next_start (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
+      handle_parse_error id ~start:next_start ~parsing_start:next_start iexn parse_state synterp_state
   end
 
 let create_parse_event ~doc_id parse_state =
