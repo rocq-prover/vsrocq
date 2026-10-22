@@ -743,16 +743,16 @@ let rec handle_parse_error id start parsing_start msg qf ({stream; errors; parse
   true, parse_state
 
 and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsing_request_range} as parse_state) : bool * parse_state =
-  let start = Stream.count stream in
+  let next_start = Stream.count stream in
   (* Skip parsing a sentence that's beyond the edit's impact range. The range
      is in the offsets of the last parsed text, the stream in the current one. *)
-  let { stop; shift_after_stop } = parsing_request_range in
-  if stop <> max_int && start >= stop + shift_after_stop then begin
+  let { stop = parse_stop; shift_after_stop } = parsing_request_range in
+  if parse_stop <> max_int && next_start >= parse_stop + shift_after_stop then begin
     log_parsing.debug (fun () -> "End of unparsed area");
-    false, { parse_state with stopped_here = Some start }
+    false, { parse_state with stopped_here = Some next_start }
   end else
     begin
-    log_parsing.debug (fun () -> Printf.sprintf "Start of parse is %d <= %d" start parsing_request_range.stop);
+    log_parsing.debug (fun () -> Printf.sprintf "Start of parse is %d <= %d" next_start parse_stop);
     (* FIXME should we save lexer state? *)
     match parse_one_sentence ?loc stream ~st:synterp_state with
     | None, _ (* EOI *) ->
@@ -765,8 +765,8 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsi
         | Some lc -> lc
         | None -> assert false
       in
-      let begin_char, end_char = ast_loc.bp, ast_loc.ep in
-      let tokens = get_raw_text_tokens raw begin_char end_char ast_loc in
+      let start = ast_loc.bp in
+      let tokens = get_raw_text_tokens raw start ast_loc.ep ast_loc in
       begin
         try
           log_parsing.debug (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
@@ -775,7 +775,7 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsi
           let classification = Vernac_classifier.classify_vernac ast in
           let synterp_state = Vernacstate.Synterp.freeze () in
           let parsed_ast = Parsed { ast = entry; classification; tokens } in
-          let sentence = { id; parsing_start = start; ast = parsed_ast; start = begin_char; stop; synterp_state } in
+          let sentence = { id; parsing_start = next_start; ast = parsed_ast; start; stop; synterp_state } in
           let parsed = sentence :: parsed in
           let comments = List.map (fun ((start, stop), content) -> {start; stop; content}) comments in
           let parsed_comments = List.append comments parsed_comments in
@@ -787,7 +787,7 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsi
           let e, info = Exninfo.capture exn in
           let loc = get_loc_from_info_or_exn e info in
           let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
-          handle_parse_error id start begin_char (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
+          handle_parse_error id next_start start (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
         end
     | exception (E _ as exn) ->
       let id = Stateid.fresh () in
@@ -795,21 +795,21 @@ and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments; parsi
       let loc = get_loc_from_info_or_exn e info in
       let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
       junk_sentence_end stream;
-      handle_parse_error id start start (loc, CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
+      handle_parse_error id next_start next_start (loc, CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
     | exception (CLexer.Error.E _ as exn) -> (* May be more problematic to handle for the diff *)
       let id = Stateid.fresh () in
       let e, info = Exninfo.capture exn in
       let loc = get_loc_from_info_or_exn e info in
       let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
       junk_sentence_end stream;
-      handle_parse_error id start start (loc,CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
+      handle_parse_error id next_start next_start (loc,CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
     | exception exn ->
       let id = Stateid.fresh () in
       let e, info = Exninfo.capture exn in
       let loc = Loc.get_loc @@ info in
       let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
       junk_sentence_end stream;
-      handle_parse_error id start start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state
+      handle_parse_error id next_start next_start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state
   end
 and create_parse_event ~doc_id parse_state =
   let priority = Some PriorityManager.parsing in
