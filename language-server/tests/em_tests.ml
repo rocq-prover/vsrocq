@@ -20,6 +20,12 @@ open Common
 let set_delegation_mode mode =
   ExecutionManager.(set_options { delegation_mode = mode; completion_options = { enable = false; unificationLimit = 100; algorithm = StructuredSplitUnification; atomicFactor = 5.; sizeFactor = 5. }; enableDiagnostics = true })
 
+(* Skip mode must not publish the incomplete-proof error, nor Rocq >= 9.3's
+   missing-proof-command warning, alongside the final Check. *)
+let check_only_diag st spec =
+  [%test_eq: int] 1 (List.length (DocumentManager.all_diagnostics st));
+  check_diag st [spec]
+
 let%test_unit "exec: finished proof" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. trivial. Qed. Check x." in
   let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
@@ -37,9 +43,9 @@ let%test_unit "exec: finished proof skip" =
   let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
-  check_diag st [
-    D (s4.id,Information,".*True.*")
-  ];
+  [%test_eq: int]
+    0 (List.length (Document.all_checking_errors (DocumentManager.Internal.document st)));
+  check_only_diag st (D (s4.id,Information,".*True.*"));
   ExecutionManager.set_default_options ()
 
 let%test_unit "exec: unfinished proof" =
@@ -57,6 +63,20 @@ let%test_unit "exec: unfinished proof" =
     D (s3.id,Information,".*True.*")
   ]
 
+let%test_unit "exec: client fixture proof skip" =
+  let text = "Lemma x : True.\nProof.\n  idtac.\n  apply foobar.\n  idtac.\nQed.\nCheck x." in
+  let st, events = em_init_test_doc ~text in
+  let st, (s1, (s2, (s3, (s4, (s5, (s6, (s7, ()))))))) =
+    dm_parse st (P(P(P(P(P(P(P O))))))) in
+  set_delegation_mode SkipProofs;
+  let exec_events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add events exec_events) in
+  let st = handle_dm_events todo st in
+  let errors = Document.all_checking_errors (DocumentManager.Internal.document st) in
+  [%test_eq: int] 0 (List.length errors);
+  check_only_diag st (D (s7.id,Information,".*True.*"));
+  ExecutionManager.set_default_options ()
+
 let%test_unit "exec: unfinished proof skip" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. Qed. Check x." in
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
@@ -64,12 +84,9 @@ let%test_unit "exec: unfinished proof skip" =
   let exec_events = DocumentManager.interpret_to_end () in
   let todo = Sel.Todo.(add events exec_events) in
   let st = handle_dm_events todo st in
-  check_diag st [
-    D (s2.id,Error,".*incomplete proof.*")
-  ];
-  check_diag st [
-    D (s3.id,Information,".*True.*")
-  ];
+  [%test_eq: int]
+    0 (List.length (Document.all_checking_errors (DocumentManager.Internal.document st)));
+  check_only_diag st (D (s3.id,Information,".*True.*"));
   ExecutionManager.set_default_options ()
 
 let%test_unit "exec: unfinished proof delegate" =

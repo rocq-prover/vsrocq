@@ -4,8 +4,8 @@ import { expect } from "expect";
 import * as vscode from "vscode";
 import * as common from "./common";
 
-/** Zero-based line of `Qed.`, the last sentence of delegate_proof.v. */
-const QED_LINE = 5;
+/** Zero-based line of `Check x.`, the last sentence of delegate_proof.v. */
+const CHECK_LINE = 6;
 
 suite("Should get diagnostics in the appropriate tab", function () {
     this.timeout(20000);
@@ -20,24 +20,29 @@ suite("Should get diagnostics in the appropriate tab", function () {
         const ext = vscode.extensions.getExtension("rocq-prover.vsrocq")!;
         await ext.activate();
 
+        // `Check` is published as an Information diagnostic, which the server
+        // drops unless full diagnostics are enabled.
         await t.configure(["proof", "delegation"], "Skip");
         await t.configure(["proof", "mode"], 1);
+        await t.configure(["diagnostics", "full"], true);
 
         const doc1 = await t.openFixture("delegate_proof.v");
 
         const doc2 = await t.openFixture("warn.v");
 
         const [diagnostics1, diagnostics2] = await Promise.all([
-            // delegate_proof.v fails twice under a mode that checks the proof
-            // body, so wait on the Qed rather than on the first publication.
-            common.waitForDiagnostics(doc1, common.diagnosticOnLine(QED_LINE)),
+            common.waitForDiagnostics(
+                doc1,
+                common.diagnosticOnLine(CHECK_LINE),
+            ),
             common.waitForDiagnostics(doc2, common.anyDiagnostic),
         ]);
 
-        expect(diagnostics1[0].message).toMatch(
-            /.*Attempt to save an incomplete proof.*/,
+        expect(diagnostics1.length).toBe(1);
+        expect(diagnostics1[0].message).toMatch(/x\s*:\s*True/);
+        expect(diagnostics1[0].severity).toBe(
+            vscode.DiagnosticSeverity.Information,
         );
-        expect(diagnostics1[0].severity).toBe(vscode.DiagnosticSeverity.Error);
 
         expect(diagnostics2.length).toBe(1);
         expect(diagnostics2[0].message).toMatch(

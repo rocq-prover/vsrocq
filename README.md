@@ -215,7 +215,7 @@ After installation and activation of the extension:
 * `"vsrocq.proof.pointInterpretationMode": 0 | 1` -- Determines the point to which the proof should be checked when using the 'Interpret to point' command: up to the last command before the cursor (`0`, Cursor) or through the command after the cursor (`1`, NextCommand). Defaults to `0`.
 * `"vsrocq.proof.cursor.sticky": bool` -- a toggle to specify whether the cursor should move as Rocq interactively navigates a document (step forward, backward, etc...). Defaults to `true`.
 * `"vsrocq.proof.delegation": None | Skip | Delegate` -- Decides which delegation strategy should be used by the server (defaults to `None`).
-  `Skip` allows to skip proofs which are out of focus and should be used in manual mode. `Delegate` allocates a settable amount of workers
+  `Skip` allows to skip proofs which are out of focus. `Delegate` allocates a settable amount of workers
   to delegate proofs.
 * `"vsrocq.proof.workers": int` -- Determines how many workers should be used for proof checking in `Delegate` mode (defaults to `1`)
 * `"vsrocq.proof.block": bool` -- Determines if the execution of a document should halt on the first error.  Defaults to `true` (since version >= 2.1.7).

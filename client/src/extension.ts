@@ -77,10 +77,13 @@ export function activate(context: ExtensionContext) {
     };
 
     const rocqTM = new VsRocqToolchainManager();
-    rocqTM.intialize().then(
+    // Resolve only after the server is running and configuration changes are
+    // forwarded. Settings updated once activate() resolves then reach the server
+    // before any document is checked.
+    const ready = rocqTM.intialize().then(
         () => {
             const serverOptions = rocqTM.getServerConfiguration();
-            intializeExtension(serverOptions);
+            return intializeExtension(serverOptions);
         },
         (err: ToolchainError) => {
             switch (err.status) {
@@ -484,7 +487,7 @@ export function activate(context: ExtensionContext) {
             },
         );
 
-        client.start().then(() => {
+        const started = client.start().then(() => {
             checkVersion(client, context);
             const serverInfo = client.initializeResult!.serverInfo;
             const configString = new MarkdownString(
@@ -537,6 +540,7 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
         });
 
         context.subscriptions.push(client);
+        return started;
     }
 
     const externalApi = {
@@ -544,7 +548,7 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
         onProofStateChanged: GoalPanel.onProofStateChanged,
     };
 
-    return externalApi;
+    return ready.then(() => externalApi);
 }
 
 // This method is called when your extension is deactivated
