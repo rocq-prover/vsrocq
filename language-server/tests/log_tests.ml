@@ -62,3 +62,14 @@ let%test_unit "levels: initialization releases Info, Debug still needs its sourc
     log.info (fun () -> "info line, printed at once")) in
   [%test_eq: bool] (String.is_substring out ~substring:"debug line") false;
   [%test_eq: bool] (String.is_substring out ~substring:"info line, printed at once") true
+
+(* Runs after the test above, so initialization is done and a Debug line
+   prints only if its source is selected, whatever [-vsrocq-d init] says. *)
+let%test_unit "levels: a thunk runs only when its line is printed" =
+  let debug_ran = ref false in
+  let info_ran = ref false in
+  let _ : string = with_captured_stderr (fun () ->
+    log.debug (fun () -> debug_ran := true; "debug thunk");
+    log.info (fun () -> info_ran := true; "info thunk")) in
+  [%test_eq: bool] !debug_ran false;
+  [%test_eq: bool] !info_ran true
