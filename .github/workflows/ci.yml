@@ -32,7 +32,7 @@ jobs:
         node-version: 22.x
         cache: npm
         cache-dependency-path: client/package-lock.json
-    - run: npm run package
+    - run: npm ci && npm run build --workspaces
 
   nix-dev-build:
     strategy:
@@ -61,7 +61,7 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
     - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd language-server && make dune-files && dune build --profile ${{ matrix.profile }}"
-    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && npm install && npm run build --workspaces"
+    - run: nix develop .#vsrocq-${{ matrix.coq }} -c bash -c "cd client && npm ci && npm run build --workspaces"
     - name: Test xvfb
       uses: Wandalen/wretry.action@v3
       with:
@@ -129,7 +129,7 @@ jobs:
         cache: npm
         cache-dependency-path: client/package-lock.json
 
-    - run: cd client && npm run package
+    - run: cd client && npm ci && npm run build --workspaces
       if: runner.os == 'Linux'
     - run: |
         eval $(opam env) && cd client && xvfb-run npm test
@@ -218,7 +218,7 @@ jobs:
         eval $(opam env)
         echo vsrocqlib="$( echo -n "-coqlib "; (rocq -where || coqc -where) 2>/dev/null )" >> $GITHUB_ENV
 
-    - run: cd client && npm install && npm run build --workspaces
+    - run: cd client && npm ci && npm run build --workspaces
     - run: cd client && xvfb-run npm test
       env:
         VSROCQARGS: "${{ env.vsrocqlib }}"
@@ -275,7 +275,7 @@ jobs:
     - name: Pre publish phase
       run: |
         cd client
-        npm run package
+        npm ci && npm run build --workspaces
     - name: Publish to Open VSX Registry
       uses: HaaLeo/publish-vscode-extension@v1.6.2
       id: publishToOpenVSX
