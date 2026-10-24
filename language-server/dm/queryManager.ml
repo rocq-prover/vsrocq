@@ -20,9 +20,10 @@ open Types
 
 let log = Log.mk_log "queryManager"
 
-let context_of_vernac_state (st : Vernacstate.t) =
+let context_of_vernac_state ?(printing = Protocol.PrintingOptions.empty) (st : Vernacstate.t) =
   let st = st.Vernacstate.interp in
   Vernacstate.Interp.unfreeze_interp_state st;
+  Protocol.PrintingOptions.apply printing;
   begin match st.lemmas with
   | None ->
     let env = Global.env () in
@@ -98,9 +99,9 @@ let pr_glob_without_symbols env sigma c =
 
 (**************************************************************************)
 
-let about vs ~pattern =
+let about ~printing vs ~pattern =
   (* TODO: run in execmanager *)
-  let sigma, env = context_of_vernac_state vs in
+  let sigma, env = context_of_vernac_state ~printing vs in
     try
       let ref_or_by_not = parse_entry vs (smart_global) pattern in
       let udecl = None (* TODO? *) in
@@ -112,13 +113,13 @@ let about vs ~pattern =
 
 
 (** Try to generate hover text from [pattern] the context of the given [sentence] *)
-let hover_of_sentence pattern = function
+let hover_of_sentence ~printing pattern = function
   | None -> None
   | Some sentence ->
     match Utilities.get_vernac_state sentence.Document.checked with
     | None -> None
     | Some vs ->
-      let sigma, env = context_of_vernac_state vs in
+      let sigma, env = context_of_vernac_state ~printing vs in
       try
         let ref_or_by_not = parse_entry vs (smart_global) pattern in
         Language.Hover.get_hover_contents env sigma ref_or_by_not
@@ -127,7 +128,7 @@ let hover_of_sentence pattern = function
         log.error (fun () -> Printf.sprintf "hover on %s failed, showing nothing: %s" pattern (Pp.string_of_ppcmds (CErrors.iprint (e, info))));
         None
 
-let hover document pos =
+let hover ~printing document pos =
   (* Tries to get hover at three difference places:
      - At the start of the current sentence
      - At the start of the next sentence (for symbols defined in the current sentence)
@@ -145,14 +146,14 @@ let hover document pos =
   | Some pattern, _ ->
     log.debug (fun () -> "hover: found word at cursor: \"" ^ pattern ^ "\"");
     (* hover at previous sentence *)
-    match hover_of_sentence pattern (Document.find_sentence_before_pos document pos) with
+    match hover_of_sentence ~printing pattern (Document.find_sentence_before_pos document pos) with
     | Some _ as x -> x
     | None ->
     match Document.find_sentence_after_pos document pos with
     | None -> None (* Skip if no next sentence *)
     | Some sentence as opt ->
     (* hover at next sentence *)
-    match hover_of_sentence pattern opt with
+    match hover_of_sentence ~printing pattern opt with
     | Some _ as x -> x
     | None ->
     match sentence.ast with
@@ -161,7 +162,7 @@ let hover document pos =
       match ast.classification with
     (* next sentence in proof mode, hover at qed *)
       | VtProofStep _ | VtStartProof _ ->
-        hover_of_sentence pattern (Document.find_next_qed_pos document pos)
+        hover_of_sentence ~printing pattern (Document.find_next_qed_pos document pos)
       | _ -> None
 
 (* Within a list of tokens, find all that are identifiers whose name is `ident` *)
@@ -236,8 +237,8 @@ let jump_to_definition document vs pos  =
 [%%endif]
 
 
-let check ~vs ~pattern =
-  let sigma, env = context_of_vernac_state vs in
+let check ~printing ~vs ~pattern =
+  let sigma, env = context_of_vernac_state ~printing vs in
   let rc = parse_entry vs lconstr pattern in
   try
     let redexpr = None in
@@ -247,21 +248,21 @@ let check ~vs ~pattern =
     let message = Pp.string_of_ppcmds @@ CErrors.iprint (e, info) in
     Error ({message; code=None})
 
-let locate ~vs ~pattern =
-  let sigma, env = context_of_vernac_state vs in
+let locate ~printing ~vs ~pattern =
+  let sigma, env = context_of_vernac_state ~printing vs in
   match parse_entry vs (smart_global) pattern with
   | { v = AN qid } -> Ok (pp_of_rocqpp @@ print_located_qualid env qid)
   | { v = ByNotation (ntn, sc)} ->
     Ok( pp_of_rocqpp @@ Notation.locate_notation
       (pr_glob_without_symbols env sigma) ntn sc)
 
-let search ~vs ~id pattern =
-  let sigma, env = context_of_vernac_state vs in
+let search ~printing ~vs ~id pattern =
+  let sigma, env = context_of_vernac_state ~printing vs in
   let query, r = parse_entry vs (G_vernac.search_queries) pattern in
   SearchQuery.interp_search ~id env sigma query r
 
-let print ~vs ~pattern =
-  let sigma, env = context_of_vernac_state vs in
+let print ~printing ~vs ~pattern =
+  let sigma, env = context_of_vernac_state ~printing vs in
   let qid = parse_entry vs (smart_global) pattern in
   let udecl = None in (*TODO*)
   Ok (pp_of_rocqpp @@ print_name env sigma qid udecl)
@@ -269,6 +270,10 @@ let print ~vs ~pattern =
 let get_completions ~vs =
   let settings = ExecutionManager.get_options () in
   CompletionSuggester.get_completions settings.completion_options vs
+
+let printing_options ~printing ~vs =
+  let _side_effect_needed_ = context_of_vernac_state ~printing vs in
+  Protocol.PrintingOptions.list printing
 
 (**************************************************************************)
 
@@ -292,8 +297,8 @@ let to_option = function
 (* how long a query can take *)
 let timeout = 0.2
 
-let check ~doc_id ~vs ~pattern =
-  ProverThread.try_run ~doc_id ~name:"check" ~timeout (fun () -> check ~vs ~pattern) |>
+let check ~doc_id ~printing ~vs ~pattern =
+  ProverThread.try_run ~doc_id ~name:"check" ~timeout (fun () -> check ~printing ~vs ~pattern) |>
   to_types_error
 
 let jump_to_definition document vs pos =
@@ -301,30 +306,34 @@ let jump_to_definition document vs pos =
     (fun () -> jump_to_definition document vs pos) |>
   to_option |> Option.flatten
 
-let locate ~doc_id ~vs ~pattern =
-  ProverThread.try_run ~doc_id ~name:"locate" ~timeout (fun () -> locate ~vs ~pattern) |>
+let locate ~doc_id ~printing ~vs ~pattern =
+  ProverThread.try_run ~doc_id ~name:"locate" ~timeout (fun () -> locate ~printing ~vs ~pattern) |>
   to_types_error
 
-let search ~doc_id ~vs ~id pattern =
-  ProverThread.try_run ~doc_id ~name:"search" ~timeout:0.5 (fun () -> search ~vs ~id pattern) |>
+let search ~doc_id ~printing ~vs ~id pattern =
+  ProverThread.try_run ~doc_id ~name:"search" ~timeout:0.5 (fun () -> search ~printing ~vs ~id pattern) |>
   to_list
 
-let print ~doc_id ~vs ~pattern =
-  ProverThread.try_run ~doc_id ~name:"print" ~timeout (fun () -> print ~vs ~pattern) |>
+let print ~doc_id ~printing ~vs ~pattern =
+  ProverThread.try_run ~doc_id ~name:"print" ~timeout (fun () -> print ~printing ~vs ~pattern) |>
   to_types_error
 
-let hover document pos =
+let hover ~printing document pos =
   ProverThread.try_run ~doc_id:(Document.id document) ~name:"hover" ~timeout
-    (fun () -> hover document pos) |>
+    (fun () -> hover ~printing document pos) |>
   to_option |> Option.flatten
 
 let highlight document pos =
   ProverThread.try_run ~doc_id:(Document.id document) ~name:"highlight" ~timeout
     (fun () -> highlight document pos) |> to_list
 
-let about ~doc_id ~vs ~pattern =
-  ProverThread.try_run ~doc_id ~name:"about" ~timeout (fun () -> about vs ~pattern) |>
+let about ~doc_id ~printing ~vs ~pattern =
+  ProverThread.try_run ~doc_id ~name:"about" ~timeout (fun () -> about ~printing vs ~pattern) |>
   to_types_error
+
+let printing_options ~doc_id ~printing ~vs =
+  ProverThread.try_run ~doc_id ~name:"printing_options" ~timeout (fun () -> printing_options ~printing ~vs) |>
+  to_list
 
 let get_completions ~doc_id ~vs =
   ProverThread.try_run ~doc_id ~name:"get_completions" ~timeout:0.5 (fun () -> get_completions ~vs) |>

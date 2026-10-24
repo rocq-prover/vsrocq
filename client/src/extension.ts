@@ -44,6 +44,10 @@ import { DocumentStateViewProvider } from "./panels/DocumentStateViewProvider";
 import GoalPanel from "./panels/GoalPanel";
 import SearchViewProvider from "./panels/SearchViewProvider";
 import {
+    sendResetPrintingOptions,
+    sendSetPrintingOption,
+} from "./printingOptions";
+import {
     DocumentProofsRequest,
     DocumentProofsResponse,
     ErrorAlertNotification,
@@ -368,6 +372,15 @@ export function activate(context: ExtensionContext) {
         );
         registerVsrocqTextCommand("stepBackward", (editor) =>
             sendStepBackward(editor, client),
+        );
+        registerVsrocqTextCommand("printing.set", (editor, _edit, name) =>
+            sendSetPrintingOption(editor, client, true, name),
+        );
+        registerVsrocqTextCommand("printing.unset", (editor, _edit, name) =>
+            sendSetPrintingOption(editor, client, false, name),
+        );
+        registerVsrocqTextCommand("printing.reset", (editor) =>
+            sendResetPrintingOptions(editor, client),
         );
         registerVsrocqTextCommand("documentState", async (editor) => {
             documentStateProvider.setDocumentUri(editor.document.uri);
