@@ -495,3 +495,23 @@ let%test_unit "view_update.step_backward_to_top" =
   let st, views = handle_dm_events_views todo st in
   [%test_pred: bool] (fun b -> b) (Option.is_none (DocumentManager.Internal.observe_id st));
   [%test_eq: bool] true (reports_highlights views)
+
+let print_command st ~pattern =
+  let doc = Document.raw_document @@ DocumentManager.Internal.document st in
+  let pos = RawDocument.position_of_loc doc (RawDocument.end_loc doc) in
+  DocumentManager.print_command st pos ~pattern
+  |> Result.map ~f:(fun pp -> Yojson.Safe.to_string (Protocol.Printing.yojson_of_pp pp))
+  |> Result.map_error ~f:(fun (e : Types.error) -> e.message)
+
+let%test_unit "print_command" =
+  let st, init_events = em_init_test_doc ~text:"Axiom ax : nat. Definition x := ax." in
+  let events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add init_events events) in
+  let st = handle_dm_events todo st in
+  let contains s sub = String.is_substring s ~substring:sub in
+  [%test_pred: (string, string) Result.t] (function Ok s -> contains s "ax" && contains s "nat" | _ -> false)
+    (print_command st ~pattern:"Assumptions x");
+  [%test_pred: (string, string) Result.t] (function Ok s -> contains s "Printing Notations" | _ -> false)
+    (print_command st ~pattern:"Options");
+  [%test_pred: (string, string) Result.t] Result.is_error (print_command st ~pattern:"Grammar constr");
+  check_no_diag st

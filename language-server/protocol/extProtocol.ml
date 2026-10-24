@@ -286,6 +286,7 @@ module Request = struct
   | Check : CheckParams.t -> pp t
   | Locate : LocateParams.t -> pp t
   | Print : PrintParams.t -> pp t
+  | PrintCommand : PrintParams.t -> pp t
   | Search : SearchParams.t -> unit t
   | DocumentState : DocumentStateParams.t -> DocumentStateResult.t t
   | DocumentProofs : DocumentProofsParams.t -> DocumentProofsResult.t t
@@ -313,6 +314,9 @@ module Request = struct
     | "prover/print" ->
       let+ params = Lsp.Import.Json.message_params params PrintParams.t_of_yojson in
       Pack (Print params)
+    | "prover/printCommand" ->
+      let+ params = Lsp.Import.Json.message_params params PrintParams.t_of_yojson in
+      Pack (PrintCommand params)
     | "prover/documentState" ->
       let+ params = Lsp.Import.Json.message_params params DocumentStateParams.t_of_yojson in
       Pack (DocumentState params)
@@ -331,6 +335,7 @@ module Request = struct
       | Check _ -> yojson_of_pp resp
       | Locate _ -> yojson_of_pp resp
       | Print _ -> yojson_of_pp resp
+      | PrintCommand _ -> yojson_of_pp resp
       | Search _ -> yojson_of_unit resp
       | DocumentState _ -> DocumentStateResult.(yojson_of_t resp)
       | DocumentProofs _ -> DocumentProofsResult.(yojson_of_t resp)
