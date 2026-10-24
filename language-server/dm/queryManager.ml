@@ -318,6 +318,17 @@ let print ~doc_id ~printing ~vs ~pattern =
   ProverThread.try_run ~doc_id ~name:"print" ~timeout (fun () -> print ~printing ~vs ~pattern) |>
   to_types_error
 
+let universes ~doc_id ~raw ~vs ~global ~subgraph =
+  ProverThread.try_run ~doc_id ~name:"universes" ~timeout:2.0 (fun () ->
+    (* sentences are parsed without a file name *)
+    let range_of_loc loc = match loc.Loc.fname with
+      | Loc.ToplevelInput -> Some (RawDocument.range_of_loc raw loc)
+      | Loc.InFile _ -> None
+    in
+    Ok (if global then UniverseGraphs.global ~subgraph vs
+        else UniverseGraphs.local ~range_of_loc vs)) |>
+  to_types_error
+
 let hover ~printing document pos =
   ProverThread.try_run ~doc_id:(Document.id document) ~name:"hover" ~timeout
     (fun () -> hover ~printing document pos) |>

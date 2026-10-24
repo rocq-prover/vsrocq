@@ -495,3 +495,50 @@ let%test_unit "view_update.step_backward_to_top" =
   let st, views = handle_dm_events_views todo st in
   [%test_pred: bool] (fun b -> b) (Option.is_none (DocumentManager.Internal.observe_id st));
   [%test_eq: bool] true (reports_highlights views)
+
+let universes st ~global ?subgraph () =
+  let doc = Document.raw_document @@ DocumentManager.Internal.document st in
+  let pos = RawDocument.position_of_loc doc (RawDocument.end_loc doc) in
+  DocumentManager.universes st pos ~global ~subgraph
+  |> Result.map_error ~f:(fun (e : Types.error) -> e.message)
+
+let%test_unit "universes.local" =
+  let text = "Set Universe Polymorphism.\nDefinition id@{w} (A : Type@{w}) (a : A) := a.\nLemma foo@{u v | u < v} (A : Type@{u}) : Type@{v}.\nProof.\n  pose (B := Type).\n  pose (C := id Type).\n" in
+  let st, init_events = em_init_test_doc ~text in
+  let events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add init_events events) in
+  let st = handle_dm_events todo st in
+  let open Protocol.UniverseGraph in
+  match universes st ~global:false () with
+  | Error msg -> failwith msg
+  | Ok { graph; normalized; _ } ->
+    let names = Stdlib.List.map (fun l -> l.name) graph.levels in
+    [%test_pred: string list] (fun ns -> Stdlib.List.mem "u" ns && Stdlib.List.mem "v" ns) names;
+    let id name = (Stdlib.List.find (fun l -> String.equal l.name name) graph.levels).id in
+    [%test_eq: bool] true
+      (Stdlib.List.exists (fun c -> String.equal c.source (id "u") && String.equal c.kind "<" && String.equal c.target (id "v"))
+        graph.constraints);
+    (* the universe of [Type] in the first [pose] is anonymous and located on line 4 *)
+    let anon = Stdlib.List.filter (fun l -> not (Stdlib.List.mem l.name ["u"; "v"])) graph.levels in
+    [%test_eq: bool] true (Stdlib.List.exists (fun l ->
+      match l.range with Some r -> r.Lsp.Types.Range.start.line = 4 | None -> false) anon);
+    (* instantiating [id] in the second [pose] makes a flexible universe *)
+    [%test_eq: bool] true (Stdlib.List.exists (fun l -> l.flexible) graph.levels);
+    [%test_eq: bool] (Option.is_some normalized) true
+
+let%test_unit "universes.no_proof" =
+  let st, init_events = em_init_test_doc ~text:"Definition x := Type." in
+  let events = DocumentManager.interpret_to_end () in
+  let st = handle_dm_events Sel.Todo.(add init_events events) st in
+  [%test_eq: bool] true (Result.is_error (universes st ~global:false ()))
+
+let%test_unit "universes.global" =
+  let st, init_events = em_init_test_doc ~text:"Universe w. Definition x := Type@{w}." in
+  let events = DocumentManager.interpret_to_end () in
+  let st = handle_dm_events Sel.Todo.(add init_events events) st in
+  let open Protocol.UniverseGraph in
+  let names r = match r with Ok g -> Stdlib.List.map (fun l -> l.name) g.graph.levels | Error msg -> failwith msg in
+  let all = names (universes st ~global:true ()) in
+  [%test_pred: string list] (fun ns -> Stdlib.List.length ns > 10 && Stdlib.List.exists (String.is_suffix ~suffix:"w") ns) all;
+  let sub = names (universes st ~global:true ~subgraph:["w"] ()) in
+  [%test_pred: string list] (fun ns -> Stdlib.List.length ns < 5 && Stdlib.List.exists (String.is_suffix ~suffix:"w") ns) sub
