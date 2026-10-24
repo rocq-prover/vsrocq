@@ -122,6 +122,19 @@ val handle_event : event -> state -> (state,event) handled_event
 
 val search : state -> id:string -> Position.t -> string -> notification Sel.Event.t list
 
+val printing_options : state -> Position.t -> PrintingOptions.printing_option list
+(** the [Printing] flags in the state at the given position, with the user overrides applied *)
+
+val set_printing_option : state -> string -> bool -> (state, string) Result.t
+(** [set_printing_option st name value] overrides the [Printing] flag [name]
+    with [value] for the document, until [reset_printing_options] *)
+
+val reset_printing_options : state -> state
+(** drops the [Printing] flags set by the user for the document *)
+
+val refresh_proof_view : state -> events
+(** sends the proof view again, eg. after a change of printing options *)
+
 val about : state -> Position.t -> pattern:string -> (pp,error) Result.t
 
 val hover : state -> Position.t -> MarkupContent.t option

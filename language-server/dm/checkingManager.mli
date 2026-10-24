@@ -43,6 +43,9 @@ val interrupt_execution : state -> unit
 val cancel_execution : state -> unit
 
 val get_observe_id : state -> sentence_id option
+
+val refresh_proof_view : state -> event Sel.Event.t list
+(** [refresh_proof_view state] sends the proof view at the observe_id again *)
 val reset_overview : state -> document -> sentence_id option -> state
 val overview : state -> exec_overview
 
@@ -77,6 +80,7 @@ val get_messages :
 
 val handle_event :
   uri:Lsp.Uri.t ->
+  printing:Protocol.PrintingOptions.t ->
   document ->
   state ->
   event ->
@@ -84,6 +88,7 @@ val handle_event :
 
 module Internal : sig
   val get_proof :
+    ?printing:Protocol.PrintingOptions.t ->
     document ->
     state ->
     sentence_id option ->

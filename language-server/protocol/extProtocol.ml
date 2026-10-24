@@ -279,6 +279,41 @@ module Request = struct
 
   end
 
+  module PrintingOptionsParams = struct
+
+    type t = {
+      textDocument : VersionedTextDocumentIdentifier.t;
+      position : Position.t;
+    } [@@deriving yojson]
+
+  end
+
+  module PrintingOptionsResult = struct
+
+    type t = {
+      options : PrintingOptions.printing_option list;
+    } [@@deriving yojson]
+
+  end
+
+  module SetPrintingOptionParams = struct
+
+    type t = {
+      textDocument : TextDocumentIdentifier.t;
+      name : string;
+      value : bool;
+    } [@@deriving yojson]
+
+  end
+
+  module ResetPrintingOptionsParams = struct
+
+    type t = {
+      textDocument : TextDocumentIdentifier.t;
+    } [@@deriving yojson]
+
+  end
+
   type 'a t =
   | Std : 'a Lsp.Client_request.t -> 'a t
   | Reset : ResetParams.t -> unit t
@@ -289,6 +324,9 @@ module Request = struct
   | Search : SearchParams.t -> unit t
   | DocumentState : DocumentStateParams.t -> DocumentStateResult.t t
   | DocumentProofs : DocumentProofsParams.t -> DocumentProofsResult.t t
+  | PrintingOptions : PrintingOptionsParams.t -> PrintingOptionsResult.t t
+  | SetPrintingOption : SetPrintingOptionParams.t -> unit t
+  | ResetPrintingOptions : ResetPrintingOptionsParams.t -> unit t
 
   type packed = Pack : 'a t -> packed
 
@@ -319,6 +357,15 @@ module Request = struct
     | "prover/documentProofs" ->
       let+ params = Lsp.Import.Json.message_params params DocumentProofsParams.t_of_yojson in
       Pack (DocumentProofs params)
+    | "prover/printingOptions" ->
+      let+ params = Lsp.Import.Json.message_params params PrintingOptionsParams.t_of_yojson in
+      Pack (PrintingOptions params)
+    | "prover/setPrintingOption" ->
+      let+ params = Lsp.Import.Json.message_params params SetPrintingOptionParams.t_of_yojson in
+      Pack (SetPrintingOption params)
+    | "prover/resetPrintingOptions" ->
+      let+ params = Lsp.Import.Json.message_params params ResetPrintingOptionsParams.t_of_yojson in
+      Pack (ResetPrintingOptions params)
     | _ ->
       let+ E req = Lsp.Client_request.of_jsonrpc req in
       Pack (Std req)
@@ -334,6 +381,9 @@ module Request = struct
       | Search _ -> yojson_of_unit resp
       | DocumentState _ -> DocumentStateResult.(yojson_of_t resp)
       | DocumentProofs _ -> DocumentProofsResult.(yojson_of_t resp)
+      | PrintingOptions _ -> PrintingOptionsResult.(yojson_of_t resp)
+      | SetPrintingOption _ -> yojson_of_unit resp
+      | ResetPrintingOptions _ -> yojson_of_unit resp
       | Std req -> Lsp.Client_request.yojson_of_result req resp
 
   end

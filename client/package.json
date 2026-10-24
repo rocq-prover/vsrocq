@@ -370,6 +370,24 @@
         "category": "Rocq"
       },
       {
+        "command": "extension.rocq.printing.set",
+        "category": "Rocq",
+        "title": "Printing: Set flag",
+        "description": "Turn on a Printing flag (e.g. Printing All) in the proof view and queries of the current document"
+      },
+      {
+        "command": "extension.rocq.printing.unset",
+        "category": "Rocq",
+        "title": "Printing: Unset flag",
+        "description": "Turn off a Printing flag (e.g. Printing Notations) in the proof view and queries of the current document"
+      },
+      {
+        "command": "extension.rocq.printing.reset",
+        "category": "Rocq",
+        "title": "Printing: Reset flags",
+        "description": "Use the Printing flags set in the current document again"
+      },
+      {
         "command": "extension.rocq.interpretToPoint",
         "category": "Rocq",
         "title": "Interpret to point",
@@ -571,6 +589,18 @@
       }
     ],
     "keybindings": [
+      {
+        "key": "ctrl+alt+s",
+        "mac": "ctrl+cmd+s",
+        "command": "extension.rocq.printing.set",
+        "when": "editorTextFocus && editorLangId == rocq"
+      },
+      {
+        "key": "ctrl+alt+u",
+        "mac": "ctrl+cmd+u",
+        "command": "extension.rocq.printing.unset",
+        "when": "editorTextFocus && editorLangId == rocq"
+      },
       {
         "key": "alt+down",
         "mac": "ctrl+alt+down",

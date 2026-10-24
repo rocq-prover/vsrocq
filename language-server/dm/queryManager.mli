@@ -14,36 +14,49 @@
 
 val check :
   doc_id:int ->
+  printing:Protocol.PrintingOptions.t ->
   vs:Vernacstate.t ->
   pattern:string ->
   (Protocol.Printing.pp, Types.error) result
 
 val locate :
   doc_id:int ->
+  printing:Protocol.PrintingOptions.t ->
   vs:Vernacstate.t ->
   pattern:string ->
   (Protocol.Printing.pp, Types.error) result
 
 val print :
   doc_id:int ->
+  printing:Protocol.PrintingOptions.t ->
   vs:Vernacstate.t ->
   pattern:string ->
   (Protocol.Printing.pp, Types.error) result
 
 val about :
   doc_id:int ->
+  printing:Protocol.PrintingOptions.t ->
   vs:Vernacstate.t ->
   pattern:string ->
   (Protocol.Printing.pp, Types.error) result
 
+val printing_options :
+  doc_id:int ->
+  printing:Protocol.PrintingOptions.t ->
+  vs:Vernacstate.t ->
+  Protocol.PrintingOptions.printing_option list
+(** the [Printing] flags in [vs], with [printing] applied *)
+
 val search :
   doc_id:int ->
+  printing:Protocol.PrintingOptions.t ->
   vs:Vernacstate.t ->
   id:string ->
   string ->
   Protocol.LspWrapper.notification Sel.Event.t list
 
 val hover :
+  printing:Protocol.PrintingOptions.t ->
   Document.document ->
   Lsp.Types.Position.t ->
   Lsp.Types.MarkupContent.t option
