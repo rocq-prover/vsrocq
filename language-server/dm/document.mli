@@ -207,3 +207,6 @@ module Internal : sig
   val string_of_item : code_line -> string
 
 end
+
+val get_entry : Vernacexpr.vernac_control -> Synterp.vernac_control_entry
+(** runs the synterp phase of a parsed command *)

@@ -53,6 +53,9 @@ const searchResultSection: FunctionComponent<SearchResultSectionProps> = (
 
             case QueryType.print:
                 return <QueryResult result={result} />;
+
+            case QueryType.printCommand:
+                return <QueryResult result={result} />;
         }
     };
 

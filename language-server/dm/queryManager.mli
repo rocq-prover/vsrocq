@@ -30,6 +30,14 @@ val print :
   pattern:string ->
   (Protocol.Printing.pp, Types.error) result
 
+val print_command :
+  doc_id:int ->
+  vs:Vernacstate.t ->
+  pattern:string ->
+  (Protocol.Printing.pp, Types.error) result
+(** [print_command ~vs ~pattern] runs the command [Print pattern] in [vs], for
+    one of a fixed set of [Print] commands, eg. [Options] or [Assumptions foo] *)
+
 val about :
   doc_id:int ->
   vs:Vernacstate.t ->

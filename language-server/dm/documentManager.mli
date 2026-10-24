@@ -142,6 +142,10 @@ val locate : state -> Position.t -> pattern:string -> (pp, error) Result.t
 
 val print : state -> Position.t -> pattern:string -> (pp, error) Result.t
 
+val print_command : state -> Position.t -> pattern:string -> (pp, error) Result.t
+(** runs [Print pattern] at the given position, for one of a fixed set of
+    [Print] commands, eg. [Options] or [Assumptions foo] *)
+
 
 module Internal : sig
 

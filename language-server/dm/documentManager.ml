@@ -394,6 +394,10 @@ let print st pos ~pattern =
   let vs = rocq_state_for st pos in
   QueryManager.print ~doc_id:(Document.id st.document) ~vs ~pattern
 
+let print_command st pos ~pattern =
+  let vs = rocq_state_for st pos in
+  QueryManager.print_command ~doc_id:(Document.id st.document) ~vs ~pattern
+
 let search st ~id pos s =
   let vs = rocq_state_for st pos in
   QueryManager.search ~doc_id:(Document.id st.document) ~vs ~id s
