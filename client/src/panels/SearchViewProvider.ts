@@ -319,6 +319,43 @@ export default class SearchViewProvider implements vscode.WebviewViewProvider {
                             );
                         }
 
+                        if (type === "printCommand") {
+                            const params: PrintRocqRequest = {
+                                textDocument,
+                                pattern,
+                                position,
+                            };
+                            const req = new RequestType<
+                                PrintRocqRequest,
+                                PrintRocqResponse,
+                                void
+                            >("prover/printCommand");
+
+                            client.sendRequest(req, params).then(
+                                (result: PrintRocqResponse) => {
+                                    const notification = {
+                                        statement: result,
+                                        id: id,
+                                    };
+                                    webview.postMessage({
+                                        command: "printCommandResponse",
+                                        result: notification,
+                                    });
+                                },
+                                (err: QueryError) => {
+                                    const error = {
+                                        code: err.code,
+                                        message: err.message,
+                                    };
+                                    webview.postMessage({
+                                        command: "searchError",
+                                        error: error,
+                                        id: id,
+                                    });
+                                },
+                            );
+                        }
+
                         if (type === "print") {
                             const params: CheckRocqRequest = {
                                 textDocument,
