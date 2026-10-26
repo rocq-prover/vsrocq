@@ -8,6 +8,7 @@
 		],
 		"sourceMap": true,
 		"rootDir": "./src",
+		"resolveJsonModule": true,
 		"skipLibCheck": true
 	},
   "exclude": ["node_modules", ".vscode-test", "goal-view-ui", "search-ui", "pp-display"],
