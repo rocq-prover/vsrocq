@@ -16,6 +16,15 @@ export interface ToolchainError {
     message: string;
 }
 
+// The Rocq version in the output of [vsrocqtop -v], which also mentions the
+// OCaml version: "The Rocq Prover, version 9.2\ncompiled with OCaml 4.14.2".
+export const parseRocqVersion = (output: string) => {
+    const versionRegexp =
+        /\bversion (\d+\.\d+(?:\.\d+)?(?:\+rc\d+|\+alpha|\+beta\d*|\.dev)?)(?!\S)/;
+    const match = output.match(versionRegexp);
+    return match ? match[1] : undefined;
+};
+
 export default class VsRocqToolchainManager implements Disposable {
     private _vsrocqtopPath: string = "";
     private _rocqVersion: string = "";
@@ -185,12 +194,18 @@ export default class VsRocqToolchainManager implements Disposable {
                 if (error) {
                     reject(stderr);
                 } else {
-                    const versionRegexp =
-                        /\b\d\.\d+(\.\d|\+rc\d|\.dev|\+alpha|\+beta)\b/g;
                     this._versionFullOutput = stdout;
-                    const matchArray = stdout.match(versionRegexp);
-                    if (matchArray) {
-                        this._rocqVersion = matchArray[0];
+                    const version = parseRocqVersion(stdout);
+                    if (version) {
+                        this._rocqVersion = version;
+                    } else {
+                        Client.writeToVsrocqChannel(
+                            "[Toolchain] Could not find the Rocq version in the output of " +
+                                cmd +
+                                ":\n" +
+                                stdout,
+                        );
+                        this._rocqVersion = "unknown";
                     }
                     resolve();
                 }
