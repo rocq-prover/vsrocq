@@ -171,3 +171,28 @@ type ProofBlock = {
 export interface DocumentProofsResponse {
     proofs: ProofBlock[];
 }
+
+export interface PrintingOptionsRequest {
+    textDocument: VersionedTextDocumentIdentifier;
+    position: Position;
+}
+
+export interface PrintingOption {
+    name: string;
+    value: boolean;
+    overridden: boolean;
+}
+
+export interface PrintingOptionsResponse {
+    options: PrintingOption[];
+}
+
+export interface SetPrintingOptionRequest {
+    textDocument: TextDocumentIdentifier;
+    name: string;
+    value: boolean;
+}
+
+export interface ResetPrintingOptionsRequest {
+    textDocument: TextDocumentIdentifier;
+}

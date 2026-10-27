@@ -42,6 +42,7 @@ type state = {
   feedback_pipe : feedback_pipe;
   pending_feedback : feedback_data list;
   checking_state : CheckingManager.state;
+  printing : Protocol.PrintingOptions.t; (* the Printing flags set by the user *)
 }
 type event =
   | ParseBegin
@@ -307,17 +308,30 @@ let init init_vs ~opts uri ~text =
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
   let checking_state = CheckingManager.init init_vs ~feedback_pipe in
   let parsebegin_event = mk_parsing_begin_event () in
-  let state = { uri; opts; init_vs; document; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; checking_state } in
+  let state = { uri; opts; init_vs; document; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; checking_state; printing = Protocol.PrintingOptions.empty } in
   state, [parsebegin_event;feedback_event]
 
-let reset { uri; opts; init_vs; document; checking_state; feedback_pipe } =
+(* The printing flags overridden by the user hold from the start of the
+   document, as if set on the command line, so that the output of commands
+   like Check follows them too. [init_vs] itself is kept free of them, so
+   that resetting once they are reset checks the document as written. *)
+let with_printing_overrides ~doc_id ~printing init_vs =
+  if Protocol.PrintingOptions.is_empty printing then init_vs
+  else
+    ProverThread.run ~doc_id ~name:"printing_overrides" (fun () ->
+      Vernacstate.unfreeze_full_state init_vs;
+      Protocol.PrintingOptions.apply printing;
+      Vernacstate.freeze_full_state ()) |> Result.fold ~ok:(fun x -> x) ~error:(fun x -> CErrors.user_err x)
+
+let reset { uri; opts; init_vs; document; checking_state; feedback_pipe; printing } =
   Utilities.feedback_pipe_cleanup feedback_pipe;
   let text = RawDocument.text @@ Document.raw_document document in
   let doc_id = Utilities.fresh_doc_id () in
-  let document = Document.create_document ~doc_id init_vs.synterp text in
+  let start_vs = with_printing_overrides ~doc_id ~printing init_vs in
+  let document = Document.create_document ~doc_id start_vs.synterp text in
   let feedback_pipe, feedback_event = init_feedback_pipe ~doc_id in
-  let checking_state = CheckingManager.reset checking_state init_vs ~feedback_pipe in
-  let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = [] } in
+  let checking_state = CheckingManager.reset checking_state start_vs ~feedback_pipe in
+  let state = { uri; opts; init_vs; document; checking_state; document_state = Parsing; folding_entries_cache = ref None; feedback_pipe; pending_feedback = []; printing } in
   let parsebegin_event = mk_parsing_begin_event () in
   state, [parsebegin_event;feedback_event]
 
@@ -376,7 +390,7 @@ let handle_event ev st =
       make_handled_event ~state:(state, full_view_update) ~events:(inject_im_events events) ()
     end
   | InteractionManagerEvent ev ->
-    let updates, handled_event = CheckingManager.handle_event ~uri:st.uri st.document st.checking_state ev in
+    let updates, handled_event = CheckingManager.handle_event ~uri:st.uri ~printing:st.printing st.document st.checking_state ev in
     let st = { st with document = List.fold_left Document.update_checked st.document updates } in
     (* CheckingManager returns a state whenever there are [updates], so the
        document changes only together with the checking state *)
@@ -392,19 +406,19 @@ let rocq_state_for st pos =
 
 let print st pos ~pattern =
   let vs = rocq_state_for st pos in
-  QueryManager.print ~doc_id:(Document.id st.document) ~vs ~pattern
+  QueryManager.print ~doc_id:(Document.id st.document) ~printing:st.printing ~vs ~pattern
 
 let search st ~id pos s =
   let vs = rocq_state_for st pos in
-  QueryManager.search ~doc_id:(Document.id st.document) ~vs ~id s
+  QueryManager.search ~doc_id:(Document.id st.document) ~printing:st.printing ~vs ~id s
 
 let locate st pos ~pattern =
   let vs = rocq_state_for st pos in
-  QueryManager.locate ~doc_id:(Document.id st.document) ~vs ~pattern
+  QueryManager.locate ~doc_id:(Document.id st.document) ~printing:st.printing ~vs ~pattern
 
 let check st pos ~pattern =
   let vs = rocq_state_for st pos in
-  QueryManager.check ~doc_id:(Document.id st.document) ~vs ~pattern
+  QueryManager.check ~doc_id:(Document.id st.document) ~printing:st.printing ~vs ~pattern
 
 let jump_to_definition st pos =
   let vs = rocq_state_for st pos in
@@ -413,14 +427,14 @@ let jump_to_definition st pos =
 let definition_supported = QueryManager.definition_supported
 
 let hover st pos =
-  QueryManager.hover st.document pos
+  QueryManager.hover ~printing:st.printing st.document pos
 
 let highlight st pos =
   QueryManager.highlight st.document pos
 
 let about st pos ~pattern =
   let vs = rocq_state_for st pos in
-  QueryManager.about ~doc_id:(Document.id st.document) ~vs ~pattern
+  QueryManager.about ~doc_id:(Document.id st.document) ~printing:st.printing ~vs ~pattern
 
 let get_completions st pos =
   let vs = rocq_state_for st pos in
@@ -464,11 +478,23 @@ let get_messages st id = CheckingManager.get_messages st.document id
 let reset_to_top st =
   { st with checking_state = CheckingManager.reset_to_top st.checking_state }
 
+let refresh_proof_view st = CheckingManager.refresh_proof_view st.checking_state |> inject_im_events
+
+let printing_options st pos =
+  let vs = rocq_state_for st pos in
+  QueryManager.printing_options ~doc_id:(Document.id st.document) ~printing:st.printing ~vs
+
+let set_printing_option st name value =
+  Result.map (fun printing -> { st with printing })
+    (Protocol.PrintingOptions.set st.printing name value)
+
+let reset_printing_options st = { st with printing = Protocol.PrintingOptions.empty }
+
 module Internal = struct
 
   let document st = st.document
 
-  let get_proof st id = CheckingManager.Internal.get_proof st.document st.checking_state id
+  let get_proof st id = CheckingManager.Internal.get_proof ~printing:st.printing st.document st.checking_state id
 
   let raw_document st =
     Document.raw_document st.document

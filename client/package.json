@@ -370,6 +370,24 @@
         "category": "Rocq"
       },
       {
+        "command": "extension.rocq.printing.choose",
+        "category": "Rocq",
+        "title": "Printing: Set/Unset flags",
+        "description": "Choose the Printing flags (e.g. Printing All) used in the proof view and queries of the current document"
+      },
+      {
+        "command": "extension.rocq.printing.toggle",
+        "category": "Rocq",
+        "title": "Printing: Toggle flag",
+        "description": "Toggle the given Printing flag in the proof view and queries of the current document"
+      },
+      {
+        "command": "extension.rocq.printing.reset",
+        "category": "Rocq",
+        "title": "Printing: Reset flags",
+        "description": "Use the Printing flags set in the current document again"
+      },
+      {
         "command": "extension.rocq.interpretToPoint",
         "category": "Rocq",
         "title": "Interpret to point",
@@ -436,6 +454,12 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "extension.rocq.printing.toggle",
+          "when": "false"
+        }
+      ],
       "editor/title": [
         {
           "when": "resourceLangId == rocq && config.vsrocq.proof.display-buttons == true",
@@ -571,6 +595,12 @@
       }
     ],
     "keybindings": [
+      {
+        "key": "ctrl+alt+s",
+        "mac": "ctrl+cmd+s",
+        "command": "extension.rocq.printing.choose",
+        "when": "editorTextFocus && editorLangId == rocq"
+      },
       {
         "key": "alt+down",
         "mac": "ctrl+alt+down",

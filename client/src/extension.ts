@@ -44,6 +44,11 @@ import { DocumentStateViewProvider } from "./panels/DocumentStateViewProvider";
 import GoalPanel from "./panels/GoalPanel";
 import SearchViewProvider from "./panels/SearchViewProvider";
 import {
+    sendChoosePrintingOptions,
+    sendResetPrintingOptions,
+    sendTogglePrintingOption,
+} from "./printingOptions";
+import {
     DocumentProofsRequest,
     DocumentProofsResponse,
     ErrorAlertNotification,
@@ -368,6 +373,15 @@ export function activate(context: ExtensionContext) {
         );
         registerVsrocqTextCommand("stepBackward", (editor) =>
             sendStepBackward(editor, client),
+        );
+        registerVsrocqTextCommand("printing.choose", (editor) =>
+            sendChoosePrintingOptions(editor, client, rocqTM.getRocqVersion()),
+        );
+        registerVsrocqTextCommand("printing.toggle", (editor, _edit, name) =>
+            sendTogglePrintingOption(editor, client, name),
+        );
+        registerVsrocqTextCommand("printing.reset", (editor) =>
+            sendResetPrintingOptions(editor, client),
         );
         registerVsrocqTextCommand("documentState", async (editor) => {
             documentStateProvider.setDocumentUri(editor.document.uri);
