@@ -148,6 +148,37 @@ export interface ResetRocqRequest {
 
 export interface ResetRocqResponse {}
 
+export interface DebugFlagsRequest {}
+
+export interface DebugFlag {
+    name: string;
+    // override included
+    enabled: boolean;
+    overridden: boolean;
+}
+
+export interface DebugFlagsResponse {
+    flags: DebugFlag[];
+}
+
+export interface ToggleDebugFlagRequest {
+    name: string;
+}
+
+// null: the override was removed, the flag follows the documents again
+export interface ToggleDebugFlagResponse {
+    override: boolean | null;
+}
+
+export interface ToggleOptionRequest {
+    option: string;
+}
+
+// null: the override was removed, the flag follows the documents again
+export interface ToggleOptionResponse {
+    override: boolean | null;
+}
+
 export interface DocumentProofsRequest {
     textDocument: TextDocumentIdentifier;
 }
