@@ -1110,10 +1110,10 @@ let apply_text_edit document edit =
   let pending_edits_range : pending_edits_range = match document.pending_edits_range with
     | None -> { start = edit.start; stop = edit.stop; shift_after_stop = RawDocument.shift_after_stop edit }
     | Some pending -> apply_1edit pending edit in
-  { document with raw_doc; pending_edits_range = Some pending_edits_range }
+  { document with raw_doc; pending_edits_range = Some pending_edits_range }, edit
 
 let apply_text_edits document edits =
-  List.fold_left apply_text_edit document edits
+  List.fold_left (fun document edit -> fst (apply_text_edit document edit)) document edits
 
 module Internal = struct
 
