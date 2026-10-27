@@ -34,7 +34,7 @@ fatalwarnings: $(DUNE_IN_FILES)
 	if echo $${version} | grep -q '^[0-9]\+\.[0-9]\+\.[0-9]\+$$'; then \
 		major_version=$${version%%.*}; version=$${version%.*};\
 	elif echo $${version} | grep -q '^[0-9]\+\.[0-9]\++.*$$'; then \
-		major_version=$${version%.*}; \
+		major_version=$${version%.*}; version=$${version%+*};\
 	else\
 		echo "failed to parse version $${version}"; exit 1;\
 	fi;\
