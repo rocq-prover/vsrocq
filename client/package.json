@@ -427,6 +427,36 @@
         "category": "Rocq"
       },
       {
+        "command": "extension.rocq.toggle.debug",
+        "category": "Rocq",
+        "title": "Toggle Debug..."
+      },
+      {
+        "command": "extension.rocq.toggle.ltacBacktrace",
+        "category": "Rocq",
+        "title": "Toggle Ltac Backtrace"
+      },
+      {
+        "command": "extension.rocq.toggle.mangleNames",
+        "category": "Rocq",
+        "title": "Toggle Mangle Names"
+      },
+      {
+        "command": "extension.rocq.toggle.searchOutputNameOnly",
+        "category": "Rocq",
+        "title": "Toggle Search Output Name Only"
+      },
+      {
+        "command": "extension.rocq.toggle.suggestProofUsing",
+        "category": "Rocq",
+        "title": "Toggle Suggest Proof Using"
+      },
+      {
+        "command": "extension.rocq.toggle.typeclassesDebug",
+        "category": "Rocq",
+        "title": "Toggle Typeclasses Debug"
+      },
+      {
         "command": "extension.rocq.addQueryTab",
         "title": "Add Tab",
         "category": "Rocq",
