@@ -59,8 +59,8 @@ type parsed_ast = {
 }
 
 type parsing_error = {
-  start: int; 
-  stop: int; 
+  start: int;
+  stop: int;
   msg: Pp.t Loc.located;
   qf: Quickfix.t list option;
   str: string;
@@ -71,9 +71,9 @@ type parse_state
 val parse_errors : document -> parsing_error list
 (** [parse_errors doc] returns the list of sentences which failed to parse
     (see validate_document) together with their error message *)
-val apply_text_edit : document -> text_edit -> document
-(** [apply_text_edits doc edits] updates the text of [doc] with [edits]. The new
-    text is not parsed or executed. *)
+val apply_text_edit : document -> text_edit -> document * RawDocument.byte_edit
+(** [apply_text_edit doc edit] updates the text of [doc] with [edit] and
+    returns [edit] in byte offsets. The new text is not parsed or executed. *)
 val apply_text_edits : document -> text_edit list -> document
 (** [apply_text_edits doc edits] updates the text of [doc] with [edits]. The new
     text is not parsed or executed. *)

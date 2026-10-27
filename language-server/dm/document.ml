@@ -1098,10 +1098,10 @@ let apply_text_edit document edit =
     | None -> (0, max_int, min_int)
     | Some { shift_after_stop; start; stop } -> (shift_after_stop, start, stop) in
   let shift_after_stop, start, stop = apply_1edit pending edit in
-  { document with raw_doc; pending_edits_range = Some { shift_after_stop; start; stop} }
+  { document with raw_doc; pending_edits_range = Some { shift_after_stop; start; stop} }, edit
 
 let apply_text_edits document edits =
-  List.fold_left apply_text_edit document edits
+  List.fold_left (fun document edit -> fst (apply_text_edit document edit)) document edits
 
 module Internal = struct
 

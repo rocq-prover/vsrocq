@@ -170,7 +170,7 @@ let edit doc (start, stop, text) = range_of doc start stop, text
    then parses once. *)
 let edit_one_by_one ~text edits =
   let Document.{ parsed_document } = init_and_parse_test_doc () ~text in
-  let doc = List.fold edits ~init:parsed_document ~f:(fun doc e -> Document.apply_text_edit doc (edit doc e)) in
+  let doc = List.fold edits ~init:parsed_document ~f:(fun doc e -> fst (Document.apply_text_edit doc (edit doc e))) in
   let Document.{ parsed_document } = validate_document doc in
   parsed_document
 
@@ -235,9 +235,9 @@ let%test_unit "oracle: two edits in separate calls, far apart" =
    must still cover the first edit. *)
 let%test_unit "oracle: edit during a parse" =
   let Document.{ parsed_document } = init_and_parse_test_doc () ~text:five in
-  let doc = Document.apply_text_edit parsed_document (edit parsed_document (6, 7, "11")) in
+  let doc = fst (Document.apply_text_edit parsed_document (edit parsed_document (6, 7, "11"))) in
   let doc, _cancelled = Document.validate_document doc in
-  let doc = Document.apply_text_edit doc (edit doc (43, 44, "55")) in
+  let doc = fst (Document.apply_text_edit doc (edit doc (43, 44, "55"))) in
   let Document.{ parsed_document } = validate_document doc in
   check_same_as_fresh parsed_document
 
@@ -282,7 +282,7 @@ let%test_unit "document: inserted sentences keep the ids of the next ones" =
   let ids doc = List.map (Document.sentences_sorted_by_loc doc) ~f:(fun (s : Document.sentence) -> Stateid.to_int s.id) in
   let Document.{ parsed_document } = init_and_parse_test_doc () ~text:five in
   let before = ids parsed_document in
-  let doc = Document.apply_text_edit parsed_document (edit parsed_document (9, 9, "Check 6. Definition long_name := 0. ")) in
+  let doc = fst (Document.apply_text_edit parsed_document (edit parsed_document (9, 9, "Check 6. Definition long_name := 0. "))) in
   let Document.{ parsed_document } = validate_document doc in
   [%test_eq: int list] before (List.filteri (ids parsed_document) ~f:(fun i _ -> i <> 1 && i <> 2))
 
