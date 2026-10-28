@@ -267,6 +267,45 @@ let print ~printing ~vs ~pattern =
   let udecl = None in (*TODO*)
   Ok (pp_of_rocqpp @@ print_name env sigma qid udecl)
 
+(* The [Print] commands that [print_command] runs, as the words that follow
+   [Print]. Some take an argument, eg. [Assumptions foo]. *)
+let print_commands = [
+  "Options"; "Tables"; "Universes"; "Assumptions"; "Typing Flags";
+  "Libraries"; "LoadPath"; "Scopes"; "Coercions"; "Classes"; "Typeclasses";
+  "Instances"; "Implicit"; "Hint"; "HintDb";
+]
+
+let words s = String.split_on_char ' ' s |> List.filter (fun w -> w <> "")
+
+let rec is_prefix l1 l2 = match l1, l2 with
+  | [], _ -> true
+  | x :: l1, y :: l2 -> String.equal x y && is_prefix l1 l2
+  | _ :: _, [] -> false
+
+(* Feedback for this document id is ignored by the documents, so that the
+   output of a query does not end up in their messages. *)
+let query_doc_id = -1
+
+(* Runs [Print pattern] in [vs] and returns what it prints. The command is
+   interpreted, as most [Print] commands are implemented in [Vernacentries]
+   and not exported, but only the [Print] commands of [print_commands] are
+   accepted. *)
+let print_command ~vs ~pattern =
+  if not (List.exists (fun c -> is_prefix (words c) (words pattern)) print_commands) then
+    CErrors.user_err Pp.(str "Unsupported command: Print " ++ str pattern ++ str ".");
+  let ast = parse_entry vs (Pvernac.main_entry (Some (Synterp.get_default_proof_mode ()))) ("Print " ^ pattern ^ ".") in
+  match ast with
+  | Some ({ CAst.v = { control = []; attrs = []; expr = VernacSynPure (VernacPrint _) } } as ast) ->
+    let entry = Document.get_entry ast in
+    let output = ref [] in
+    let feeder = Log.feedback_add_feeder_on_Message (fun _route _span doc lvl _loc _qf msg ->
+      if doc = query_doc_id && lvl <> Feedback.Debug then output := msg :: !output) in
+    Feedback.set_id_for_feedback query_doc_id Stateid.dummy;
+    Fun.protect ~finally:(fun () -> Feedback.del_feeder feeder) (fun () ->
+      ignore (Vernacinterp.interp_entry ~st:vs entry));
+    Ok (pp_of_rocqpp @@ Pp.prlist_with_sep Pp.fnl (fun x -> x) (List.rev !output))
+  | _ -> CErrors.user_err Pp.(str "Not a Print command: Print " ++ str pattern ++ str ".")
+
 let get_completions ~vs =
   let settings = ExecutionManager.get_options () in
   CompletionSuggester.get_completions settings.completion_options vs
@@ -316,6 +355,10 @@ let search ~doc_id ~printing ~vs ~id pattern =
 
 let print ~doc_id ~printing ~vs ~pattern =
   ProverThread.try_run ~doc_id ~name:"print" ~timeout (fun () -> print ~printing ~vs ~pattern) |>
+  to_types_error
+
+let print_command ~doc_id ~vs ~pattern =
+  ProverThread.try_run ~doc_id ~name:"print_command" ~timeout (fun () -> print_command ~vs ~pattern) |>
   to_types_error
 
 let hover ~printing document pos =

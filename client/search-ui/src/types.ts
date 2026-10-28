@@ -10,6 +10,7 @@ export enum QueryType {
     check = "check",
     locate = "locate",
     print = "print",
+    printCommand = "printCommand",
 }
 export interface QueryResultBase {
     statement: Nullable<PpString>;
@@ -42,6 +43,9 @@ export interface LocateResultType extends QueryResultBase {
 export interface PrintResultType extends QueryResultBase {
     type: QueryType.print;
 }
+export interface PrintCommandResultType extends QueryResultBase {
+    type: QueryType.printCommand;
+}
 export interface QueryError {
     code: integer;
     message: string;
@@ -51,7 +55,8 @@ export type QueryResultType =
     | CheckResultType
     | AboutResultType
     | LocateResultType
-    | PrintResultType;
+    | PrintResultType
+    | PrintCommandResultType;
 export interface Query {
     pattern: string;
     type: QueryType;

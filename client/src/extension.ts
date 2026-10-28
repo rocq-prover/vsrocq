@@ -289,32 +289,73 @@ export function activate(context: ExtensionContext) {
         );
         context.subscriptions.push(statusBar);
 
-        const launchQuery = (editor: TextEditor, type: string) => {
+        //either the user selection or if no selection the word under the cursor,
+        //null for multiline selections
+        const queryTextAtCursor = (editor: TextEditor) => {
             const selection = editor.selection;
             const { end, start } = selection;
             if (end.line !== start.line) {
-                return;
-            } //don't allow for multiline selections
-            //either use the user selection or if no selection than infer the word under the cursor
+                return null;
+            }
             const wordAtCurorRange =
                 end.character !== start.character
                     ? selection
                     : editor.document.getWordRangeAtPosition(end);
+            return wordAtCurorRange
+                ? editor.document.getText(wordAtCurorRange)
+                : undefined;
+        };
+
+        const launchQuery = (editor: TextEditor, type: string) => {
+            const value = queryTextAtCursor(editor);
+            if (value === null) {
+                return;
+            } //don't allow for multiline selections
             //focus on the query panel
             commands.executeCommand("vsrocq.search.focus");
             //open a prompt with the given word as default
             window
                 .showInputBox({
                     prompt: type.charAt(0).toUpperCase() + type.slice(1),
-                    value: wordAtCurorRange
-                        ? editor.document.getText(wordAtCurorRange)
-                        : undefined,
+                    value: value,
                 })
                 .then((queryText) => {
                     //launch the query
                     if (queryText) {
                         searchProvider.launchQuery(queryText, type);
                     }
+                });
+        };
+
+        //runs "Print [command] [argument]", asking for the argument unless
+        //[argument] is "none"
+        const launchPrintCommand = (
+            editor: TextEditor,
+            command: string,
+            argument: "none" | "optional" | "required",
+        ) => {
+            commands.executeCommand("vsrocq.search.focus");
+            if (argument === "none") {
+                searchProvider.launchQuery(command, "printCommand");
+                return;
+            }
+            window
+                .showInputBox({
+                    prompt: "Print " + command,
+                    value: queryTextAtCursor(editor) ?? undefined,
+                })
+                .then((queryText) => {
+                    if (queryText === undefined) {
+                        return;
+                    }
+                    const text = queryText.trim();
+                    if (text === "" && argument === "required") {
+                        return;
+                    }
+                    searchProvider.launchQuery(
+                        text === "" ? command : command + " " + text,
+                        "printCommand",
+                    );
                 });
         };
 
@@ -352,6 +393,28 @@ export function activate(context: ExtensionContext) {
         registerVsrocqTextCommand("query.print", (editor) =>
             launchQuery(editor, "print"),
         );
+        const printCommands = [
+            ["printOptions", "Options", "none"],
+            ["printTables", "Tables", "none"],
+            ["printUniverses", "Universes", "none"],
+            ["printAssumptions", "Assumptions", "required"],
+            ["printTypingFlags", "Typing Flags", "none"],
+            ["printLibraries", "Libraries", "none"],
+            ["printLoadPath", "LoadPath", "none"],
+            ["printScopes", "Scopes", "none"],
+            ["printCoercions", "Coercions", "none"],
+            ["printClasses", "Classes", "none"],
+            ["printTypeclasses", "Typeclasses", "none"],
+            ["printInstances", "Instances", "required"],
+            ["printImplicit", "Implicit", "required"],
+            ["printHint", "Hint", "optional"],
+            ["printHintDb", "HintDb", "required"],
+        ] as const;
+        for (const [name, command, argument] of printCommands) {
+            registerVsrocqTextCommand(`query.${name}`, (editor) =>
+                launchPrintCommand(editor, command, argument),
+            );
+        }
         registerVsrocqTextCommand("addQueryTab", () => searchProvider.addTab());
         registerVsrocqTextCommand("collapseAllQueries", () =>
             searchProvider.collapseAll(),
