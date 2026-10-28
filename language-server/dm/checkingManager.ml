@@ -147,6 +147,9 @@ let reset st vs ~feedback_pipe =
 let get_observe_id { observe_id } = match observe_id with Top -> None | Id x -> Some x
 let reset_to_top st = { st with observe_id = Top }
 
+let refresh_proof_view st =
+  match get_observe_id st with Some id -> [ mk_proof_view_event id ] | None -> [ mk_proof_view_event_empty ]
+
 let cut_overview task state document =
   let range =
     match ExecutionManager.view_task task with
@@ -597,7 +600,7 @@ let handle_execution_manager_event document st ev =
 let vernac_state_of_sentence document id =
   Document.get_sentence document id |> fun x -> Option.bind x (fun x -> Utilities.get_vernac_state x.Document.checked)
 
-let get_proof document st id =
+let get_proof ?printing document st id =
   let previous_st id =
     let oid = fst @@ Scheduler.task_for_sentence (Document.schedule document) id in
     Option.bind oid (vernac_state_of_sentence document)
@@ -606,13 +609,13 @@ let get_proof document st id =
   let oid = Option.append id observe_id in
   let ost = Option.bind oid (vernac_state_of_sentence document) in
   let previous = Option.bind oid previous_st in
-  Option.bind ost (ProofState.get_proof ~previous !settings.diff_mode)
+  Option.bind ost (ProofState.get_proof ?printing ~previous !settings.diff_mode)
 
-let get_string_proof document st id =
+let get_string_proof ~printing document st id =
   let observe_id = get_observe_id st in
   let oid = Option.append id observe_id in
   let ost = Option.bind oid (vernac_state_of_sentence document) in
-  Option.bind ost PpProofState.get_proof
+  Option.bind ost (PpProofState.get_proof ~printing)
 
 let get_messages document id =
   let error = Document.error document id in
@@ -635,7 +638,7 @@ let get_string_messages document id =
 (* Moving the observe point changes the highlights only in Manual mode. *)
 let highlight_if_manual mode = { highlights = (mode = Settings.Mode.Manual); diagnostics = false }
 
-let handle_event ~uri document st ev =
+let handle_event ~uri ~printing document st ev =
   let { block_on_first_error; check_mode; pp_mode } = !settings in
   let background = check_mode = Settings.Mode.Continuous in
   match ev with
@@ -651,8 +654,8 @@ let handle_event ~uri document st ev =
       let proof, pp_proof =
         ProverThread.try_run ~doc_id:st.doc_id ~name:"SendProofView" ~timeout:1.0 (fun () ->
           match pp_mode with
-          | Pp -> (get_proof document st (Some id), None)
-          | String -> (None, get_string_proof document st (Some id)))
+          | Pp -> (get_proof ~printing document st (Some id), None)
+          | String -> (None, get_string_proof ~printing document st (Some id)))
         |> function Terminated(a,b) -> a,b | _ -> None,None
       in
       let messages, pp_messages =

@@ -35,6 +35,7 @@ Constrexpr_ops\.fold_constr_expr_with_binders
 # Ours #######################
 Protocol\.LspWrapper\.
 Protocol\.Printing\.
+Protocol\.PrintingOptions\.\(is_empty\|set\)$
 LM\.
 SM\.
 Dm\.Log\.

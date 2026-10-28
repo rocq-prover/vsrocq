@@ -23,5 +23,8 @@ Calls sequentialized via ProverThread APIs
   jump_to_definition -> Dm.QueryManager.jump_to_definition -> Dm.ProverThread.try_run -> [thunk] -> *
   locate -> Dm.QueryManager.locate -> Dm.ProverThread.try_run -> [thunk] -> *
   print -> Dm.QueryManager.print -> Dm.ProverThread.try_run -> [thunk] -> *
+  printing_options -> Dm.QueryManager.printing_options -> Dm.ProverThread.try_run -> [thunk] -> *
+  reset -> with_printing_overrides -> Dm.ProverThread.run -> *
   search -> Dm.QueryManager.search -> Dm.ProverThread.try_run -> [thunk] -> *
   start_library -> Dm.ProverThread.run -> *
+  with_printing_overrides -> Dm.ProverThread.run -> *

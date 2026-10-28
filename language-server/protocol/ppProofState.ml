@@ -103,8 +103,9 @@ let string_of_diff_mode = function
 let set_diff_mode diff_mode =
   Goptions.set_string_option_value Proof_diffs.opt_name @@ string_of_diff_mode diff_mode
 
-let get_proof st =
+let get_proof ?(printing = PrintingOptions.empty) st =
   Vernacstate.unfreeze_full_state st;
+  PrintingOptions.apply printing;
   match proof_of_state st with
   | None -> None
   | Some proof ->

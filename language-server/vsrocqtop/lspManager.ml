@@ -533,6 +533,28 @@ let sendDocumentProofs params =
     let proofs = Dm.DocumentManager.get_document_proofs st in
     Ok Request.Client.DocumentProofsResult.{ proofs }, []
 
+let rocqtopPrintingOptions params =
+  let Request.Client.PrintingOptionsParams.{ textDocument = { uri }; position } = params in
+  let@ { st } = with_document_request "printingOptions" uri in
+  let options = Dm.DocumentManager.printing_options st position in
+  Ok Request.Client.PrintingOptionsResult.{ options }, []
+
+let rocqtopSetPrintingOption params =
+  let Request.Client.SetPrintingOptionParams.{ textDocument = { uri }; name; value } = params in
+  let@ { st; visible } = with_document_request "setPrintingOption" uri in
+  match Dm.DocumentManager.set_printing_option st name value with
+  | Error message -> Error { message; code = None }, []
+  | Ok st ->
+    replace_state (DocumentUri.to_path uri) st visible;
+    Ok (), inject_dm_events (uri, Dm.DocumentManager.refresh_proof_view st)
+
+let rocqtopResetPrintingOptions params =
+  let Request.Client.ResetPrintingOptionsParams.{ textDocument = { uri } } = params in
+  let@ { st; visible } = with_document_request "resetPrintingOptions" uri in
+  let st = Dm.DocumentManager.reset_printing_options st in
+  replace_state (DocumentUri.to_path uri) st visible;
+  Ok (), inject_dm_events (uri, Dm.DocumentManager.refresh_proof_view st)
+
 let workspaceDidChangeConfiguration params =
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
   let settings = Settings.t_of_yojson settings in
@@ -569,6 +591,9 @@ let dispatch_request : type a. a Request.Client.t -> (a,error) result * events =
   | Search params -> rocqtopSearch params
   | DocumentState params -> sendDocumentState params
   | DocumentProofs params -> sendDocumentProofs params
+  | PrintingOptions params -> rocqtopPrintingOptions params
+  | SetPrintingOption params -> rocqtopSetPrintingOption params
+  | ResetPrintingOptions params -> rocqtopResetPrintingOptions params
 
 let dispatch_std_notification =
   let open Lsp.Client_notification in function
