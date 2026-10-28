@@ -2,13 +2,22 @@ import { compareVersions } from "compare-versions";
 import { ExtensionContext, window } from "vscode";
 import Client from "../client";
 
-// The reference manual of [rocqVersion]; development versions are documented
-// in the manual of master.
+// The directory of the reference manual of [rocqVersion]. Releases X.Y are
+// published as VX.Y.0, and development versions, or an unknown version, are
+// documented in master.
+const getRocqdocDir = (rocqVersion: string) => {
+    if (/^\d+\.\d+$/.test(rocqVersion)) {
+        return `V${rocqVersion}.0`;
+    }
+    if (/^\d+\.\d+(\.\d+)?(\+rc\d+|\+beta\d*)?$/.test(rocqVersion)) {
+        return `V${rocqVersion}`;
+    }
+    return "master";
+};
+
+// The reference manual of [rocqVersion].
 export const getRocqdocBaseUrl = (rocqVersion: string) => {
-    const doc = /\+alpha|\.dev/.test(rocqVersion)
-        ? "master"
-        : `V${rocqVersion}`;
-    return `https://rocq-prover.org/doc/${doc}/refman/`;
+    return `https://rocq-prover.org/doc/${getRocqdocDir(rocqVersion)}/refman/`;
 };
 
 export const getRocqdocUrl = (rocqVersion: string) => {
