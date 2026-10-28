@@ -11,6 +11,7 @@ Calls sequentialized via ProverThread APIs
   get_completions -> Dm.QueryManager.get_completions -> Dm.ProverThread.try_run -> [thunk] -> *
   get_document_proofs -> Dm.ProverThread.try_run -> *
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.complete_proof -> Dm.ProverThread.run -> *
+  handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.execute_local -> Dm.ExecutionManager.promise_execution -> Dm.ProverThread.eventually_run -> *
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.interp_qed_delayed -> Dm.ProverThread.run -> *
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> Dm.ExecutionManager.promise_execution -> Dm.ProverThread.eventually_run -> *
   handle_event -> Dm.CheckingManager.handle_event -> Dm.CheckingManager.execute -> Dm.ExecutionManager.execute -> ProofWorker.worker_available -> *
