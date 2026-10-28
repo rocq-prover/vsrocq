@@ -408,6 +408,11 @@ let print st pos ~pattern =
   let vs = rocq_state_for st pos in
   QueryManager.print ~doc_id:(Document.id st.document) ~printing:st.printing ~vs ~pattern
 
+let universes st pos ~global ~subgraph =
+  let vs = rocq_state_for st pos in
+  let raw = Document.raw_document st.document in
+  QueryManager.universes ~doc_id:(Document.id st.document) ~raw ~vs ~global ~subgraph
+
 let search st ~id pos s =
   let vs = rocq_state_for st pos in
   QueryManager.search ~doc_id:(Document.id st.document) ~printing:st.printing ~vs ~id s

@@ -33,6 +33,17 @@ val print :
   pattern:string ->
   (Protocol.Printing.pp, Types.error) result
 
+val universes :
+  doc_id:int ->
+  raw:RawDocument.t ->
+  vs:Vernacstate.t ->
+  global:bool ->
+  subgraph:string list option ->
+  (Protocol.UniverseGraph.t, Types.error) result
+(** the universe graph of the proof in [vs], as [Show Universes], or the
+    global one if [global], as [Print Universes], restricted to [subgraph].
+    The locations of the universes are ranges in [raw]. *)
+
 val about :
   doc_id:int ->
   printing:Protocol.PrintingOptions.t ->

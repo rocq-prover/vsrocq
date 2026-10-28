@@ -43,6 +43,7 @@ import { CommandKey } from "./package-json";
 import { DocumentStateViewProvider } from "./panels/DocumentStateViewProvider";
 import GoalPanel from "./panels/GoalPanel";
 import SearchViewProvider from "./panels/SearchViewProvider";
+import UniversesPanel from "./panels/UniversesPanel";
 import {
     sendChoosePrintingOptions,
     sendResetPrintingOptions,
@@ -401,6 +402,22 @@ export function activate(context: ExtensionContext) {
             const url = getRocqdocUrl(rocqTM.getRocqVersion());
             commands.executeCommand("simpleBrowser.show", url);
         });
+        registerVsrocqTextCommand("universes.show", (editor) =>
+            UniversesPanel.render(
+                context.extensionUri,
+                client,
+                editor,
+                "proof",
+            ),
+        );
+        registerVsrocqTextCommand("universes.print", (editor) =>
+            UniversesPanel.render(
+                context.extensionUri,
+                client,
+                editor,
+                "global",
+            ),
+        );
         registerVsrocqTextCommand("displayProofView", () => {
             const editor = window.activeTextEditor
                 ? window.activeTextEditor

@@ -27,4 +27,5 @@ Calls sequentialized via ProverThread APIs
   reset -> with_printing_overrides -> Dm.ProverThread.run -> *
   search -> Dm.QueryManager.search -> Dm.ProverThread.try_run -> [thunk] -> *
   start_library -> Dm.ProverThread.run -> *
+  universes -> Dm.QueryManager.universes -> Dm.ProverThread.try_run -> *
   with_printing_overrides -> Dm.ProverThread.run -> *
