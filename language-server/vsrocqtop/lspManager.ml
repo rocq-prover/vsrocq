@@ -554,6 +554,26 @@ let rocqtopResetPrintingOptions params =
   let st = Dm.DocumentManager.reset_printing_options st in
   replace_state (DocumentUri.to_path uri) st visible;
   Ok (), inject_dm_events (uri, Dm.DocumentManager.refresh_proof_view st)
+let sendDebugFlags () =
+  log.debug (fun () -> "debugFlags");
+  let flags = Dm.OptionOverrides.debug_flags () in
+  let flags = List.map (fun (name, enabled) -> Request.Client.DebugFlag.{ name; enabled }) flags in
+  Ok Request.Client.DebugFlagsResult.{ flags }, []
+
+let toggleDebugFlag params =
+  let Request.Client.ToggleDebugFlagParams.{ name } = params in
+  log.debug (fun () -> "toggleDebugFlag " ^ name);
+  match Dm.OptionOverrides.toggle_debug_flag name with
+  | Ok enabled -> Ok Request.Client.ToggleDebugFlagResult.{ enabled }, []
+  | Error message -> Error { message; code = None }, []
+
+let toggleOption params =
+  let Request.Client.ToggleOptionParams.{ option } = params in
+  log.debug (fun () -> "toggleOption " ^ option);
+  let key = List.filter (fun s -> s <> "") (String.split_on_char ' ' option) in
+  match Dm.OptionOverrides.toggle_flag key with
+  | Ok value -> Ok Request.Client.ToggleOptionResult.{ value }, []
+  | Error message -> Error { message; code = None }, []
 
 let workspaceDidChangeConfiguration params =
   let Lsp.Types.DidChangeConfigurationParams.{ settings } = params in
@@ -594,6 +614,9 @@ let dispatch_request : type a. a Request.Client.t -> (a,error) result * events =
   | PrintingOptions params -> rocqtopPrintingOptions params
   | SetPrintingOption params -> rocqtopSetPrintingOption params
   | ResetPrintingOptions params -> rocqtopResetPrintingOptions params
+  | DebugFlags () -> sendDebugFlags ()
+  | ToggleDebugFlag params -> toggleDebugFlag params
+  | ToggleOption params -> toggleOption params
 
 let dispatch_std_notification =
   let open Lsp.Client_notification in function

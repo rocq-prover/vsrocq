@@ -42,6 +42,29 @@ let%test_unit "exec: finished proof skip" =
   ];
   ExecutionManager.set_default_options ()
 
+let%test_unit "exec: option overrides" =
+  let text = "Unset Mangle Names. Test Mangle Names. Set Debug \"-backtrace\". Test Debug." in
+  let st, events = em_init_test_doc ~text in
+  let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
+  let toggle () = match OptionOverrides.toggle_flag ["Mangle"; "Names"] with
+    | Ok b -> b | Error e -> failwith e in
+  let toggle_debug () = match OptionOverrides.toggle_debug_flag "backtrace" with
+    | Ok b -> b | Error e -> failwith e in
+  [%test_eq: bool] true (toggle ());
+  [%test_eq: bool] true (toggle_debug ());
+  [%test_eq: bool] true (List.Assoc.mem ~equal:String.equal (OptionOverrides.debug_flags ()) "backtrace");
+  let exec_events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add events exec_events) in
+  let st = handle_dm_events todo st in
+  (* the overrides take precedence over the Unset and Set of the document *)
+  check_diag st [
+    D (s2.id,Information,"Mangle Names is on");
+    D (s4.id,Information,".*[^-]backtrace.*")
+  ];
+  [%test_eq: bool] false (toggle ());
+  [%test_eq: bool] false (toggle_debug ());
+  OptionOverrides.clear ()
+
 let%test_unit "exec: unfinished proof" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. Qed. Check x." in
   let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in

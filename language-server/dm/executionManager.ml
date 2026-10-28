@@ -172,12 +172,14 @@ let interp_ast ~doc_id ~state_id ~st ~error_recovery ast =
     Feedback.set_id_for_feedback doc_id state_id;
     ParTactic.set_id_for_feedback doc_id state_id;
     let result =
-        try Ok(Vernacinterp.interp_entry ~st ast)
+        try
+          let st = OptionOverrides.apply_to_state st in
+          Ok(st, Vernacinterp.interp_entry ~st ast)
         with e -> (* we also catch anomalies *)
           let e, info = Exninfo.capture e in
           Error (e, info) in
     match result with
-    | Ok (interp) ->
+    | Ok (st, interp) ->
         let st = { st with interp } in
         st, success st
     | Error (e, info) ->
@@ -222,6 +224,7 @@ let add_using proof proof_using _ =
 
 let interp_qed_delayed ~doc_id ~proof_using ~state_id ~st =
   ProverThread.run ~doc_id ~name:"interp_qed_delayed" (fun () ->
+  let st = OptionOverrides.apply_to_state st in
   let lemmas = Option.get @@ st.Vernacstate.interp.lemmas in
   let f proof =
     let proof = add_using proof proof_using lemmas in
