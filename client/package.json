@@ -1030,6 +1030,7 @@
     "build:dev": "npm run gen-vscode-types && vite build --mode development",
     "watch": "vite build --mode development --watch",
     "gen-vscode-types": "vscode-ext-gen --output src/package-json.ts --scope vsrocq",
+    "gen-compat-doc": "node scripts/gen-compat-doc.mjs",
     "package": "npm install && npm run build --workspaces",
     "compile-tests": "tsc --outDir out",
     "watch-tests": "tsc -w --outDir out",

@@ -6,6 +6,7 @@ src/
 **/.gitignore
 package-lock.json
 vite.config.ts
+scripts/
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/*.map
