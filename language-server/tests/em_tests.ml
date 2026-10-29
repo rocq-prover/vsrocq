@@ -87,6 +87,20 @@ let%test_unit "exec: unfinished proof delegate" =
   ];
   ExecutionManager.set_default_options ()
 
+(* The delegated proof is the last task of the run, so nothing after it
+   forwards the event that starts the worker. *)
+let%test_unit "exec: unfinished proof delegate, qed last" =
+  let st, events = em_init_test_doc ~text:"Lemma x : True. Proof. idtac. Qed." in
+  let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
+  set_delegation_mode (DelegateProofsToWorkers { number_of_workers = 1 });
+  let exec_events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add events exec_events) in
+  let st = handle_dm_events todo st in
+  check_diag st [
+    D (s4.id,Error,".*incomplete proof.*")
+  ];
+  ExecutionManager.set_default_options ()
+
 
 let%test_unit "exec: unstarted proof" =
   let st, events = em_init_test_doc ~text:"Qed. Check nat." in
