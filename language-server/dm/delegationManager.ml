@@ -199,7 +199,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
     let address = getsockname chan in
     log.debug (fun () -> "forking...");
     flush_all ();
-    let null = openfile "/dev/null" [O_RDWR] 0o640 in
+    let null = openfile Filename.null [O_RDWR] 0o640 in
     let pid = fork () in
     if pid = 0 then begin
         (* Children process *)
@@ -248,7 +248,7 @@ let create_process_worker procname cancellation_handle job =
     let port = match getsockname chan with
       | ADDR_INET(_,port) -> port
       | _ -> assert false in
-    let null = openfile "/dev/null" [O_RDWR] 0o640 in
+    let null = openfile Filename.null [O_RDWR] 0o640 in
     let extra_flags = if CDebug.get_flags () = "all" then [|"-debug"|] else [||] in
     let args = Array.append  [|procname;option_name;string_of_int port|] extra_flags in
     let pid = create_process procname args null stdout stderr in
