@@ -249,6 +249,9 @@ let create_process_worker procname cancellation_handle job =
       | ADDR_INET(_,port) -> port
       | _ -> assert false in
     let null = openfile Filename.null [O_RDWR] 0o640 in
+    (* create_process adds .exe only to names without an extension, and
+       worker names end in .opt *)
+    let procname = if Sys.win32 then procname ^ ".exe" else procname in
     let extra_flags = if CDebug.get_flags () = "all" then [|"-debug"|] else [||] in
     let args = Array.append  [|procname;option_name;string_of_int port|] extra_flags in
     let pid = create_process procname args null stdout stderr in
