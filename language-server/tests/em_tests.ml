@@ -87,6 +87,22 @@ let%test_unit "exec: unfinished proof delegate" =
   ];
   ExecutionManager.set_default_options ()
 
+let%test_unit "exec: feedback after a delegated proof" =
+  let st, events = em_init_test_doc ~text:"Lemma x : True. Qed." in
+  let st, (s1, (s2, ())) = dm_parse st (P(P O)) in
+  set_delegation_mode (DelegateProofsToWorkers { number_of_workers = 1 });
+  let todo = Sel.Todo.(add events (DocumentManager.interpret_to_end ())) in
+  let _ = handle_dm_events todo st in
+  ExecutionManager.set_default_options ();
+  (* The worker has exited, and the master's own feedback must not go to it *)
+  let st, events = em_init_test_doc ~text:"Check nat." in
+  let st, (s1, ()) = dm_parse st (P O) in
+  let todo = Sel.Todo.(add events (DocumentManager.interpret_to_end ())) in
+  let st = handle_dm_events todo st in
+  check_diag st [
+    D (s1.id,Information,".*Set.*")
+  ]
+
 
 let%test_unit "exec: unstarted proof" =
   let st, events = em_init_test_doc ~text:"Qed. Check nat." in
