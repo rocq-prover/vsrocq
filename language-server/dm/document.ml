@@ -95,7 +95,7 @@ let sentence_of_id { sentences_by_id } id =
 
 type parse_state = {
   started: float;
-  stop: int;
+  parse_start: int;
   top_id: sentence_id option;
   loc: Loc.t option;
   synterp_state : Vernacstate.Synterp.t;
@@ -268,11 +268,6 @@ let find_sentence_before_pos document pos =
   let loc = RawDocument.loc_of_position (raw_document document) pos in
   find_sentence_before document loc
 
-let find_sentence_strictly_before parsed loc =
-  match LM.find_last_opt (fun k -> k < loc) parsed.sentences_by_end with
-  | Some (_, sentence) -> Some sentence
-  | _ -> None
-
 let find_sentence_after parsed loc =
   match LM.find_first_opt (fun k -> loc <= k) parsed.sentences_by_end with
   | Some (_, sentence_id) -> Some (sentence_of_id parsed sentence_id)
@@ -335,10 +330,6 @@ let state_after_sentence parsed = function
 let state_at_pos parsed pos =
   state_after_sentence parsed @@
     LM.find_last_opt (fun stop -> stop <= pos) parsed.sentences_by_end
-
-let state_strictly_before parsed pos =
-  state_after_sentence parsed @@
-    LM.find_last_opt (fun stop -> stop < pos) parsed.sentences_by_end
 
 let pos_at_end parsed =
   match LM.max_binding_opt parsed.sentences_by_end with
@@ -750,26 +741,44 @@ let invalidate top_edit top_id parsed_doc new_sentences =
   log.debug (fun () -> "diff:\n" ^ string_of_diff parsed_doc diff);
   unchanged_id, invalid_ids, parsed_doc
 
-(** Validate document when raw text has changed *)
-let validate_document ({ parsed_loc; raw_doc; cancel_handle; doc_id } as document) =
-  (* Cancel any previous parsing event *)
-  Option.iter Sel.Event.cancel cancel_handle;
-  (* We take the state strictly before parsed_loc to cover the case when the
-  end of the sentence is editted *)
-  let (stop, synterp_state, _scheduler_state) = state_strictly_before document parsed_loc in
-  (* let top_id = find_sentence_strictly_before document parsed_loc with None -> Top | Some sentence -> Id sentence.id in *)
-  let top_id = find_sentence_strictly_before document parsed_loc in
+let stream_at_offset raw_doc parse_start =
   let text = RawDocument.text raw_doc in
   let stream = Stream.of_string text in
-  while Stream.count stream < stop do Stream.junk () stream done;
-  log.debug (fun () -> Format.sprintf "Parsing more from pos %i" stop);
-  let started = Unix.gettimeofday () in
-  let parsed_state = {stop; top_id;synterp_state; stream; raw=raw_doc; parsed=[]; errors=[]; parsed_comments=[]; loc=None; started; previous_document=document} in
-  let event = create_parse_event ~doc_id parsed_state in
-  let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
-  {document with cancel_handle}, [event]
+  while Stream.count stream < parse_start do Stream.junk () stream done;
+  stream
 
-let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; previous_document} document =
+let reparse_state document ~parse_start ~top_id ~synterp_state =
+  {
+    started = Unix.gettimeofday ();
+    parse_start;
+    top_id;
+    loc = None;
+    synterp_state;
+    stream = stream_at_offset document.raw_doc parse_start;
+    raw = document.raw_doc;
+    parsed = [];
+    errors = [];
+    parsed_comments = [];
+    previous_document = document;
+  }
+
+(** Creates the event to start parsing the text again, and cancels any pending parse. *)
+let validate_document ({ parsed_loc; cancel_handle; doc_id } as document) =
+  (* Cancel any previous parsing event *)
+  Option.iter Sel.Event.cancel cancel_handle;
+  (* We take the state *strictly before* parsed_loc, to cover the case when the
+     edit starts right where a sentence ends, for example Qed.<new_edit>. A period followed by
+     text no longer ends the sentence (Qed.x), so that sentence has to be parsed again. *)
+  let sentence_before_edit = LM.find_last_opt (fun k -> k < parsed_loc) document.sentences_by_end in
+  let parse_start, synterp_state, _ = state_after_sentence document sentence_before_edit in
+  log.debug (fun () -> Format.sprintf "Parsing more from pos %i" parse_start);
+  let top_id = Option.map snd sentence_before_edit in
+  let parse_state = reparse_state document ~parse_start ~top_id ~synterp_state in
+  let event = create_parse_event ~doc_id parse_state in
+  let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
+  { document with cancel_handle }, [event]
+
+let handle_invalidate { parsed; errors; parsed_comments; parse_start; top_id; started; previous_document } document =
   let end_ = Unix.gettimeofday ()in
   let time = end_ -. started in
   log.debug (fun () -> Format.sprintf "Parsing phase ended in %5.3f" time);
@@ -778,9 +787,9 @@ let handle_invalidate {parsed; errors; parsed_comments; stop; top_id; started; p
   let new_errors = errors in
   log.debug (fun () -> Format.sprintf "%i new sentences" (List.length new_sentences));
   log.debug (fun () -> Format.sprintf "%i new comments" (List.length new_comments));
-  let errors = parsing_errors_before document stop in
-  let comments = comments_before document stop in
-  let unchanged_id, invalid_ids, document = invalidate (stop+1) top_id document new_sentences in
+  let errors = parsing_errors_before document parse_start in
+  let comments = comments_before document parse_start in
+  let unchanged_id, invalid_ids, document = invalidate (parse_start+1) top_id document new_sentences in
   let parsing_errors_by_end =
     List.fold_left (fun acc (error : parsing_error) -> LM.add error.stop error acc) errors new_errors
   in
