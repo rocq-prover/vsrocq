@@ -280,17 +280,40 @@ let create_process_worker procname cancellation_handle job =
 
 (* **************** /spawning ********************************************** *)
 
+(* OCaml represents the signals it knows as its own negative constants, and
+   passes any other signal through with its system number. *)
+let signal_name n =
+  let names = [
+    Sys.sigabrt, "SIGABRT"; Sys.sigbus, "SIGBUS"; Sys.sigfpe, "SIGFPE";
+    Sys.sigill, "SIGILL"; Sys.sigint, "SIGINT"; Sys.sigkill, "SIGKILL";
+    Sys.sigpipe, "SIGPIPE"; Sys.sigquit, "SIGQUIT"; Sys.sigsegv, "SIGSEGV";
+    Sys.sigstop, "SIGSTOP"; Sys.sigterm, "SIGTERM"; Sys.sigtstp, "SIGTSTP";
+    Sys.sigttin, "SIGTTIN"; Sys.sigttou, "SIGTTOU";
+  ] in
+  match List.assoc_opt n names with
+  | Some name -> name
+  | None -> Printf.sprintf "signal %d" n
+
 let handle_event = function
   | WorkerIOError e ->
      begin match e with
-     | End_of_file -> log.debug (fun () -> "worker closed its connection")
+     (* A worker killed on Windows resets the connection instead of closing it *)
+     | End_of_file | Unix.Unix_error (Unix.ECONNRESET, _, _) ->
+       log.debug (fun () -> "worker closed its connection")
      | e -> log.error (fun () -> Printf.sprintf "lost the connection to a worker, freeing its slot: %s" (Printexc.to_string e))
      end;
      if Queue.length pool < !current_pool_size then
       Queue.push () pool;
      (None, [])
-  | WorkerEnd (pid, _status) ->
-      log.debug (fun () -> Printf.sprintf "worker %d went on holidays" pid);
+  | WorkerEnd (pid, status) ->
+      begin match status with
+      | Unix.WEXITED 0 -> log.debug (fun () -> Printf.sprintf "worker %d exited" pid)
+      | Unix.WEXITED n -> log.error (fun () -> Printf.sprintf "worker %d exited with code %d" pid n)
+      (* On Unix, cancel_job kills workers with SIGKILL *)
+      | Unix.WSIGNALED n when n = Sys.sigkill -> log.debug (fun () -> Printf.sprintf "worker %d was killed" pid)
+      | Unix.WSIGNALED n -> log.error (fun () -> Printf.sprintf "worker %d was killed by %s" pid (signal_name n))
+      | Unix.WSTOPPED n -> log.error (fun () -> Printf.sprintf "worker %d was stopped by %s" pid (signal_name n))
+      end;
       if Queue.length pool < !current_pool_size then
         Queue.push () pool;
       (None,[])
