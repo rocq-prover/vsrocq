@@ -34,8 +34,7 @@ val mk_proof_statement : string -> Lsp.Types.Range.t -> proof_statement
 val mk_proof_step : string -> Lsp.Types.Range.t -> Printing.pp option -> proof_step
 val mk_proof_block : proof_statement -> proof_step list -> Lsp.Types.Range.t -> qed_type option -> bool -> proof_block
 
-(** Accessors for the fields of [proof_block]. The record types stay abstract
-    so the wire representation can evolve. *)
+(** Accessors for the fields of [proof_block] *)
 val proof_block_qed_type : proof_block -> qed_type option
 val proof_block_fully_checked : proof_block -> bool
 
