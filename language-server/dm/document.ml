@@ -240,9 +240,6 @@ let sentences_after parsed loc =
   let after = Option.cata (fun v -> LM.add loc v after) after ov in
   List.map (fun (_id,s) -> s) @@ LM.bindings after
 
-let parsing_errors_before parsed loc =
-  LM.filter (fun stop _v -> stop <= loc) parsed.parsing_errors_by_end
-
 let comments parsed =
   List.map snd @@ LM.bindings parsed.comments_by_end
 
@@ -775,6 +772,14 @@ let validate_document ({ parsed_loc; cancel_handle; doc_id } as document) =
   let cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
   { document with cancel_handle }, [event]
 
+let collect_parsing_errors document =
+  LM.filter_map
+    (fun _ id ->
+      match (sentence_of_id document id).ast with
+      | Parsed _ -> None
+      | Error e -> Some e)
+    document.sentences_by_end
+
 (* Gets the comments of the document after the parse that just ended. *)
 let collect_comments document ~parse_start parsed_comments =
   let comments_not_reparsed =
@@ -788,13 +793,10 @@ let collect_comments document ~parse_start parsed_comments =
 
 (* Applies the result of the parse that just ended to [document], and
    invalidates the sentences that changed. *)
-let handle_invalidate { parsed; errors; parsed_comments; parse_start; top_id; previous_document } document =
+let handle_invalidate { parsed; parsed_comments; parse_start; top_id; previous_document } document =
   let new_sentences = List.rev parsed in
   let unchanged_id, invalid_ids, document_with_new_sentences = invalidate (parse_start + 1) top_id document new_sentences in
-  let errors_not_reparsed = parsing_errors_before document parse_start in
-  let parsing_errors_by_end =
-    List.fold_left (fun acc (error : parsing_error) -> LM.add error.stop error acc) errors_not_reparsed errors
-  in
+  let parsing_errors_by_end = collect_parsing_errors document_with_new_sentences in
   let comments_by_end = collect_comments document ~parse_start parsed_comments in
   let parsed_loc = pos_at_end document_with_new_sentences in
   let parsed_document = { document_with_new_sentences with parsed_loc; parsing_errors_by_end; comments_by_end } in
