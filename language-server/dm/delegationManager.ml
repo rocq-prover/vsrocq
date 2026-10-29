@@ -62,7 +62,7 @@ let mk_job_handle (rid, sid) : job_handle = (rid, sid), ref None
 let cancel_job (_,id) =
   match !id with
   | None -> ()
-  | Some pid -> Unix.kill pid 9
+  | Some pid -> Unix.kill pid Sys.sigkill
 
 (* TODO: this queue should not be here, it should be "per URI" but we want to
    keep here the conversion (STM) feedback -> (LSP) feedback *)
@@ -223,7 +223,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
       | None ->
           close chan;
           log.error (fun () -> Printf.sprintf "worker %d did not connect back in time, killing it" pid);
-          Unix.kill pid 9;
+          Unix.kill pid Sys.sigkill;
           Error ("worker did not connect back", [worker_ends pid])
       | Some (worker, _worker_addr) ->
           close chan;
@@ -273,7 +273,7 @@ let create_process_worker procname cancellation_handle job =
         Ok [worker_progress link; worker_ends pid]
     | None ->
         log.error (fun () -> Printf.sprintf "worker %d did not connect back in time, killing it" pid);
-        Unix.kill pid 9;
+        Unix.kill pid Sys.sigkill;
         Error ("worker did not connect back", [worker_ends pid])
   with Unix_error(e,f,p) ->
     Error (f ^": "^ p^": " ^error_message e,[])
