@@ -728,13 +728,15 @@ let proof_step (document: Document.document) (raw: RawDocument.t)
   ProofState.mk_proof_step
     (sentence_text raw sentence)
     (sentence_range document sentence)
+    (Document.error document sentence.id |> Option.map (fun (_, p, _) -> Printing.pp_of_rocqpp p))
 
-let proof_block_for_theorem (document: Document.document) (raw: RawDocument.t)
-    (sentences: Document.sentence list) (theorem: Document.sentence): ProofState.proof_block =
+let proof_block_for_theorem (document: Document.document) (raw: RawDocument.t) (sentences: Document.sentence list)
+    (* is_range_checked is a callback that determines whether the caller considers a range checked *)
+    (is_range_checked: Range.t -> bool) (theorem: Document.sentence) : ProofState.proof_block =
   let statement = proof_statement document raw theorem in
   let statement_range = sentence_range document theorem in
   match proof_sentences theorem sentences with
-  | [] -> ProofState.mk_proof_block statement [] statement_range
+  | [] -> ProofState.mk_proof_block statement [] statement_range None (is_range_checked statement_range)
   | first :: rest ->
     let proof = first :: rest in
     let last = List.fold_left (fun _ sentence -> sentence) first rest in
@@ -743,11 +745,23 @@ let proof_block_for_theorem (document: Document.document) (raw: RawDocument.t)
       ~end_:(sentence_range document last).end_
     in
     let steps = List.map (proof_step document raw) proof in
-    ProofState.mk_proof_block statement steps range
+    let qedType = match last.ast with
+      | Error _ -> None
+      | Parsed ast ->
+        match ast.classification with
+        | VtQed (VtKeep VtKeepAxiom) -> Some(ProofState.Axiom)
+        | VtQed (VtKeep VtKeepDefined) -> Some(ProofState.Defined)
+        | VtQed (VtKeep VtKeepOpaque) -> Some(ProofState.Opaque)
+        | VtQed (VtDrop) -> Some(ProofState.Drop)
+        | _ -> None
+    in
+    let fullyChecked = is_range_checked range in
+    ProofState.mk_proof_block statement steps range qedType fullyChecked
 
-let proof_blocks (document: Document.document) (entries: entries) : ProofState.proof_block list =
+let proof_blocks (document: Document.document) (entries: entries)
+    (is_range_checked: Range.t -> bool) : ProofState.proof_block list =
   let raw = Document.raw_document document in
   let sentences = Document.sentences_sorted_by_loc document in
   theorem_ranges entries
   |> List.filter_map (sentence_for_range document sentences)
-  |> List.map (proof_block_for_theorem document raw sentences)
+  |> List.map (proof_block_for_theorem document raw sentences is_range_checked)
