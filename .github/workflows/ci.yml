@@ -192,6 +192,9 @@ jobs:
     - name: Check it runs
       run: opam exec -- vsrocqtop -v
 
+    - name: Unit tests
+      run: opam exec -- make -C language-server test
+
   dev-setup-opam:
     strategy:
       matrix:
