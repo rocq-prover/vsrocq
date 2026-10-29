@@ -264,8 +264,6 @@ let create_process_worker procname cancellation_handle job =
         let read_from = worker in
         let write_to = worker in
         let link = { write_to; read_from } in
-        install_feedback_worker ~feedback_cleanup:(fun _ -> ()) link;
-        install_debug_worker link;
         log.debug (fun () -> "sending job");
         write_value_job link job;
         flush_all ();
@@ -330,6 +328,7 @@ type options = int
 let setup_plumbing port =
   try
     let open Unix in
+    Log.worker_initialization_begins ();
     let chan = socket PF_INET SOCK_STREAM 0 in
     let address = ADDR_INET (inet_addr_loopback,port) in
     log_worker.debug (fun () -> "connecting to " ^ string_of_int port);
@@ -337,6 +336,8 @@ let setup_plumbing port =
     let read_from = chan in
     let write_to = chan in
     let link = { read_from; write_to } in
+    install_feedback_worker ~feedback_cleanup:(fun _ -> ()) link;
+    install_debug_worker link;
     (* Unix.read_value does not exist, we use Sel *)
     match Sel.(pop Todo.(add empty [Sel.On.ocaml_value read_from (fun x -> x)])) with
     | Ok (job : Job.t), _ -> ((fun x -> write_value link (Job_update x)), job)
