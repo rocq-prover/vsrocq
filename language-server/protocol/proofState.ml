@@ -25,12 +25,22 @@ type proof_statement = {
 type proof_step = {
   tactic: string;
   range: Range.t;
+  checkingError: pp option;
 } [@@deriving yojson]
+
+type qed_type =
+  | Axiom
+  | Defined
+  | Opaque
+  | Drop
+[@@deriving yojson]
 
 type proof_block = {
   statement: proof_statement;
   range: Range.t;
   steps: proof_step list;
+  qedType: qed_type option;
+  fullyChecked: bool;
 } [@@deriving yojson]
 
 type goal = {
@@ -166,6 +176,9 @@ let get_proof ?(printing = PrintingOptions.empty) ~previous diff_mode st =
 
 let mk_proof_statement statement range = {statement; range}
 
-let mk_proof_step tactic range = {tactic; range}
+let mk_proof_step tactic range checkingError = {tactic; range; checkingError}
 
-let mk_proof_block statement steps range = {steps; statement; range}
+let mk_proof_block statement steps range qedType fullyChecked = {steps; statement; range; qedType; fullyChecked}
+
+let proof_block_qed_type { qedType; _ } = qedType
+let proof_block_fully_checked { fullyChecked; _ } = fullyChecked
