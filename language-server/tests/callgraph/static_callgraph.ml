@@ -645,4 +645,6 @@ let () =
   let root_prefix, analysis = load_workspace_graph input_cmt_path in
   let roots = roots_for_prefix root_prefix analysis in
   let chains = call_chains roots analysis in
+  (* Keep \n line endings on Windows, where run.t matches lines with grep. *)
+  set_binary_mode_out stdout true;
   write_report whitelist safe_barriers analysis root_prefix stdout chains
