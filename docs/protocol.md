@@ -293,6 +293,45 @@ const vsrocq = vscode.extensions.getExtension('rocq-prover.vsrocq');
 const api = await vsrocq.activate();
 ```
 
+The `getDocumentProofs(uri: vscode.Uri)` method returns all proof blocks of a given document:
+
+```typescript
+const response: DocumentProofsResponse = await api.getDocumentProofs(uri);
+```
+
+`DocumentProofsResponse` and its relevant types are defined as such:
+
+```typescript
+type ProofStatement = {
+    range: Range;
+    statement: string;
+};
+
+type ProofStep = {
+    range: Range;
+    tactic: string;
+    // error attached to this step, if any; diagnostics are canonical
+    checkingError: Nullable<PpString>;
+};
+
+export interface ProofBlock {
+    statement: ProofStatement;
+    range: Range;
+    steps: ProofStep[];
+    // how the proof is terminated, for instance:
+    //  Qed. -> 'Opaque'
+    //  Abort. -> 'Drop'
+    //  no terminator -> null
+    qedType: Nullable<'Axiom' | 'Defined' | 'Opaque' | 'Drop'>;
+    // true when the whole block has been processed (not a "proved" flag)
+    fullyChecked: boolean;
+}
+
+export interface DocumentProofsResponse {
+    proofs: ProofBlock[];
+}
+```
+
 The `onProofStateChanged` event fires every time the proof state updates, e.g., when the user steps through a proof.
 
 ```typescript
