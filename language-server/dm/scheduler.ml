@@ -25,6 +25,7 @@ type error_recovery_strategy =
 type executable_sentence = {
   id : sentence_id;
   ast : Synterp.vernac_control_entry;
+  raw_ast : Vernacexpr.vernac_control;
   classif : Vernacextend.vernac_classification;
   synterp : Vernacstate.Synterp.t;
   error_recovery : error_recovery_strategy;
@@ -183,9 +184,9 @@ let is_opaque_flat_proof terminator section_depth block =
       if section_depth = 0 then Some Vernacexpr.SsEmpty
       else find_proof_using_annotation block
 
-let push_state id ast synterp classif st =
+let push_state id ast raw_ast synterp classif st =
   let open Vernacextend in
-  let ex_sentence = { id; ast; classif; synterp; error_recovery = RSkip } in
+  let ex_sentence = { id; ast; raw_ast; classif; synterp; error_recovery = RSkip } in
   match classif with
   | VtStartProof opener_type ->
     base_id st, open_proof_block ex_sentence opener_type st, Exec ex_sentence
@@ -237,10 +238,10 @@ let schedule_errored_sentence id error synterp schedule =
   let dependencies = SM.add id Stateid.Set.empty schedule.dependencies in
   {tasks; dependencies}
 
-let schedule_sentence (id, (ast, classif, synterp_st)) st schedule =
+let schedule_sentence (id, (ast, raw_ast, classif, synterp_st)) st schedule =
   let base, st, task = 
       let open Vernacexpr in
-      let (base, st, task) = push_state id ast synterp_st classif st in
+      let (base, st, task) = push_state id ast raw_ast synterp_st classif st in
       begin match ast.CAst.v.expr with
       | VernacSynterp (EVernacBeginSection _) ->
         (base, { st with section_depth = st.section_depth + 1 }, task)
