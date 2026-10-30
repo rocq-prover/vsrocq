@@ -334,6 +334,10 @@ let setup_plumbing port =
     let address = ADDR_INET (inet_addr_loopback,port) in
     log_worker.debug (fun () -> "connecting to " ^ string_of_int port);
     connect chan address;
+    (* Exiting with the socket still open resets the connection on Windows,
+       and the master discards what it has not read yet *)
+    at_exit (fun () ->
+      try shutdown chan SHUTDOWN_SEND; close chan with Unix_error _ -> ());
     let read_from = chan in
     let write_to = chan in
     let link = { read_from; write_to } in
