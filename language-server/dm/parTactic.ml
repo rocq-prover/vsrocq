@@ -45,6 +45,7 @@ module TacticJob = struct
   let name = "tactic"
   let binary_name = "vsrocqtop_tactic_worker.opt"
   let initial_pool_size = 2
+  let marshallable job = job
 
 end
 

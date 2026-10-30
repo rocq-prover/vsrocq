@@ -103,6 +103,20 @@ let%test_unit "exec: feedback after a delegated proof" =
     D (s1.id,Information,".*Set.*")
   ]
 
+let%test_unit "exec: delegated proof with tactics" =
+  let st, events = em_init_test_doc ~text:"Lemma x : True. Proof. exact I. exact I. Qed. Check x." in
+  let st, (s1, (s2, (s3, (s4, (s5, (s6, ())))))) = dm_parse st (P(P(P(P(P(P O)))))) in
+  set_delegation_mode (DelegateProofsToWorkers { number_of_workers = 1 });
+  let todo = Sel.Todo.(add events (DocumentManager.interpret_to_end ())) in
+  let st = handle_dm_events todo st in
+  check_diag st [
+    D (s4.id,Error,".*No such goal.*")
+  ];
+  check_diag st [
+    D (s6.id,Information,".*True.*")
+  ];
+  ExecutionManager.set_default_options ()
+
 
 let%test_unit "exec: unstarted proof" =
   let st, events = em_init_test_doc ~text:"Qed. Check nat." in

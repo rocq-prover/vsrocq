@@ -36,6 +36,10 @@ type events = event Sel.Event.t list
 
 val raw_document : document -> RawDocument.t
 
+val get_entry : Vernacexpr.vernac_control -> Synterp.vernac_control_entry
+(** [get_entry ast] runs the synterp phase of [ast] in the current synterp
+    state and returns its result *)
+
 val create_document : doc_id:document_id -> Vernacstate.Synterp.t -> string -> document
 (** [create_document init_synterp_state text] creates a fresh document with content defined by
     [text] under [init_synterp_state]. *)
@@ -52,6 +56,11 @@ val handle_event : document -> event -> document * events * parsing_end_info opt
 
 type parsed_ast = {
   ast: Synterp.vernac_control_entry;
+  raw_ast: Vernacexpr.vernac_control;
+  (** The AST before its synterp phase, needed for delegation on Windows.
+      [ast] holds closures (for example, from tactics) that cannot be
+      marshalled to the worker process, so the worker reruns synterp on
+      [raw_ast]. *)
   classification: Vernacextend.vernac_classification;
   tokens: (Loc.t * Tok.t) list
   (** The token ranges are absolute to the entire document *)
