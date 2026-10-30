@@ -39,6 +39,10 @@ module type Job = sig
   (** Max number of workers for this kind job *)
   val initial_pool_size : int
 
+  (** Returns the job in a form that can be marshalled and sent to a separate
+      worker process. Needed for delegation on Windows. *)
+  val marshallable : t -> t
+
   type update_request
 
   (** Called to handle feedback sent by the worker process *)

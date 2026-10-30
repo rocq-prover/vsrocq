@@ -50,6 +50,7 @@ module type Job = sig
   val name : string
   val binary_name : string
   val initial_pool_size : int
+  val marshallable : t -> t
   type update_request
   val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * Loc.t option * Quickfix.t list * Pp.t) -> update_request
 end
@@ -265,7 +266,7 @@ let create_process_worker procname cancellation_handle job =
         let write_to = worker in
         let link = { write_to; read_from } in
         log.debug (fun () -> "sending job");
-        write_value_job link job;
+        write_value_job link (Job.marshallable job);
         flush_all ();
         log.debug (fun () -> "sent");
         Ok [worker_progress link; worker_ends pid]
