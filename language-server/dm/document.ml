@@ -571,14 +571,6 @@ let rec junk_sentence_end stream =
   | [] -> ()
   | _ ->  Stream.junk () stream; junk_sentence_end stream
 
-[%%if rocq = "8.18"]
-exception E = Stream.Error
-[%%elif rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
-exception E = Grammar.Error
-[%%else]
-exception E = Grammar.ParseError
-[%%endif]
-
 [%%if rocq = "8.18" || rocq = "8.19"]
 let get_loc_from_info_or_exn e info =
   match e with
@@ -601,9 +593,18 @@ let get_entry ast =
 [%%endif]
 
 
-let rec handle_parse_error id ~start ~parsing_start msg qf ({stream; errors; parsed;} as parse_state) synterp_state =
+let get_raw_text_tokens raw_doc begin_char end_char ast_loc =
+  let str = String.sub (RawDocument.text raw_doc) begin_char (end_char - begin_char) in
+  let sstr = Stream.of_string str in
+  let lex = CLexer.Lexer.tok_func sstr in
+  stream_tok [] lex ast_loc
+
+let handle_parse_error id ~start ~parsing_start (e, info) ({stream; errors; parsed;} as parse_state) synterp_state =
   log.debug (fun () -> "handling parse error at " ^ string_of_int start);
   let stop = Stream.count stream in
+  let loc = get_loc_from_info_or_exn e info in
+  let msg = loc, CErrors.iprint_no_report (e, info) in
+  let qf = Some (Result.value ~default:[] @@ Quickfix.from_exception e) in
   let str = String.sub (RawDocument.text parse_state.raw) parsing_start (stop - parsing_start) in
   let parsing_error = { msg; start; stop; qf; str} in
   let sentence = { id; parsing_start; ast = Error parsing_error; start; stop; synterp_state } in
@@ -613,69 +614,46 @@ let rec handle_parse_error id ~start ~parsing_start msg qf ({stream; errors; par
   (* TODO: we could count the \n between start and stop and increase Loc.line_nb *)
   true, parse_state
 
-and parse_more ({loc; synterp_state; stream; raw; parsed; parsed_comments} as parse_state) : bool * parse_state =
-  let start = Stream.count stream in
-  log.debug (fun () -> "Start of parse is: " ^ (string_of_int start));
-  begin
-    (* FIXME should we save lexer state? *)
-    match parse_one_sentence ?loc stream ~st:synterp_state with
-    | None, _ (* EOI *) -> false, parse_state
-    | Some ast, comments ->
-      let id = Stateid.fresh () in
-      let stop = Stream.count stream in
-      let ast_loc = match ast.loc with
-        | Some lc -> lc
-        | None -> assert false
-      in
-      let begin_char, end_char = ast_loc.bp, ast_loc.ep in
-      let str = String.sub (RawDocument.text raw) begin_char (end_char - begin_char) in
-      let sstr = Stream.of_string str in
-      let lex = CLexer.Lexer.tok_func sstr in
-      let tokens = stream_tok [] lex ast_loc in
-      begin
-        try
-          log.debug (fun () -> "Parsed: " ^ (Pp.string_of_ppcmds @@ Ppvernac.pr_vernac ast));
-          Feedback.set_id_for_feedback parse_state.previous_document.doc_id id;
-          let entry = get_entry ast in
-          let classification = Vernac_classifier.classify_vernac ast in
-          let synterp_state = Vernacstate.Synterp.freeze () in
-          let parsed_ast = Parsed { ast = entry; classification; tokens } in
-          let sentence = { id; parsing_start = start; ast = parsed_ast; start = begin_char; stop; synterp_state } in
-          let parsed = sentence :: parsed in
-          let comments = List.map (fun ((start, stop), content) -> {start; stop; content}) comments in
-          let parsed_comments = List.append comments parsed_comments in
-          let loc = ast.loc in
-          let parse_state = {parse_state with parsed_comments; parsed; loc; synterp_state} in
-          true, parse_state
-        with exn ->
-          let e, info = Exninfo.capture exn in
-          let loc = get_loc_from_info_or_exn e info in
-          let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
-          handle_parse_error id ~start:begin_char ~parsing_start:start (loc, CErrors.iprint_no_report (e,info)) (Some qf) parse_state synterp_state
-        end
-    | exception (E _ as exn) ->
-      let id = Stateid.fresh () in
-      let e, info = Exninfo.capture exn in
-      let loc = get_loc_from_info_or_exn e info in
-      let qf = Result.value ~default:[] @@ Quickfix.from_exception e in
-      junk_sentence_end stream;
-      handle_parse_error id ~start ~parsing_start:start (loc, CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
-    | exception (CLexer.Error.E _ as exn) -> (* May be more problematic to handle for the diff *)
-      let id = Stateid.fresh () in
-      let e, info = Exninfo.capture exn in
-      let loc = get_loc_from_info_or_exn e info in
-      let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
-      junk_sentence_end stream;
-      handle_parse_error id ~start ~parsing_start:start (loc,CErrors.iprint_no_report (e, info)) (Some qf) {parse_state with stream} synterp_state
-    | exception exn ->
-      let id = Stateid.fresh () in
-      let e, info = Exninfo.capture exn in
-      let loc = Loc.get_loc @@ info in
-      let qf = Result.value ~default:[] @@ Quickfix.from_exception exn in
-      junk_sentence_end stream;
-      handle_parse_error id ~start ~parsing_start:start (loc, CErrors.iprint_no_report (e,info)) (Some qf) {parse_state with stream} synterp_state
-  end
-and create_parse_event ~doc_id parse_state =
+let handle_parsed_sentence ~parsing_start ast comments
+    ({ synterp_state; stream; raw; parsed; parsed_comments } as parse_state) =
+  let id = Stateid.fresh () in
+  let stop = Stream.count stream in
+  let ast_loc = Option.get ast.CAst.loc in
+  let start = ast_loc.bp in
+  let tokens = get_raw_text_tokens raw start ast_loc.ep ast_loc in
+  try
+    Feedback.set_id_for_feedback parse_state.previous_document.doc_id id;
+    let entry = get_entry ast in
+    let classification = Vernac_classifier.classify_vernac ast in
+    let synterp_state = Vernacstate.Synterp.freeze () in
+    let parsed_ast = Parsed { ast = entry; classification; tokens } in
+    let sentence = { id; parsing_start; ast = parsed_ast; start; stop; synterp_state } in
+    let parsed = sentence :: parsed in
+    let comments = List.map (fun ((start, stop), content) -> { start; stop; content }) comments in
+    let parsed_comments = List.append comments parsed_comments in
+    let loc = ast.loc in
+    let parse_state = { parse_state with parsed_comments; parsed; loc; synterp_state } in
+    true, parse_state
+  with exn ->
+    let iexn = Exninfo.capture exn in
+    handle_parse_error id ~start ~parsing_start iexn parse_state synterp_state
+
+let parse_more ({loc; synterp_state; stream} as parse_state) : bool * parse_state =
+  let next_start = Stream.count stream in
+  log.debug (fun () -> "Start of parse is: " ^ (string_of_int next_start));
+  (* FIXME should we save lexer state? *)
+  match parse_one_sentence ?loc stream ~st:synterp_state with
+  | None, _ (* EOI *) -> false, parse_state
+  | Some ast, comments ->
+    log.debug (fun () -> "Parsed: " ^ Pp.string_of_ppcmds (Ppvernac.pr_vernac ast));
+    handle_parsed_sentence ~parsing_start:next_start ast comments parse_state
+  | exception exn ->
+    let iexn = Exninfo.capture exn in
+    let id = Stateid.fresh () in
+    junk_sentence_end stream;
+    handle_parse_error id ~start:next_start ~parsing_start:next_start iexn parse_state synterp_state
+
+let create_parse_event ~doc_id parse_state =
   let priority = Some PriorityManager.parsing in
   Sel.On.promise ~name:"Parse" ?priority (ProverThread.eventually_run ~doc_id ~name:"create_parse_event" (fun () -> parse_more parse_state)) (fun x -> Parse x)
 
