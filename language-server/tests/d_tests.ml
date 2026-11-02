@@ -30,6 +30,14 @@ let%test_unit "parse.validate_errors_twice" =
   let Document.{parsed_document}= validate_document parsed_document in
   [%test_eq: int] (List.length (Document.parse_errors parsed_document)) 1
 
+(* The Require parses but fails at synterp, which takes another path than a
+   sentence that fails to parse. *)
+let%test_unit "parse: a sentence failing at synterp starts after its blank" =
+  let Document.{parsed_document} = init_and_parse_test_doc () ~text:"Definition x := 0.   Require fuhidkgjh." in
+  let s2 = List.nth_exn (Document.sentences_sorted_by_loc parsed_document) 1 in
+  [%test_eq: int] 18 s2.parsing_start;
+  [%test_eq: int] 21 s2.start
+
 let %test_unit "document: invalidate top" =
   let Document.{parsed_document} = init_and_parse_test_doc () ~text:"Definition x := 3. Lemma foo : x = 3. Proof. reflexivity. Qed." in
   let Document.{unchanged_id; invalid_ids; parsed_document} = validate_document parsed_document in
