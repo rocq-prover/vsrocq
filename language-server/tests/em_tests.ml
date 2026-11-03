@@ -26,6 +26,10 @@ let check_only_diag st spec =
   [%test_eq: int] 1 (List.length (DocumentManager.all_diagnostics st));
   check_diag st [spec]
 
+let check_no_processing st =
+  [%test_pred: Protocol.LspWrapper.Range.t list] List.is_empty
+    (DocumentManager.executed_ranges st).Types.processing
+
 let%test_unit "exec: finished proof" =
   let st, events = em_init_test_doc ~text:"Lemma x : True. trivial. Qed. Check x." in
   let st, (s1, (s2, (s3, (s4, ())))) = dm_parse st (P(P(P(P O)))) in
@@ -102,6 +106,7 @@ let%test_unit "exec: unfinished proof delegate" =
   check_diag st [
     D (s3.id,Information,".*True.*")
   ];
+  check_no_processing st;
   ExecutionManager.set_default_options ()
 
 (* The delegated proof is the last task of the run, so nothing after it
@@ -145,6 +150,20 @@ let%test_unit "exec: delegated proof with tactics" =
   ];
   check_diag st [
     D (s6.id,Information,".*True.*")
+  ];
+  ExecutionManager.set_default_options ()
+
+(* A proof with no steps gives the delegated job no tasks. *)
+let%test_unit "exec: admitted proof delegate, no steps" =
+  let st, events = em_init_test_doc ~text:"Lemma x : True. Admitted. Check x." in
+  let st, (s1, (s2, (s3, ()))) = dm_parse st (P(P(P O))) in
+  set_delegation_mode (DelegateProofsToWorkers { number_of_workers = 1 });
+  let exec_events = DocumentManager.interpret_to_end () in
+  let todo = Sel.Todo.(add events exec_events) in
+  let st = handle_dm_events todo st in
+  check_no_processing st;
+  check_diag st [
+    D (s3.id,Information,".*True.*")
   ];
   ExecutionManager.set_default_options ()
 
