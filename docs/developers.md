@@ -154,7 +154,9 @@ To release a new version of VsRocq, create a new commit (and PR) with the follow
     - `client/package-lock.json`: look for the top level `version` key and the `version` key in package `vsrocq`
     - `language-server/vsrocqtop/lspManager.ml`: look for the `server_info` let-definition
 
-2. Add a new row in the version requirements constant `versionRequirements`, in `client/src/utilities/versioning.ts`.
+2. Add an entry to `client/src/utilities/versionRequirements.json`, mapping the new extension version to the minimum language server version it requires.
+   Then run `npm run gen-compat-doc` in `client/` to regenerate `docs/compatibility.md`, and commit both files.
+   CI fails if the generated file is out of date, or if the new version has no entry.
 
 3. Open the PR, wait for approval, and merge it with a merge commit (not squash or rebase).
 

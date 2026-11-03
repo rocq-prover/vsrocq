@@ -22,6 +22,7 @@ To use VsRocq, you need to:
 2. install and configure the VsRocq extension, in either VS Code or VSCodium.
 
 The VS Code extension and the opam package `vsrocq-language-server` are installed and updated separately, and they may stop working if their versions don't match.
+See [Extension and language server compatibility](https://github.com/rocq-prover/vsrocq/blob/main/docs/compatibility.md) for which versions work together.
 To check which versions you have, run **Rocq: Troubleshooting: Show setup** from the command palette (F1).
 See the [troubleshooting](#troubleshooting) section in case of problems.
 
@@ -229,6 +230,9 @@ If they differ, install the same version of both: either upgrade the language se
 (`opam update && opam upgrade vsrocq-language-server`), or
 [install the extension version](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_install-an-extension)
 that matches your language server.
+Some other combinations also work. See
+[Extension and language server compatibility](https://github.com/rocq-prover/vsrocq/blob/main/docs/compatibility.md)
+for the minimum language server version each extension version requires.
 
 ### Language server not found
 

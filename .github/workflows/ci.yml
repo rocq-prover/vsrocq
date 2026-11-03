@@ -34,6 +34,30 @@ jobs:
         cache-dependency-path: client/package-lock.json
     - run: npm ci && npm run build --workspaces
 
+  # Finishes within seconds, so it reports a stale doc before the builds end.
+  # create-release depends on it, so a missing versionRequirements entry
+  # blocks a release.
+  check-compat-doc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: client
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: Install Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 22.x
+    - run: npm run gen-compat-doc
+    - name: Check that docs/compatibility.md is up to date
+      run: |
+        git diff --exit-code ../docs/compatibility.md || {
+          echo "::error::docs/compatibility.md is out of date. Run 'npm run gen-compat-doc' in client/ and commit the result."
+          exit 1
+        }
+
   nix-dev-build:
     strategy:
       fail-fast: false
@@ -231,7 +255,7 @@ jobs:
   create-release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [build-extension, nix-dev-build, install-opam, dev-setup-opam]
+    needs: [build-extension, check-compat-doc, nix-dev-build, install-opam, dev-setup-opam]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
