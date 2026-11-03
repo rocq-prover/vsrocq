@@ -167,6 +167,76 @@ let%test_unit "exec: admitted proof delegate, no steps" =
   ];
   ExecutionManager.set_default_options ()
 
+(* Each proof keeps its worker busy for about 0.2 s, so that the workers of
+   consecutive proofs overlap. *)
+let burning_proofs n =
+  "Set Warnings \"-abstract-large-number\". \
+   Fixpoint flip (n : nat) (b : bool) : bool := \
+     match n with 0 => b | S m => flip m (negb b) end. \
+   Fixpoint burn (k n : nat) (b : bool) : bool := \
+     match k with 0 => b | S j => burn j n (flip n b) end. \
+   Ltac burn k := let _ := eval vm_compute in (burn k 10000 true) in idtac. " ^
+  Stdlib.String.concat " " (Stdlib.List.init n (fun i ->
+    Printf.sprintf "Lemma p%d : True. Proof. burn 1000. exact I. Qed." i)) ^
+  " Check I."
+
+(* Checks a document of [proofs] delegated proofs with [workers] proof
+   workers, calling [on_change ~before n] each time the number of running
+   workers changes from [before] to [n]. *)
+let run_delegated_proofs ~workers ~proofs ~on_change =
+  [%test_eq: int] 0 (ExecutionManager.running_proof_workers ());
+  set_delegation_mode (DelegateProofsToWorkers { number_of_workers = workers });
+  let st, events = em_init_test_doc ~text:(burning_proofs proofs) in
+  let last = ref 0 in
+  let after_event () =
+    let n = ExecutionManager.running_proof_workers () in
+    if n <> !last then begin on_change ~before:!last n; last := n end in
+  let exec_events = DocumentManager.interpret_to_end () in
+  let st = handle_dm_events_with ~idle:1.0 ~after_event Sel.Todo.(add events exec_events) st in
+  let errors = Document.all_checking_errors (DocumentManager.Internal.document st) in
+  [%test_eq: int] 0 (List.length errors);
+  [%test_eq: int] 0 (ExecutionManager.running_proof_workers ());
+  ExecutionManager.set_default_options ()
+
+let%test_unit "exec: delegate, proof workers bounded by the setting" =
+  List.iter [1; 2; 3] ~f:(fun workers ->
+    let peak = ref 0 in
+    run_delegated_proofs ~workers ~proofs:(2 * workers + 1)
+      ~on_change:(fun ~before:_ n -> peak := max !peak n);
+    [%test_eq: int] workers !peak)
+
+let%test_unit "exec: delegate, proof workers below 1 means 1" =
+  let peak = ref 0 in
+  run_delegated_proofs ~workers:0 ~proofs:3
+    ~on_change:(fun ~before:_ n -> peak := max !peak n);
+  [%test_eq: int] 1 !peak
+
+(* Shrinking the pool stops no worker. A new one starts only once the number
+   of running workers is below the new size. *)
+let%test_unit "exec: delegate, shrinking the pool with workers running" =
+  let resized = ref false in
+  let running_after_start = ref [] in
+  run_delegated_proofs ~workers:3 ~proofs:7 ~on_change:(fun ~before n ->
+    if !resized then begin
+      if n > before then running_after_start := n :: !running_after_start
+    end else if n = 3 then begin
+      set_delegation_mode (DelegateProofsToWorkers { number_of_workers = 1 });
+      resized := true
+    end);
+  [%test_eq: bool] true !resized;
+  [%test_eq: int list] [1; 1; 1; 1] !running_after_start
+
+let%test_unit "exec: delegate, growing the pool with workers running" =
+  let resized = ref false in
+  let peak_after = ref 0 in
+  run_delegated_proofs ~workers:1 ~proofs:5 ~on_change:(fun ~before:_ n ->
+    if !resized then peak_after := max !peak_after n
+    else if n = 1 then begin
+      set_delegation_mode (DelegateProofsToWorkers { number_of_workers = 3 });
+      resized := true
+    end);
+  [%test_eq: bool] true !resized;
+  [%test_eq: int] 3 !peak_after
 
 let%test_unit "exec: unstarted proof" =
   let st, events = em_init_test_doc ~text:"Qed. Check nat." in

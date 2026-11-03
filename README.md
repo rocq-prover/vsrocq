@@ -176,7 +176,7 @@ After installation and activation of the extension:
 * `"vsrocq.proof.delegation": None | Skip | Delegate` -- Decides which delegation strategy should be used by the server (defaults to `None`).
   `Skip` allows to skip proofs which are out of focus. `Delegate` allocates a settable amount of workers
   to delegate proofs.
-* `"vsrocq.proof.workers": int` -- Determines how many workers should be used for proof checking in `Delegate` mode (defaults to `1`)
+* `"vsrocq.proof.workers": int` -- Determines how many workers should be used for proof checking in `Delegate` mode (defaults to `2`)
 * `"vsrocq.proof.block": bool` -- Determines if the execution of a document should halt on the first error.  Defaults to `true` (since version >= 2.1.7).
 * `"vsrocq.proof.display-buttons": bool` -- A toggle to control whether buttons related to Rocq (step forward/back, reset, etc.) are displayed in the editor actions menu (defaults to `true`)
 

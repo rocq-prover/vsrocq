@@ -36,7 +36,7 @@ module type Job = sig
   (** Name of the worker process binary used when fork is not available *)
   val binary_name : string
 
-  (** Max number of workers for this kind job *)
+  (** Number of workers for this kind of job until [resize_pool] changes it *)
   val initial_pool_size : int
 
   (** Returns the job in a form that can be marshalled and sent to a separate
@@ -60,7 +60,14 @@ module type Worker = sig
    type job_t
    type job_update_request
 
+   (** Sets the number of workers. Running workers are not stopped, so after
+       a shrink a new worker starts only once the number of running workers
+       is below the new size. *)
    val resize_pool : int -> unit
+
+   (** Returns the number of workers started whose end has not been handled
+       yet *)
+   val running_workers : unit -> int
 
    (** Event for the main loop *)
    type delegation

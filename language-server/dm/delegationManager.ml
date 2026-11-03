@@ -76,7 +76,14 @@ module type Worker = sig
   type job_t
   type job_update_request
 
+  (** Sets the number of workers. Running workers are not stopped, so after
+      a shrink a new worker starts only once the number of running workers
+      is below the new size. *)
   val resize_pool : int -> unit
+
+  (** Returns the number of workers started whose end has not been handled
+      yet *)
+  val running_workers : unit -> int
 
   (** Event for the main loop *)
   type delegation
@@ -152,26 +159,41 @@ type events = delegation Sel.Event.t list
 
 type role = Master | Worker of link
 
-(* The pool is just a queue of tokens *)
+(* The pool is a queue of tokens. Starting a worker takes a token, and the
+   end of that worker gives it back. [in_use] counts the tokens taken and not
+   given back yet, so that [Queue.length pool + !in_use] is the pool size.
+   After a shrink with workers running, the sum exceeds the new size, and the
+   tokens of the workers that end are dropped until it matches. *)
 let pool = Queue.create ()
+
+let in_use = ref 0
+
+let current_pool_size = ref Job.initial_pool_size
+
 let () =
   assert(Job.initial_pool_size >= 1);
-  for _i = 0 to Job.initial_pool_size do Queue.push () pool done
-let current_pool_size = ref Job.initial_pool_size
+  for _i = 1 to Job.initial_pool_size do Queue.push () pool done
+
 let resize_pool new_pool_size =
   assert(new_pool_size >= 1);
-  let delta = !current_pool_size - new_pool_size in
   current_pool_size := new_pool_size;
-  (* We add tokens if needed *)
-  if delta < 0 then for _i = 1 to abs(delta) do Queue.push () pool done;
-  (* We remove tokens if needed, the ones currently in use are not added back.
-     See handling of WorkerEnd and WorkerIOError *)
-  if delta > 0 then for _i = 1 to abs(delta) do ignore(Queue.take_opt pool) done
+  let excess = Queue.length pool + !in_use - new_pool_size in
+  if excess < 0 then for _i = 1 to -excess do Queue.push () pool done
+  else for _i = 1 to excess do ignore(Queue.take_opt pool) done
 ;;
+
+let take_token () = incr in_use
+let give_back_token () =
+  decr in_use;
+  if Queue.length pool + !in_use < !current_pool_size then Queue.push () pool
+
+let running = ref 0
+let running_workers () = !running
 
 (* In order to create a job we enqueue this event *)
 let worker_available ~jobs ~fork_action ~feedback_cleanup : delegation Sel.Event.t =
   Sel.On.queues jobs pool (fun (job_handle, _, job) () ->
+    take_token ();
     WorkerStart (feedback_cleanup,job_handle,job,fork_action,Job.binary_name))
 
 (* When a worker is spawn, we enqueue this event, since eventually it will die *)
@@ -294,16 +316,26 @@ let signal_name n =
   | Some name -> name
   | None -> Printf.sprintf "signal %d" n
 
+(* A start that fails after creating the process returns the event of its
+   death, which gives the token back. Otherwise no worker holds the token, so
+   it is given back here. *)
+let start_failed feedback_route msg cleanup_events =
+  log.error (fun () -> Printf.sprintf "cannot start a worker, reporting the error on the sentence: %s" msg);
+  begin match cleanup_events with
+  | [] -> give_back_token ()
+  | _ :: _ -> incr running
+  end;
+  (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
+
 let handle_event = function
   | WorkerIOError e ->
      begin match e with
      (* A worker killed on Windows resets the connection instead of closing it *)
      | End_of_file | Unix.Unix_error (Unix.ECONNRESET, _, _) ->
        log.debug (fun () -> "worker closed its connection")
-     | e -> log.error (fun () -> Printf.sprintf "lost the connection to a worker, freeing its slot: %s" (Printexc.to_string e))
+     | e -> log.error (fun () -> Printf.sprintf "lost the connection to a worker: %s" (Printexc.to_string e))
      end;
-     if Queue.length pool < !current_pool_size then
-      Queue.push () pool;
+     (* The worker gives its token back when it ends, see WorkerEnd *)
      (None, [])
   | WorkerEnd (pid, status) ->
       begin match status with
@@ -314,8 +346,8 @@ let handle_event = function
       | Unix.WSIGNALED n -> log.error (fun () -> Printf.sprintf "worker %d was killed by %s" pid (signal_name n))
       | Unix.WSTOPPED n -> log.error (fun () -> Printf.sprintf "worker %d was stopped by %s" pid (signal_name n))
       end;
-      if Queue.length pool < !current_pool_size then
-        Queue.push () pool;
+      decr running;
+      give_back_token ();
       (None,[])
   | WorkerProgress { link; update_request = DebugMessage d } ->
       Log.handle_event d;
@@ -328,22 +360,20 @@ let handle_event = function
     if Sys.os_type = "Unix" then
       match fork_worker ~feedback_cleanup cancellation_handle with
       | Ok(Master, events) ->
+        incr running;
         log.debug (fun () -> "worker spawned (fork)");
         (None, events)
       | Ok(Worker link, _) ->
         action job ~send_back:(fun j -> abort_on_unix_error write_value link (Job_update j));
         exit 0
-      | Error(msg, cleanup_events) ->
-        log.error (fun () -> Printf.sprintf "cannot start a worker, reporting the error on the sentence: %s" msg);
-        (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
+      | Error(msg, cleanup_events) -> start_failed feedback_route msg cleanup_events
     else
       match create_process_worker procname cancellation_handle job with
       | Ok events ->
+          incr running;
           log.debug (fun () -> "worker spawned (create_process)");
           (None, events)
-      | Error(msg, cleanup_events) ->
-          log.error (fun () -> Printf.sprintf "cannot start a worker, reporting the error on the sentence: %s" msg);
-          (Some(Job.appendFeedback feedback_route (Feedback.Error,None,[],Pp.str msg)), cleanup_events)
+      | Error(msg, cleanup_events) -> start_failed feedback_route msg cleanup_events
 
 
 (* the only option is the socket port *)

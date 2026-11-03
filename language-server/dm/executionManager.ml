@@ -104,7 +104,7 @@ module ProofJob = struct
 
   let name = "proof"
   let binary_name = "vsrocqtop_proof_worker.opt"
-  let initial_pool_size = 1
+  let initial_pool_size = 2
 
 end
 
@@ -128,16 +128,27 @@ let get_id_of_executed_task task =
   | PQuery {id} -> id
   | PDelegate {terminator_id} -> terminator_id
 
+module ProofWorker = DelegationManager.MakeWorker(ProofJob)
+
+let running_proof_workers = ProofWorker.running_workers
+
 let options = ref default_options
 
-let set_options o = options := o
+let set_options o =
+  begin match o.delegation_mode with
+  | DelegateProofsToWorkers { number_of_workers } ->
+    if number_of_workers < 1 then
+      log.info (fun () -> Printf.sprintf "proof.workers is %d, using 1 worker" number_of_workers);
+    ProofWorker.resize_pool (max 1 number_of_workers)
+  | CheckProofsInMaster | SkipProofs -> ()
+  end;
+  options := o
+
 let set_default_options () = options := default_options
 let is_diagnostics_enabled () = !options.enableDiagnostics
 
 let get_options () = !options
 
-
-module ProofWorker = DelegationManager.MakeWorker(ProofJob)
 
 type event =
   | ProofWorkerEvent of ProofWorker.delegation
