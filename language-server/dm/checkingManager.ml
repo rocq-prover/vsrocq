@@ -534,7 +534,9 @@ let post_execute document st id started background proof_view_event task tasks b
         (st, [], mk_block_on_error_event error_range error_id background)
   in
   match tasks with
-  | [] -> execution_finished st id started ~diagnostics block_events
+  (* Keeps the events of the last task, such as the one that starts the worker
+     for a delegated proof. *)
+  | [] -> execution_finished st id started ~diagnostics (inject_em_events events @ block_events)
   | task :: tasks ->
       let event = mk_execution_event background (Execute { id; vst_for_next_task; task; tasks; started }) in
       let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
