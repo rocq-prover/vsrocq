@@ -18,7 +18,6 @@ import {
     AboutResultType,
     CheckResultType,
     LocateResultType,
-    PrintCommandResultType,
     PrintResultType,
     Query,
     QueryError,
@@ -55,11 +54,9 @@ const defaultState = {
     queryPanelState: defaultQueryPanelState,
 };
 
-//the pattern of a printCommand query is the rest of the Print command
+//the pattern of a print query is the rest of the Print command
 const tabTitle = (type: QueryType, pattern: string) =>
-    type === QueryType.printCommand
-        ? "Print " + pattern
-        : type + ": " + pattern;
+    type === QueryType.print ? "Print " + pattern : type + ": " + pattern;
 
 const app = () => {
     const [history, setHistory] = useState<string[]>([]);
@@ -87,10 +84,6 @@ const app = () => {
 
             case "printResponse":
                 handlePrintNotification(msg.data.result);
-                break;
-
-            case "printCommandResponse":
-                handlePrintCommandNotification(msg.data.result);
                 break;
 
             case "launchedSearch":
@@ -291,30 +284,6 @@ const app = () => {
         );
     };
 
-    const handlePrintCommandNotification = (
-        notification: QueryNotification,
-    ) => {
-        setQueryPanelState(
-            (state) => {
-                const result = {
-                    type: QueryType.printCommand,
-                    statement: notification.statement,
-                } as PrintCommandResultType;
-                const newTabs = state.tabs.map((tab) => {
-                    if (tab.id === notification.id) {
-                        return { ...tab, result: result };
-                    }
-                    return tab;
-                });
-
-                return { ...state, tabs: newTabs };
-            },
-            (newState) => {
-                saveState({ state: newState, history, historyIndex });
-            },
-        );
-    };
-
     const initResult = (type: QueryType) => {
         switch (type) {
             case QueryType.search:
@@ -339,11 +308,6 @@ const app = () => {
                     type: QueryType.print,
                     statement: null,
                 } as PrintResultType;
-            case QueryType.printCommand:
-                return {
-                    type: QueryType.printCommand,
-                    statement: null,
-                } as PrintCommandResultType;
         }
     };
 

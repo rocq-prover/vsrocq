@@ -89,14 +89,6 @@ let pr_glob_without_symbols env sigma c =
   Printer.pr_glob_constr_env ~flags env sigma c
 [%%endif]
 
-[%%if rocq ="8.18" || rocq ="8.19"]
-  let print_name = Prettyp.print_name
-[%%else]
-  let print_name =
-    let access = Library.indirect_accessor[@@warning "-3"] in
-    Prettyp.print_name access
-[%%endif]
-
 (**************************************************************************)
 
 let about ~printing vs ~pattern =
@@ -261,50 +253,40 @@ let search ~printing ~vs ~id pattern =
   let query, r = parse_entry vs (G_vernac.search_queries) pattern in
   SearchQuery.interp_search ~id env sigma query r
 
-let print ~printing ~vs ~pattern =
-  let sigma, env = context_of_vernac_state ~printing vs in
-  let qid = parse_entry vs (smart_global) pattern in
-  let udecl = None in (*TODO*)
-  Ok (pp_of_rocqpp @@ print_name env sigma qid udecl)
-
-(* The [Print] commands that [print_command] runs, as the words that follow
-   [Print]. Some take an argument, eg. [Assumptions foo]. *)
-let print_commands = [
-  "Options"; "Tables"; "Universes"; "Assumptions"; "Typing Flags";
-  "Libraries"; "LoadPath"; "Scopes"; "Coercions"; "Classes"; "Typeclasses";
-  "Instances"; "Implicit"; "Hint"; "HintDb";
-]
-
-let words s = String.split_on_char ' ' s |> List.filter (fun w -> w <> "")
-
-let rec is_prefix l1 l2 = match l1, l2 with
-  | [], _ -> true
-  | x :: l1, y :: l2 -> String.equal x y && is_prefix l1 l2
-  | _ :: _, [] -> false
-
 (* Feedback for this document id is ignored by the documents, so that the
    output of a query does not end up in their messages. *)
 let query_doc_id = -1
 
-(* Runs [Print pattern] in [vs] and returns what it prints. The command is
-   interpreted, as most [Print] commands are implemented in [Vernacentries]
-   and not exported, but only the [Print] commands of [print_commands] are
-   accepted. *)
-let print_command ~vs ~pattern =
-  if not (List.exists (fun c -> is_prefix (words c) (words pattern)) print_commands) then
-    CErrors.user_err Pp.(str "Unsupported command: Print " ++ str pattern ++ str ".");
-  let ast = parse_entry vs (Pvernac.main_entry (Some (Synterp.get_default_proof_mode ()))) ("Print " ^ pattern ^ ".") in
+(* Runs the command [Print pattern] in [vs] and returns what it prints, eg.
+   for [foo], [Options] or [Assumptions foo]. Rocq parses the command, so that
+   [pattern] can be any argument of [Print]. The command is interpreted rather
+   than reimplemented, as most [Print] commands are implemented in
+   [Vernacentries] and not exported. Only commands that Rocq classifies as
+   queries are run, so that printing has no effect on the document. *)
+let print ~printing ~vs ~pattern =
+  let pattern = String.trim pattern in
+  let command = "Print " ^ pattern ^ if String.ends_with ~suffix:"." pattern then "" else "." in
+  let ast = parse_entry vs (Pvernac.main_entry (Some (Synterp.get_default_proof_mode ()))) command in
+  let is_query = function
+    (* [Print Table] only prints, though Rocq classifies it as a side effect *)
+    | { CAst.v = { Vernacexpr.expr = VernacSynPure (VernacPrintOption _) } } -> true
+    | ast -> Vernac_classifier.classify_vernac ast = Vernacextend.VtQuery in
   match ast with
-  | Some ({ CAst.v = { control = []; attrs = []; expr = VernacSynPure (VernacPrint _) } } as ast) ->
+  | Some ast when is_query ast ->
     let entry = Document.get_entry ast in
+    (* The printing flags overridden by the user are re-applied on top of [vs],
+       as [interp_entry] restores the whole state of [vs]. *)
+    Vernacstate.unfreeze_full_state vs;
+    Protocol.PrintingOptions.apply printing;
+    let st = Vernacstate.freeze_full_state () in
     let output = ref [] in
     let feeder = Log.feedback_add_feeder_on_Message (fun _route _span doc lvl _loc _qf msg ->
       if doc = query_doc_id && lvl <> Feedback.Debug then output := msg :: !output) in
     Feedback.set_id_for_feedback query_doc_id Stateid.dummy;
     Fun.protect ~finally:(fun () -> Feedback.del_feeder feeder) (fun () ->
-      ignore (Vernacinterp.interp_entry ~st:vs entry));
+      ignore (Vernacinterp.interp_entry ~st entry));
     Ok (pp_of_rocqpp @@ Pp.prlist_with_sep Pp.fnl (fun x -> x) (List.rev !output))
-  | _ -> CErrors.user_err Pp.(str "Not a Print command: Print " ++ str pattern ++ str ".")
+  | _ -> CErrors.user_err Pp.(str "Not a query: " ++ str command)
 
 let get_completions ~vs =
   let settings = ExecutionManager.get_options () in
@@ -355,10 +337,6 @@ let search ~doc_id ~printing ~vs ~id pattern =
 
 let print ~doc_id ~printing ~vs ~pattern =
   ProverThread.try_run ~doc_id ~name:"print" ~timeout (fun () -> print ~printing ~vs ~pattern) |>
-  to_types_error
-
-let print_command ~doc_id ~vs ~pattern =
-  ProverThread.try_run ~doc_id ~name:"print_command" ~timeout (fun () -> print_command ~vs ~pattern) |>
   to_types_error
 
 let hover ~printing document pos =

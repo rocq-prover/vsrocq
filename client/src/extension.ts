@@ -336,7 +336,7 @@ export function activate(context: ExtensionContext) {
         ) => {
             commands.executeCommand("vsrocq.search.focus");
             if (argument === "none") {
-                searchProvider.launchQuery(command, "printCommand");
+                searchProvider.launchQuery(command, "print");
                 return;
             }
             window
@@ -354,7 +354,7 @@ export function activate(context: ExtensionContext) {
                     }
                     searchProvider.launchQuery(
                         text === "" ? command : command + " " + text,
-                        "printCommand",
+                        "print",
                     );
                 });
         };
