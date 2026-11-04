@@ -189,6 +189,11 @@
             "type": "number",
             "default": 17,
             "markdownDescription": "The maximum depth in goals over which an ellipsis will be displayed (instead of the sub-terms)."
+          },
+          "vsrocq.query.printAboutInGoalView": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Show the output of the **Rocq: Print** and **Rocq: About** commands in the messages of the goal view, instead of in a new tab of the query panel"
           }
         }
       },

@@ -24,6 +24,7 @@ import {
     RequestType,
     ServerOptions,
     TextDocumentIdentifier,
+    VersionedTextDocumentIdentifier,
 } from "vscode-languageclient/node";
 
 import Client from "./client";
@@ -49,11 +50,17 @@ import {
     sendTogglePrintingOption,
 } from "./printingOptions";
 import {
+    AboutRocqRequest,
+    AboutRocqResponse,
     DocumentProofsRequest,
     DocumentProofsResponse,
     ErrorAlertNotification,
+    MessageSeverity,
     MoveCursorNotification,
+    PrintRocqRequest,
+    PrintRocqResponse,
     ProofViewNotification,
+    QueryError,
     ResetRocqRequest,
     ResetRocqResponse,
     RocqLogMessage,
@@ -306,13 +313,53 @@ export function activate(context: ExtensionContext) {
                 : undefined;
         };
 
+        //runs the query [type] (print or about) on [pattern] at the cursor and
+        //adds its output to the messages of the goal view
+        const queryInGoalView = (
+            editor: TextEditor,
+            type: "print" | "about",
+            pattern: string,
+        ) => {
+            const document = editor.document;
+            const params: PrintRocqRequest | AboutRocqRequest = {
+                textDocument: VersionedTextDocumentIdentifier.create(
+                    document.uri.toString(),
+                    document.version,
+                ),
+                pattern,
+                position: editor.selection.active,
+            };
+            const req = new RequestType<
+                PrintRocqRequest | AboutRocqRequest,
+                PrintRocqResponse | AboutRocqResponse,
+                void
+            >(`prover/${type}`);
+            client.sendRequest(req, params).then(
+                (result: PrintRocqResponse | AboutRocqResponse) =>
+                    GoalPanel.addMessages(context.extensionUri, editor, [
+                        [MessageSeverity.info, result],
+                    ]),
+                (err: QueryError) =>
+                    GoalPanel.addMessages(context.extensionUri, editor, [
+                        [MessageSeverity.error, ["Ppcmd_string", err.message]],
+                    ]),
+            );
+        };
+
+        //shows the output of the query in the query panel or, for About with
+        //vsrocq.query.printAboutInGoalView, in the goal view
         const launchQuery = (editor: TextEditor, type: string) => {
             const value = queryTextAtCursor(editor);
             if (value === null) {
                 return;
             } //don't allow for multiline selections
+            const inGoalView =
+                type === "about" &&
+                getConfigurationOption("query", "printAboutInGoalView");
             //focus on the query panel
-            commands.executeCommand("vsrocq.search.focus");
+            if (!inGoalView) {
+                commands.executeCommand("vsrocq.search.focus");
+            }
             //open a prompt with the given word as default
             window
                 .showInputBox({
@@ -321,27 +368,40 @@ export function activate(context: ExtensionContext) {
                 })
                 .then((queryText) => {
                     //launch the query
-                    if (queryText) {
+                    if (queryText && inGoalView) {
+                        queryInGoalView(editor, "about", queryText);
+                    } else if (queryText) {
                         searchProvider.launchQuery(queryText, type);
                     }
                 });
         };
 
         //runs "Print [command] [argument]", asking for the argument unless
-        //[argument] is "none"
+        //[argument] is "none", and shows its output in the query panel or,
+        //with vsrocq.query.printAboutInGoalView, in the goal view
         const launchPrintCommand = (
             editor: TextEditor,
             command: string,
             argument: "none" | "optional" | "required",
         ) => {
-            commands.executeCommand("vsrocq.search.focus");
+            const inGoalView = getConfigurationOption(
+                "query",
+                "printAboutInGoalView",
+            );
+            const print = (pattern: string) =>
+                inGoalView
+                    ? queryInGoalView(editor, "print", pattern)
+                    : searchProvider.launchQuery(pattern, "print");
+            if (!inGoalView) {
+                commands.executeCommand("vsrocq.search.focus");
+            }
             if (argument === "none") {
-                searchProvider.launchQuery(command, "print");
+                print(command);
                 return;
             }
             window
                 .showInputBox({
-                    prompt: "Print " + command,
+                    prompt: command === "" ? "Print" : "Print " + command,
                     value: queryTextAtCursor(editor) ?? undefined,
                 })
                 .then((queryText) => {
@@ -352,10 +412,7 @@ export function activate(context: ExtensionContext) {
                     if (text === "" && argument === "required") {
                         return;
                     }
-                    searchProvider.launchQuery(
-                        text === "" ? command : command + " " + text,
-                        "print",
-                    );
+                    print([command, text].filter((s) => s !== "").join(" "));
                 });
         };
 
@@ -391,7 +448,7 @@ export function activate(context: ExtensionContext) {
             launchQuery(editor, "locate"),
         );
         registerVsrocqTextCommand("query.print", (editor) =>
-            launchQuery(editor, "print"),
+            launchPrintCommand(editor, "", "required"),
         );
         const printCommands = [
             ["printOptions", "Options", "none"],
