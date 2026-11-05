@@ -4,7 +4,7 @@ import { expect } from "expect";
 import * as vscode from "vscode";
 import * as common from "./common";
 
-/** Zero-based line of `Qed.`, the last sentence of delegate_proof.v. */
+/** Zero-based line of `Qed.` in delegate_proof.v. */
 const QED_LINE = 5;
 
 suite("Should get diagnostics in the appropriate tab", function () {

@@ -70,6 +70,8 @@ type prepared_task =
   | PSkip of { id: sentence_id; error: Pp.t option }
   | PBlock of { id: sentence_id; synterp : Vernacstate.Synterp.t; error: Pp.t Loc.located }
   | PExec of executable_sentence
+  (** Termination of a skipped proof *)
+  | PSkippedProofTerminator of executable_sentence
   | PQuery of executable_sentence
   | PDelegate of delegated_task
 
@@ -104,6 +106,7 @@ let get_id_of_executed_task task =
   | PSkip {id} -> id
   | PBlock {id} -> id
   | PExec {id} -> id
+  | PSkippedProofTerminator {id} -> id
   | PQuery {id} -> id
   | PDelegate {terminator_id} -> terminator_id
 
@@ -129,36 +132,29 @@ let inject_proof_event = Sel.Event.map (fun x -> ProofWorkerEvent x)
 let inject_proof_events st l =
   (st, List.map inject_proof_event l)
 
+let admit_proof st : Vernacstate.t =
+  let { Vernacstate.Interp.lemmas; program; _ } = st.Vernacstate.interp in
+  match lemmas with
+  | None -> st (* if Lemma failed *)
+  | Some lemmas ->
+      let proof = Vernacstate.LemmaStack.get_top lemmas in
+      let pm = Declare.Proof.save_admitted ~pm:(NeList.head program) ~proof in
+      let lemmas = snd (Vernacstate.LemmaStack.pop lemmas) in
+      let program = NeList.map_head (fun _ -> pm) program in
+      Vernacstate.Declare.set (lemmas,program) [@ocaml.warning "-3"];
+      let interp = Vernacstate.Interp.freeze_interp_state () in
+      { st with interp }
+
 let interp_error_recovery strategy st : Vernacstate.t =
   match strategy with
   | RSkip -> st
   | RAdmitted ->
-    let f = Declare.Proof.save_admitted in
-    let open Vernacstate in (* shadows Declare *)
-    let { Interp.lemmas; program; _ } = st.interp in
-    match lemmas with
-    | None -> (* if Lemma failed *)
-        st
-    | Some lemmas ->
-        let proof = Vernacstate.LemmaStack.get_top lemmas in
-        let pm = NeList.head program in
-        let result = 
-          try Ok(f ~pm ~proof)
-          with e -> (* we also catch anomalies *)
-          let e, info = Exninfo.capture e in
-          Error (e, info)
-        in
-        match result with
-        | Ok (pm) ->
-          let lemmas = snd (Vernacstate.LemmaStack.pop lemmas) in
-          let program = NeList.map_head (fun _ -> pm) program in
-          Vernacstate.Declare.set (lemmas,program) [@ocaml.warning "-3"];
-          let interp = Vernacstate.Interp.freeze_interp_state () in
-          { st with interp }
-        | Error (Sys.Break, _ as exn) ->
-          Exninfo.iraise exn
-        | Error(_,_) ->
-          st
+      try admit_proof st
+      with e -> (* we also catch anomalies *)
+        let e, info = Exninfo.capture e in
+        match e with
+        | Sys.Break -> Exninfo.iraise (e, info)
+        | _ -> st
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1"]
 let ensure_not_parsing () = Flags.in_synterp_phase := false
@@ -246,7 +242,8 @@ let id_of_last_task ~default l =
   id_of_first_task ~default (List.rev l)
 
 let view_task = function
-  | PSkip { id } | PExec { id } | PQuery { id } | PBlock { id } -> `Local id
+  | PSkip { id } | PExec { id } | PSkippedProofTerminator { id }
+  | PQuery { id } | PBlock { id } -> `Local id
   | PDelegate { opener_id; terminator_id; tasks } ->
       let first = id_of_first_task ~default:opener_id tasks in
       let last = id_of_last_task ~default:terminator_id tasks in
@@ -340,12 +337,16 @@ let prepare_task task : prepared_task list =
           List.map (fun x -> PExec x) tasks @ [PExec terminator]
       | SkipProofs ->
           log.debug (fun () -> Printf.sprintf "skipping proof made of %d tasks" (List.length tasks));
-          [PExec terminator]
+          begin match terminator.classif with
+          | Vernacextend.VtQed Vernacextend.VtDrop -> [PExec terminator]
+          | _ -> [PSkippedProofTerminator terminator]
+          end
 
 let id_of_prepared_task = function
   | PSkip { id } -> id
   | PBlock { id } -> id
   | PExec ex -> ex.id
+  | PSkippedProofTerminator ex -> ex.id
   | PQuery ex -> ex.id
   | PDelegate { terminator_id } -> terminator_id
 
@@ -464,6 +465,22 @@ let execute st document vs task : state * execution_result =
         st, Done { updates = []; vs; events = []; exec_error }
       else
         st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
+  | PSkippedProofTerminator { id; synterp } ->
+      let vs = { vs with Vernacstate.synterp } in
+      let result = ProverThread.run ~doc_id:st.feedback_pipe.doc_id ~name:"admit_skipped_proof" (fun () ->
+        Vernacstate.unfreeze_full_state vs;
+        ensure_not_parsing ();
+        Feedback.set_id_for_feedback st.feedback_pipe.doc_id id;
+        ParTactic.set_id_for_feedback st.feedback_pipe.doc_id id;
+        admit_proof vs)
+      in
+      let vs, v = match result with
+        | Ok vs -> vs, success vs
+        | Error msg -> vs, error None None msg vs
+      in
+      let updates = [id, v] in
+      let exec_error = exec_error_of_execution_status id v in
+      st, Done { updates; vs; events = []; exec_error }
   | PQuery { id; ast; synterp; error_recovery } ->
       let vs = { vs with Vernacstate.synterp } in
       st, promise_execution ~doc_id:st.feedback_pipe.doc_id ~state_id:id ~st:vs ~error_recovery ast
@@ -565,4 +582,3 @@ module ProofWorkerProcess = struct
     worker_main job ~send_back
   let log = ProofWorker.log
 end
-
