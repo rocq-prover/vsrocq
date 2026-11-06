@@ -495,6 +495,11 @@ let rocqtopPrint params =
   let@ { st } = with_document_request "print" uri in
   Dm.DocumentManager.print st position ~pattern, []
 
+let rocqtopUniverses params =
+  let Request.Client.UniversesParams.{ textDocument = { uri }; position; global; subgraph } = params in
+  let@ { st } = with_document_request "universes" uri in
+  Dm.DocumentManager.universes st position ~global ~subgraph, []
+
 let rocqtopAbout params =
   let Request.Client.AboutParams.{ textDocument = { uri }; position; pattern } = params in
   let@ { st } = with_document_request "about" uri in
@@ -588,6 +593,7 @@ let dispatch_request : type a. a Request.Client.t -> (a,error) result * events =
   | Check params -> rocqtopCheck params
   | Locate params -> rocqtopLocate params
   | Print params -> rocqtopPrint params
+  | Universes params -> rocqtopUniverses params
   | Search params -> rocqtopSearch params
   | DocumentState params -> sendDocumentState params
   | DocumentProofs params -> sendDocumentProofs params

@@ -17,6 +17,10 @@ search-ui/**/index.html
 search-ui/package.json
 search-ui/src/**
 
+universes-ui/**/index.html
+universes-ui/package.json
+universes-ui/src/**
+
 goal-view-ui/**/index.html
 goal-view-ui/package.json
 goal-view-ui/src/**

@@ -155,6 +155,11 @@ val locate : state -> Position.t -> pattern:string -> (pp, error) Result.t
 
 val print : state -> Position.t -> pattern:string -> (pp, error) Result.t
 
+val universes : state -> Position.t -> global:bool -> subgraph:string list option ->
+  (Protocol.UniverseGraph.t, error) Result.t
+(** the universe graph at the given position: of the proof, as [Show Universes],
+    or the global one if [global], as [Print Universes], restricted to [subgraph] *)
+
 
 module Internal : sig
 
