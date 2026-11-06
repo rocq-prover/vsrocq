@@ -749,10 +749,10 @@ let proof_block_for_theorem (document: Document.document) (raw: RawDocument.t) (
       | Error _ -> None
       | Parsed ast ->
         match ast.classification with
-        | VtQed (VtKeep VtKeepAxiom) -> Some(ProofState.Axiom)
-        | VtQed (VtKeep VtKeepDefined) -> Some(ProofState.Defined)
-        | VtQed (VtKeep VtKeepOpaque) -> Some(ProofState.Opaque)
-        | VtQed (VtDrop) -> Some(ProofState.Drop)
+        | VtQed (VtKeep VtKeepAxiom) -> Some "Axiom"
+        | VtQed (VtKeep VtKeepDefined) -> Some "Defined"
+        | VtQed (VtKeep VtKeepOpaque) -> Some "Opaque"
+        | VtQed (VtDrop) -> Some "Drop"
         | _ -> None
     in
     let fullyChecked = is_range_checked range in

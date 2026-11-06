@@ -28,18 +28,11 @@ type proof_step = {
   checkingError: pp option;
 } [@@deriving yojson]
 
-type qed_type =
-  | Axiom
-  | Defined
-  | Opaque
-  | Drop
-[@@deriving yojson]
-
 type proof_block = {
   statement: proof_statement;
   range: Range.t;
   steps: proof_step list;
-  qedType: qed_type option;
+  qedType: string option;
   fullyChecked: bool;
 } [@@deriving yojson]
 

@@ -373,21 +373,13 @@ let%test_unit "documentProofs.checked_statuses" =
     [%test_eq: bool]
       (Protocol.ProofState.proof_block_fully_checked block)
       true;
-    let actual_qed_type =
-      match Protocol.ProofState.proof_block_qed_type block with
-      | None -> "none"
-      | Some Protocol.ProofState.Axiom -> "axiom"
-      | Some Protocol.ProofState.Defined -> "defined"
-      | Some Protocol.ProofState.Opaque -> "opaque"
-      | Some Protocol.ProofState.Drop -> "drop"
-    in
-    [%test_eq: string] actual_qed_type expected_qed_type
+    [%test_eq: string option] (Protocol.ProofState.proof_block_qed_type block) expected_qed_type
   in
-  check 0 "opaque";
-  check 1 "defined";
-  check 2 "axiom";
-  check 3 "drop";
-  check 4 "none"
+  check 0 (Some "Opaque");
+  check 1 (Some "Defined");
+  check 2 (Some "Axiom");
+  check 3 (Some "Drop");
+  check 4 None
 
 (* Handles events until the first [Execute] of a run has been handled. That
    [Execute] sends its sentence to the prover thread, so the event left to
