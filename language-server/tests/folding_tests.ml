@@ -47,8 +47,13 @@ let first_sentence doc =
   | sentence :: _ -> sentence
   | [] -> failwith "expected a parsed sentence"
 
+(* Replaces the first sentence with its own text: the raw text does not change,
+   but the document goes through a parse *)
 let revalidate_same_raw st =
   let document = DocumentManager.Internal.document st in
+  let s = first_sentence document in
+  let text = RawDocument.string_in_range (Document.raw_document document) s.start s.stop in
+  let document = Document.apply_text_edits document [Document.range_of_id document s.id, text] in
   let document, events = Document.validate_document document in
   let update = handle_d_events (Sel.Todo.add Sel.Todo.empty events) document in
   DocumentManager.Internal.validate_document st update
@@ -567,3 +572,17 @@ let%test_unit "folding.definition_nested_match_body" =
   end.|} in
   assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:1 ~endLine:8 ranges;
   assert_has_folding_range ~kind:Lsp.Types.FoldingRangeKind.Region ~startLine:3 ~endLine:6 ranges
+
+(* A sentence moved by an edit above it keeps the AST parsed before the edit;
+   its folds must still be at its current lines, before anything runs. *)
+let%test_unit "folding.moved_sentence_folds_at_current_lines" =
+  let text = "Definition a := 1.\nDefinition f (n : nat) :=\n  match n with\n  | 0 => 0\n  | _ => 1\n  end." in
+  let insert = "Definition z := 0.\n" in
+  let st, init_events = em_init_test_doc ~text in
+  let st = handle_dm_events init_events st in
+  let document = DocumentManager.Internal.document st in
+  let start = RawDocument.position_of_loc (Document.raw_document document) 0 in
+  let st, events = DocumentManager.apply_text_edits st [Lsp.Types.Range.create ~start ~end_:start, insert] in
+  let st = handle_events st events in
+  let expected = folding_ranges_of (insert ^ text) in
+  [%test_eq: string] (string_of_folding_ranges expected) (string_of_folding_ranges (DocumentManager.get_folding_ranges st))
