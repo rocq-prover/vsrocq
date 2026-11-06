@@ -13,4 +13,4 @@ val folding_ranges : entries -> FoldingRange.t list
 val document_symbols : entries -> DocumentSymbol.t list
 
 (** Projects entries into document proof blocks. *)
-val proof_blocks : Document.document -> entries -> ProofState.proof_block list
+val proof_blocks : Document.document -> entries -> (Range.t -> bool) -> ProofState.proof_block list

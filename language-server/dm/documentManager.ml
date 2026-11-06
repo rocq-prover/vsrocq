@@ -202,9 +202,17 @@ let entries_for_request st =
       st.folding_entries_cache := Some entries;
       entries
 
+let executed_ranges st =
+  CheckingManager.executed_ranges st.document st.checking_state
+
 let get_document_proofs st =
   ProverThread.try_run ~doc_id:st.feedback_pipe.doc_id ~name:"get_document_proofs" ~timeout:10.0 (fun () ->
-    DocumentEntries.proof_blocks st.document (entries_for_request st))
+    let processed_ranges = (executed_ranges st).processed in
+    (* If the whole proof block is included in a processed range, it is fully checked. *)
+    let is_range_checked proof_range =
+      List.exists (fun processed_range -> Range.included ~in_:processed_range proof_range) processed_ranges
+    in
+    DocumentEntries.proof_blocks st.document (entries_for_request st) is_range_checked)
   |> get_interruptible_result
 
 let get_document_symbols st =
@@ -468,9 +476,6 @@ let interpret_in_background st =
   let checking_state, events =
     CheckingManager.interpret_in_background st.document st.checking_state in
   {st with checking_state}, inject_im_events events
-
-let executed_ranges st =
-  CheckingManager.executed_ranges st.document st.checking_state
 
 let observe_id_range st = CheckingManager.observe_id_range st.document st.checking_state
 
