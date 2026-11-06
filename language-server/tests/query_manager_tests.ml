@@ -40,3 +40,34 @@ let%test_unit "dune interaction: malformed rule has no source" =
   ]|} in
   [%test_eq: string option] (DuneInteraction.Internal.source_of_rules
     ~file:"_build/default/theories/Foo.v" rule) None
+
+let%test_unit "dune interaction: project nested below workspace" =
+  let workspace = Stdlib.Filename.temp_file "vsrocq-dune-" "" in
+  Stdlib.Sys.remove workspace;
+  Unix.mkdir workspace 0o700;
+  let project = Stdlib.Filename.concat workspace "project" in
+  Unix.mkdir project 0o700;
+  let write name contents =
+    let channel = Stdlib.open_out (Stdlib.Filename.concat project name) in
+    Stdlib.output_string channel contents;
+    Stdlib.close_out channel
+  in
+  let build = Stdlib.Filename.concat project "_build" in
+  let cwd = Unix.getcwd () in
+  Stdlib.Fun.protect ~finally:(fun () ->
+    Unix.chdir cwd;
+    if Stdlib.Sys.file_exists build then begin
+      Stdlib.Array.iter (fun name -> Stdlib.Sys.remove (Stdlib.Filename.concat build name))
+        (Stdlib.Sys.readdir build);
+      Unix.rmdir build
+    end;
+    Stdlib.Sys.remove (Stdlib.Filename.concat project "dune-project");
+    Stdlib.Sys.remove (Stdlib.Filename.concat project "A.v");
+    Unix.rmdir project;
+    Unix.rmdir workspace) (fun () ->
+    write "dune-project" "(lang dune 3.2)\n";
+    write "A.v" "(* source *)\n";
+    Unix.chdir workspace;
+    let artifact = Stdlib.Filename.concat project "_build/default/A.v" in
+    [%test_eq: string] (DuneInteraction.prefer_source artifact)
+      (Stdlib.Filename.concat project "A.v"))
