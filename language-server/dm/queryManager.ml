@@ -304,7 +304,8 @@ let check ~doc_id ~printing ~vs ~pattern =
 let jump_to_definition document vs pos =
   ProverThread.try_run ~doc_id:(Document.id document) ~name:"jump_to_definition" ~timeout
     (fun () -> jump_to_definition document vs pos) |>
-  to_option |> Option.flatten
+  to_option |> Option.flatten |>
+  Option.map (fun (range, file) -> range, DuneInteraction.prefer_source file)
 
 let locate ~doc_id ~printing ~vs ~pattern =
   ProverThread.try_run ~doc_id ~name:"locate" ~timeout (fun () -> locate ~printing ~vs ~pattern) |>
