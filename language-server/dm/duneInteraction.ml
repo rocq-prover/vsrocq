@@ -11,7 +11,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-let log = Log.mk_log "duneInteraction"
+let Types.Log log = Log.mk_log "duneInteraction"
 
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
@@ -54,17 +54,19 @@ let source_of_rules ~file = function
     end
   | _ -> None
 
-let path_relative_to_cwd file =
-  if Filename.is_relative file then Some file else
-  let cwd = Unix.getcwd () in
-  let prefix = if cwd = Filename.dir_sep then cwd else cwd ^ Filename.dir_sep in
+let path_relative_to root file =
+  let prefix = if root = Filename.dir_sep then root else root ^ Filename.dir_sep in
   let length = String.length prefix in
   if String.length file >= length && String.sub file 0 length = prefix
   then Some (String.sub file length (String.length file - length))
   else None
 
-let path_to_absolute file =
-  if Filename.is_relative file then Filename.concat (Unix.getcwd ()) file else file
+(** Find the root that owns a standard Dune build artifact. *)
+let rec build_root directory =
+  if Filename.basename directory = "_build" then Some (Filename.dirname directory)
+  else
+    let parent = Filename.dirname directory in
+    if parent = directory then None else build_root parent
 
 (* Dune rules do not change while this language-server process is running. *)
 let sources : (string, string option) Hashtbl.t = Hashtbl.create 7
@@ -102,14 +104,14 @@ let resolve_command () =
     "dune", environment
 
 (** Query Dune for the source copied to [file] *)
-let source_of_file file =
+let source_of_file ~root file =
   try
     let dune, environment = resolve_command () in
     let stdout_read, stdout_write = Unix.pipe () in
     let stderr = Unix.openfile Filename.null [Unix.O_WRONLY] 0 in
     let process =
       try Unix.create_process_env dune
-        [| dune; "rules"; "--display=quiet"; "--format=json"; file |]
+        [| dune; "rules"; "--root"; root; "--display=quiet"; "--format=json"; file |]
         environment Unix.stdin stdout_write stderr
       with error ->
         Unix.close stdout_read;
@@ -124,13 +126,13 @@ let source_of_file file =
       Fun.protect ~finally:(fun () -> close_in_noerr stdout) (fun () ->
         try Some (Yojson.Safe.from_channel stdout) with
         | error ->
-          log.debug (fun () -> "Cannot decode Dune rules: " ^ Printexc.to_string error);
+          log (fun () -> "Cannot decode Dune rules: " ^ Printexc.to_string error);
           None)
     in
     begin match snd (Unix.waitpid [] process), rules with
     | Unix.WEXITED 0, Some rules -> source_of_rules ~file rules
     | status, _ ->
-      log.debug (fun () -> "Dune rules failed for " ^ file ^ ": " ^
+      log (fun () -> "Dune rules failed for " ^ file ^ ": " ^
         match status with
         | Unix.WEXITED code -> "exit " ^ string_of_int code
         | Unix.WSIGNALED signal -> "signal " ^ string_of_int signal
@@ -139,11 +141,11 @@ let source_of_file file =
     end
   with
   | Unix.Unix_error (error, function_name, argument) ->
-    log.debug (fun () -> "Cannot run Dune " ^ function_name ^ "(" ^ argument ^ "): " ^
+    log (fun () -> "Cannot run Dune " ^ function_name ^ "(" ^ argument ^ "): " ^
       Unix.error_message error);
     None
   | Sys_error message ->
-    log.debug (fun () -> "Cannot read Dune rules: " ^ message);
+    log (fun () -> "Cannot read Dune rules: " ^ message);
     None
 
 (** Return the source file Dune copied to [file], or [file] when Dune cannot
@@ -154,12 +156,15 @@ let prefer_source file =
   | Some None -> file
   | None ->
     let source =
-      match path_relative_to_cwd file with
+      let cwd = Unix.getcwd () in
+      let absolute_file = if Filename.is_relative file then Filename.concat cwd file else file in
+      let root = Option.default cwd (build_root (Filename.dirname absolute_file)) in
+      match path_relative_to root absolute_file with
       | None -> None
       | Some relative_file ->
-        match source_of_file relative_file with
+        match source_of_file ~root relative_file with
         | Some source ->
-          let source = path_to_absolute source in
+          let source = if Filename.is_relative source then Filename.concat root source else source in
           if Sys.file_exists source then Some source else None
         | None -> None
     in
