@@ -6,7 +6,7 @@ open Printer
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 
-(** Builtin commands, options, tactics, and attributes *)
+(** Builtin commands, flags, options, tables, tactics, and attributes *)
 
 (*
   Some vernacular is implemented internally in Rocq and not visible as a normal definition
@@ -14,7 +14,7 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
   Ltac1 tactics, or attributes.
 
   To remedy this, we scrape the official documentation of Rocq and create indices of all
-  of the built-in tactics, commands, options, and attributes. These indices are then loaded into
+  of the built-in tactics, flags, commands, tables, options, and attributes. These indices are then loaded into
   vsrocqtop to serve these completions to the user.
 *)
 
@@ -116,6 +116,9 @@ type builtin_item_raw = {
 
 type builtin_item_kind =
   | Command
+  | Flag
+  | Option
+  | Table
 
 (* We extend the raw item with additional computed fields *)
 type builtin_item = {
@@ -141,11 +144,23 @@ let doc_version = "V9.2.0"
 let documentation_url_of_item (item: builtin_item_raw) : string =
   Printf.sprintf "https://rocq-prover.org/doc/%s/refman/%s.html#%s" doc_version item.documentation_path item.documentation_anchor
 
+let promote_builtin_raw (raw: builtin_item_raw) (label: string) (kind: builtin_item_kind) : builtin_item =
+  {
+    raw;
+    label;
+    kind;
+    snippet = builtin_syntax_list_to_snippet raw.syntax;
+    documentation_url = documentation_url_of_item raw;
+  }
+
 type builtin_index = builtin_item list
 
 module BuiltinIndices = struct
   type t = {
     commands: builtin_index;
+    flags: builtin_index;
+    options: builtin_index;
+    tables: builtin_index;
   }
 
   let load_builtin_index (kind: builtin_item_kind) (json_str: string) : builtin_index =
@@ -153,18 +168,15 @@ module BuiltinIndices = struct
     let pairs = Yojson.Safe.Util.to_assoc json in
     List.map (fun (key, json_value) ->
       let raw = builtin_item_raw_of_yojson json_value in
-      {
-        raw;
-        label = key;
-        kind;
-        snippet = builtin_syntax_list_to_snippet raw.syntax;
-        documentation_url = documentation_url_of_item raw;
-      }
+      promote_builtin_raw raw key kind
     ) pairs
 
   [%%if rocq = "9.3"]
   let v: t = {
     commands = load_builtin_index Command [%blob "indices/9.3/cmdindex.json"];
+    flags = load_builtin_index Flag [%blob "indices/9.3/flagindex.json"];
+    options = load_builtin_index Option [%blob "indices/9.3/optindex.json"];
+    tables = load_builtin_index Table [%blob "indices/9.3/tableindex.json"];
   }
   [%%else]
   (* For version for which we do not have JSON indices, we load the v9.3 indices. *)
@@ -173,6 +185,9 @@ module BuiltinIndices = struct
   (* than giving the user nothing. *)
   let v: t = {
     commands = load_builtin_index Command [%blob "indices/9.3/cmdindex.json"];
+    flags = load_builtin_index Flag [%blob "indices/9.3/flagindex.json"];
+    options = load_builtin_index Option [%blob "indices/9.3/optindex.json"];
+    tables = load_builtin_index Table [%blob "indices/9.3/tableindex.json"];
   }
   [%%endif]
 end
