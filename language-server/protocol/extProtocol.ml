@@ -122,6 +122,8 @@ module Notification = struct
         messages: (DiagnosticSeverity.t * pp) list;
         pp_proof: PpProofState.t option;
         pp_messages: (DiagnosticSeverity.t *string) list;
+        struct_proof: StructuredProofState.t option;
+        struct_messages: (DiagnosticSeverity.t * pp) list;
       } [@@deriving yojson]
 
     end
