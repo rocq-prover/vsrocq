@@ -388,6 +388,96 @@
         "description": "Use the Printing flags set in the current document again"
       },
       {
+        "command": "extension.rocq.query.printOptions",
+        "title": "Print Options",
+        "description": "Print the values of the options",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printTables",
+        "title": "Print Tables",
+        "description": "Print the values of the options and tables",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printUniverses",
+        "title": "Print Universes",
+        "description": "Print the universe constraints",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printAssumptions",
+        "title": "Print Assumptions",
+        "description": "Print the axioms and section variables a term depends on",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printTypingFlags",
+        "title": "Print Typing Flags",
+        "description": "Print the typing flags",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printLibraries",
+        "title": "Print Libraries",
+        "description": "Print the loaded libraries",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printLoadPath",
+        "title": "Print LoadPath",
+        "description": "Print the load path",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printScopes",
+        "title": "Print Scopes",
+        "description": "Print the notation scopes",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printCoercions",
+        "title": "Print Coercions",
+        "description": "Print the coercions",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printClasses",
+        "title": "Print Classes",
+        "description": "Print the classes of the coercions",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printTypeclasses",
+        "title": "Print Typeclasses",
+        "description": "Print the typeclasses",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printInstances",
+        "title": "Print Instances",
+        "description": "Print the instances of a typeclass",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printImplicit",
+        "title": "Print Implicit",
+        "description": "Print the implicit arguments of a term",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printHint",
+        "title": "Print Hint",
+        "description": "Print the hints of a term, or for the current goal",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.query.printHintDb",
+        "title": "Print HintDb",
+        "description": "Print a hint database",
+        "category": "Rocq"
+      },
+      {
         "command": "extension.rocq.interpretToPoint",
         "category": "Rocq",
         "title": "Interpret to point",
