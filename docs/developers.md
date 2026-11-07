@@ -77,6 +77,53 @@ flowchart TD
 
 ### Building
 
+#### With opam
+
+You need [opam](https://opam.ocaml.org/doc/Install.html). The commands below
+assume the switch's environment is active in your shell (see `opam env`). On
+Windows, also set `ROCQLIB` to the output of `rocq -where`, otherwise a server
+run from `_build` cannot find Rocq's library.
+
+1. Create a switch for VsRocq development:
+
+   ```shell
+   # Any name and OCaml version work, as long as OCaml is 4.14 or newer.
+   opam switch create vsrocq-dev 4.14.4
+   ```
+
+2. From the root of the repository, install the dependencies of the language
+   server, Rocq included:
+
+   ```shell
+   # Naming rocq-core makes opam pick Rocq 9 rather than Coq 8.x.
+   # --with-test adds what the test suite needs.
+   opam install ./language-server --deps-only --with-test rocq-core
+   opam install rocq-core
+   ```
+
+3. Generate the `dune` files, which depend on the installed Rocq version:
+
+   ```shell
+   make -C language-server dune-files
+   ```
+
+4. Build the server:
+
+   ```shell
+   cd language-server
+   dune build
+   # Prints the Rocq and OCaml versions the server was built with.
+   _build/install/default/bin/vsrocqtop -v
+   ```
+
+5. Run the tests, still from `language-server`:
+
+   ```shell
+   make test
+   ```
+
+#### With nix
+
 If you have nix installed, you can do a full developer build of the language server by running:
 
 ```
@@ -124,25 +171,31 @@ You can debug the web apps independently. From the client folder just run `npm r
 
 Note that both the apps can also be built independently through the `npm run build -w goal-view-ui` or `npm run build -w search-ui` commands.
 
-To launch the extension in debug mode, assuming you have built the language-server, you can either use a nix dev shell to run vscode (`nix develop .#vsrocq-client -c code .`) or handle your own config.
+To launch the extension in debug mode, assuming you have built the language server:
 
-Note that you need to set the path to vsrocqtop in the VSCode user settings (just search for vsrocq).
+1. From a shell where the switch's environment is active, open the `client`
+   folder with `code .`. Close other VS Code windows first, otherwise `code`
+   reuses their environment. With nix, run `nix develop .#vsrocq-client -c code .`
+   instead.
+2. Press F5 (**Run Extension**). A second VS Code window opens with your build of
+   the extension.
+3. In that window, set `vsrocq.path` to the absolute path of the server you
+   built, `<repository>/language-server/_build/install/default/bin/vsrocqtop`.
 
 ## E2E tests
 
 From the client folder run `npm test`. To pass arguments to the language
-server you can use the `VSCOQARGS` env variable, e.g.
+server you can use the `VSROCQARGS` env variable, e.g.
 
 ```shell
-VSCOQARGS='-vsrocq-d all' npm test
+VSROCQARGS='-vsrocq-d all' npm test
 ```
 Remember that if the language server fails to initialize, the log is not
 displayed in the output panel as usual, but rather written to a file named
 like `/tmp/vsrocq_init_log.xxx`.
 
-To run the tests on a language server not in a standard location (not in
-the language-server folder nor in PATH), set `VSCOQPATH` to the binary you
-want to be run by the test.
+By default the tests run `language-server/_build/install/default/bin/vsrocqtop`.
+To run them on another server, set `VSROCQPATH` to its binary.
 
 # Release process
 
