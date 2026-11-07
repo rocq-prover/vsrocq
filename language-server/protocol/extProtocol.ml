@@ -306,6 +306,64 @@ module Request = struct
 
   end
 
+  module DebugFlagsParams = struct
+
+    (* no parameters, but JSON-RPC requests must carry some *)
+    type t = unit
+    let t_of_yojson (_ : Yojson.Safe.t) = ()
+    let yojson_of_t () : Yojson.Safe.t = `Assoc []
+
+  end
+
+  module DebugFlag = struct
+
+    type t = {
+      name : string;
+      enabled : bool;
+    } [@@deriving yojson]
+
+  end
+
+  module DebugFlagsResult = struct
+
+    type t = {
+      flags : DebugFlag.t list;
+    } [@@deriving yojson]
+
+  end
+
+  module ToggleDebugFlagParams = struct
+
+    type t = {
+      name : string;
+    } [@@deriving yojson]
+
+  end
+
+  module ToggleDebugFlagResult = struct
+
+    type t = {
+      enabled : bool;
+    } [@@deriving yojson]
+
+  end
+
+  module ToggleOptionParams = struct
+
+    type t = {
+      option : string; (* e.g. "Ltac Backtrace" *)
+    } [@@deriving yojson]
+
+  end
+
+  module ToggleOptionResult = struct
+
+    type t = {
+      value : bool;
+    } [@@deriving yojson]
+
+  end
+
   module ResetPrintingOptionsParams = struct
 
     type t = {
@@ -327,6 +385,9 @@ module Request = struct
   | PrintingOptions : PrintingOptionsParams.t -> PrintingOptionsResult.t t
   | SetPrintingOption : SetPrintingOptionParams.t -> unit t
   | ResetPrintingOptions : ResetPrintingOptionsParams.t -> unit t
+  | DebugFlags : DebugFlagsParams.t -> DebugFlagsResult.t t
+  | ToggleDebugFlag : ToggleDebugFlagParams.t -> ToggleDebugFlagResult.t t
+  | ToggleOption : ToggleOptionParams.t -> ToggleOptionResult.t t
 
   type packed = Pack : 'a t -> packed
 
@@ -366,6 +427,15 @@ module Request = struct
     | "prover/resetPrintingOptions" ->
       let+ params = Lsp.Import.Json.message_params params ResetPrintingOptionsParams.t_of_yojson in
       Pack (ResetPrintingOptions params)
+    | "prover/debugFlags" ->
+      let+ params = Lsp.Import.Json.message_params params DebugFlagsParams.t_of_yojson in
+      Pack (DebugFlags params)
+    | "prover/toggleDebugFlag" ->
+      let+ params = Lsp.Import.Json.message_params params ToggleDebugFlagParams.t_of_yojson in
+      Pack (ToggleDebugFlag params)
+    | "prover/toggleOption" ->
+      let+ params = Lsp.Import.Json.message_params params ToggleOptionParams.t_of_yojson in
+      Pack (ToggleOption params)
     | _ ->
       let+ E req = Lsp.Client_request.of_jsonrpc req in
       Pack (Std req)
@@ -384,6 +454,9 @@ module Request = struct
       | PrintingOptions _ -> PrintingOptionsResult.(yojson_of_t resp)
       | SetPrintingOption _ -> yojson_of_unit resp
       | ResetPrintingOptions _ -> yojson_of_unit resp
+      | DebugFlags _ -> DebugFlagsResult.(yojson_of_t resp)
+      | ToggleDebugFlag _ -> ToggleDebugFlagResult.(yojson_of_t resp)
+      | ToggleOption _ -> ToggleOptionResult.(yojson_of_t resp)
       | Std req -> Lsp.Client_request.yojson_of_result req resp
 
   end

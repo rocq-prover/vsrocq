@@ -24,6 +24,7 @@ let context_of_vernac_state ?(printing = Protocol.PrintingOptions.empty) (st : V
   let st = st.Vernacstate.interp in
   Vernacstate.Interp.unfreeze_interp_state st;
   Protocol.PrintingOptions.apply printing;
+  OptionOverrides.apply ();
   begin match st.lemmas with
   | None ->
     let env = Global.env () in
