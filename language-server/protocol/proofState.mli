@@ -24,8 +24,11 @@ type t [@@deriving yojson]
 val get_proof : ?printing:PrintingOptions.t -> previous:Vernacstate.t option -> Goals.Diff.Mode.t -> Vernacstate.t -> t option
 
 val mk_proof_statement : string -> Lsp.Types.Range.t -> proof_statement
-val mk_proof_step : string -> Lsp.Types.Range.t -> proof_step
-val mk_proof_block : proof_statement -> proof_step list -> Lsp.Types.Range.t -> proof_block
+val mk_proof_step : string -> Lsp.Types.Range.t -> Printing.pp option -> proof_step
+val mk_proof_block : proof_statement -> proof_step list -> Lsp.Types.Range.t -> string option -> bool -> proof_block
+
+val proof_block_qed_type : proof_block -> string option
+val proof_block_fully_checked : proof_block -> bool
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20" || rocq = "9.0" || rocq = "9.1" || rocq = "9.2"]
 module CompactedDecl = Context.Compacted.Declaration

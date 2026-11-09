@@ -50,6 +50,7 @@ module type Job = sig
   val name : string
   val binary_name : string
   val initial_pool_size : int
+  val marshallable : t -> t
   type update_request
   val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * Loc.t option * Quickfix.t list * Pp.t) -> update_request
 end
@@ -62,7 +63,7 @@ let mk_job_handle (rid, sid) : job_handle = (rid, sid), ref None
 let cancel_job (_,id) =
   match !id with
   | None -> ()
-  | Some pid -> Unix.kill pid 9
+  | Some pid -> Unix.kill pid Sys.sigkill
 
 (* TODO: this queue should not be here, it should be "per URI" but we want to
    keep here the conversion (STM) feedback -> (LSP) feedback *)
@@ -199,7 +200,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
     let address = getsockname chan in
     log.debug (fun () -> "forking...");
     flush_all ();
-    let null = openfile "/dev/null" [O_RDWR] 0o640 in
+    let null = openfile Filename.null [O_RDWR] 0o640 in
     let pid = fork () in
     if pid = 0 then begin
         (* Children process *)
@@ -223,7 +224,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
       | None ->
           close chan;
           log.error (fun () -> Printf.sprintf "worker %d did not connect back in time, killing it" pid);
-          Unix.kill pid 9;
+          Unix.kill pid Sys.sigkill;
           Error ("worker did not connect back", [worker_ends pid])
       | Some (worker, _worker_addr) ->
           close chan;
@@ -248,7 +249,10 @@ let create_process_worker procname cancellation_handle job =
     let port = match getsockname chan with
       | ADDR_INET(_,port) -> port
       | _ -> assert false in
-    let null = openfile "/dev/null" [O_RDWR] 0o640 in
+    let null = openfile Filename.null [O_RDWR] 0o640 in
+    (* create_process adds .exe only to names without an extension, and
+       worker names end in .opt *)
+    let procname = if Sys.win32 then procname ^ ".exe" else procname in
     let extra_flags = if CDebug.get_flags () = "all" then [|"-debug"|] else [||] in
     let args = Array.append  [|procname;option_name;string_of_int port|] extra_flags in
     let pid = create_process procname args null stdout stderr in
@@ -261,16 +265,14 @@ let create_process_worker procname cancellation_handle job =
         let read_from = worker in
         let write_to = worker in
         let link = { write_to; read_from } in
-        install_feedback_worker ~feedback_cleanup:(fun _ -> ()) link;
-        install_debug_worker link;
         log.debug (fun () -> "sending job");
-        write_value_job link job;
+        write_value_job link (Job.marshallable job);
         flush_all ();
         log.debug (fun () -> "sent");
         Ok [worker_progress link; worker_ends pid]
     | None ->
         log.error (fun () -> Printf.sprintf "worker %d did not connect back in time, killing it" pid);
-        Unix.kill pid 9;
+        Unix.kill pid Sys.sigkill;
         Error ("worker did not connect back", [worker_ends pid])
   with Unix_error(e,f,p) ->
     Error (f ^": "^ p^": " ^error_message e,[])
@@ -327,13 +329,20 @@ type options = int
 let setup_plumbing port =
   try
     let open Unix in
+    Log.worker_initialization_begins ();
     let chan = socket PF_INET SOCK_STREAM 0 in
     let address = ADDR_INET (inet_addr_loopback,port) in
     log_worker.debug (fun () -> "connecting to " ^ string_of_int port);
     connect chan address;
+    (* Exiting with the socket still open resets the connection on Windows,
+       and the master discards what it has not read yet *)
+    at_exit (fun () ->
+      try shutdown chan SHUTDOWN_SEND; close chan with Unix_error _ -> ());
     let read_from = chan in
     let write_to = chan in
     let link = { read_from; write_to } in
+    install_feedback_worker ~feedback_cleanup:(fun _ -> ()) link;
+    install_debug_worker link;
     (* Unix.read_value does not exist, we use Sel *)
     match Sel.(pop Todo.(add empty [Sel.On.ocaml_value read_from (fun x -> x)])) with
     | Ok (job : Job.t), _ -> ((fun x -> write_value link (Job_update x)), job)

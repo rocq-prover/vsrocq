@@ -30,6 +30,9 @@ type error_recovery_strategy =
 type executable_sentence = {
   id : sentence_id;
   ast : Synterp.vernac_control_entry;
+  raw_ast : Vernacexpr.vernac_control;
+  (** The AST before its synterp phase, needed for delegation on Windows.
+      See [Document.parsed_ast]. *)
   classif : Vernacextend.vernac_classification;
   synterp : Vernacstate.Synterp.t;
   error_recovery : error_recovery_strategy;
@@ -54,7 +57,7 @@ val initial_schedule : schedule
 
 val schedule_errored_sentence : sentence_id -> Pp.t Loc.located -> Vernacstate.Synterp.t -> schedule -> schedule
 
-val schedule_sentence : sentence_id * (Synterp.vernac_control_entry * Vernacextend.vernac_classification * Vernacstate.Synterp.t) -> state -> schedule -> state * schedule
+val schedule_sentence : sentence_id * (Synterp.vernac_control_entry * Vernacexpr.vernac_control * Vernacextend.vernac_classification * Vernacstate.Synterp.t) -> state -> schedule -> state * schedule
 (** Identifies the structure of the document and dependencies between sentences
     in order to easily compute the tasks to interpret the a sentence.
     Input sentence is None on parsing error. *)

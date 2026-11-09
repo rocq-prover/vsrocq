@@ -30,6 +30,7 @@ module SM = Map.Make (Stateid)
 
 type parsed_ast = {
   ast: Synterp.vernac_control_entry;
+  raw_ast: Vernacexpr.vernac_control;
   classification: Vernacextend.vernac_classification;
   tokens: (Loc.t * Tok.t) list
 }
@@ -205,7 +206,7 @@ let add_sentence parsed id parsing_start start stop (ast: sentence_state) synter
     | Error {msg} ->
       scheduler_state_before, Scheduler.schedule_errored_sentence id msg synterp_state parsed.schedule
     | Parsed ast ->
-      let ast' = (ast.ast, ast.classification, synterp_state) in
+      let ast' = (ast.ast, ast.raw_ast, ast.classification, synterp_state) in
       Scheduler.schedule_sentence (id, ast') scheduler_state_before parsed.schedule
   in
   (* What about messages generated during parsing? *)
@@ -474,7 +475,7 @@ let patch_sentence parsed scheduler_state_before id x =
     | Error {msg} ->
       scheduler_state_before, Scheduler.schedule_errored_sentence id msg synterp_state parsed.schedule
     | Parsed ast ->
-      let ast = (ast.ast, ast.classification, synterp_state) in
+      let ast = (ast.ast, ast.raw_ast, ast.classification, synterp_state) in
       Scheduler.schedule_sentence (id,ast) scheduler_state_before parsed.schedule
   in
   let n = { o with ast; ast_shift; parsing_start; start; stop; scheduler_state_before; scheduler_state_after } in
@@ -714,6 +715,10 @@ let get_entry ast =
   Synterp.synterp_control ~intern ast
 [%%endif]
 
+let synterp ~st ast =
+  Vernacstate.Synterp.unfreeze st;
+  get_entry ast
+
 let get_raw_text_tokens raw_doc begin_char end_char ast_loc =
   let str = String.sub (RawDocument.text raw_doc) begin_char (end_char - begin_char) in
   let sstr = Stream.of_string str in
@@ -755,7 +760,7 @@ let handle_parsed_sentence ~parsing_start ast comments
     let entry = get_entry ast in
     let classification = Vernac_classifier.classify_vernac ast in
     let synterp_state = Vernacstate.Synterp.freeze () in
-    let parsed_ast = Parsed { ast = entry; classification; tokens } in
+    let parsed_ast = Parsed { ast = entry; raw_ast = ast; classification; tokens } in
     let sentence = { id; parsing_start; ast = parsed_ast; start; stop; synterp_state } in
     let parsed = sentence :: parsed in
     let comments = List.map (fun ((start, stop), content) -> { start; stop; content }) comments in

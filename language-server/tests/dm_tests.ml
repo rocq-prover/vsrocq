@@ -361,6 +361,32 @@ let%test_unit "documentProofs.theorem_without_proof_no_ltac" =
   let proofs = DocumentManager.get_document_proofs st in
   [%test_eq: int] (List.length proofs) 1
 
+let%test_unit "documentProofs.checked_statuses" =
+  let text =
+    "Theorem qed_proof : True. Proof. exact I. Qed. " ^
+    "Theorem defined_proof : True. Proof. exact I. Defined. " ^
+    "Theorem admitted_proof : True. Admitted. " ^
+    "Theorem aborted_proof : True. Proof. exact I. Abort. " ^
+    "Theorem incomplete_proof : True. Proof. exact I."
+  in
+  let st, init_events = em_init_test_doc ~text in
+  let events = DocumentManager.interpret_to_end () in
+  let st = handle_dm_events Sel.Todo.(add init_events events) st in
+  let proofs = DocumentManager.get_document_proofs st in
+  [%test_eq: int] (List.length proofs) 5;
+  let check index expected_qed_type =
+    let block = List.nth_exn proofs index in
+    [%test_eq: bool]
+      (Protocol.ProofState.proof_block_fully_checked block)
+      true;
+    [%test_eq: string option] (Protocol.ProofState.proof_block_qed_type block) expected_qed_type
+  in
+  check 0 (Some "Opaque");
+  check 1 (Some "Defined");
+  check 2 (Some "Axiom");
+  check 3 (Some "Drop");
+  check 4 None
+
 (* Handles events until the first [Execute] of a run has been handled. That
    [Execute] sends its sentence to the prover thread, so the event left to
    continue the run is the [ExecutePromise] waiting for the result. The event

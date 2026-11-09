@@ -160,13 +160,16 @@ type ProofStatement = {
 type ProofStep = {
     range: Range;
     tactic: string;
+    checkingError: Nullable<PpString>;
 };
 
-type ProofBlock = {
-    statement: ProofStatement;
-    range: Range;
-    steps: ProofStep[];
-};
+export interface ProofBlock {
+	statement: ProofStatement;
+	range: Range;
+	steps: ProofStep[];
+	qedType: Nullable<'Axiom' | 'Defined' | 'Opaque' | 'Drop'>;
+	fullyChecked: boolean;
+}
 
 export interface DocumentProofsResponse {
     proofs: ProofBlock[];
