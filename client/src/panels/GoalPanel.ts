@@ -12,7 +12,7 @@ import {
 } from "vscode";
 import Client from "../client";
 import { getConfigurationOption } from "../configuration";
-import { ProofViewNotification } from "../protocol/types";
+import { ProofViewNotification, RocqMessage } from "../protocol/types";
 import { getNonce } from "../utilities/getNonce";
 import { getUri } from "../utilities/getUri";
 
@@ -165,6 +165,29 @@ export default class GoalPanel {
             Client.writeToVsrocqChannel(
                 "[GoalPanel] Rendered in current panel",
             );
+            GoalPanel.currentPanel._sendCurrentProofView();
+        }
+    }
+
+    // Adds messages to the ones of the current proof view, eg. the output of
+    // a query, until the next proofview notification replaces them. The goal
+    // panel is created if needed, and shown without taking the focus.
+    public static addMessages(
+        extensionUri: Uri,
+        editor: TextEditor,
+        messages: RocqMessage[],
+    ) {
+        const pv = GoalPanel.currentPv ?? { proof: null, messages: [] };
+        GoalPanel.currentPv = {
+            ...pv,
+            messages: [...pv.messages, ...messages],
+        };
+        if (!GoalPanel.currentPanel) {
+            GoalPanel.render(editor, extensionUri);
+        } else {
+            if (!GoalPanel.currentPanel._panel.visible) {
+                GoalPanel.currentPanel._panel.reveal(undefined, true);
+            }
             GoalPanel.currentPanel._sendCurrentProofView();
         }
     }

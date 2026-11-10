@@ -89,14 +89,6 @@ let pr_glob_without_symbols env sigma c =
   Printer.pr_glob_constr_env ~flags env sigma c
 [%%endif]
 
-[%%if rocq ="8.18" || rocq ="8.19"]
-  let print_name = Prettyp.print_name
-[%%else]
-  let print_name =
-    let access = Library.indirect_accessor[@@warning "-3"] in
-    Prettyp.print_name access
-[%%endif]
-
 (**************************************************************************)
 
 let about ~printing vs ~pattern =
@@ -261,11 +253,40 @@ let search ~printing ~vs ~id pattern =
   let query, r = parse_entry vs (G_vernac.search_queries) pattern in
   SearchQuery.interp_search ~id env sigma query r
 
+(* Feedback for this document id is ignored by the documents, so that the
+   output of a query does not end up in their messages. *)
+let query_doc_id = -1
+
+(* Runs the command [Print pattern] in [vs] and returns what it prints, eg.
+   for [foo], [Options] or [Assumptions foo]. Rocq parses the command, so that
+   [pattern] can be any argument of [Print]. The command is interpreted rather
+   than reimplemented, as most [Print] commands are implemented in
+   [Vernacentries] and not exported. Only commands that Rocq classifies as
+   queries are run, so that printing has no effect on the document. *)
 let print ~printing ~vs ~pattern =
-  let sigma, env = context_of_vernac_state ~printing vs in
-  let qid = parse_entry vs (smart_global) pattern in
-  let udecl = None in (*TODO*)
-  Ok (pp_of_rocqpp @@ print_name env sigma qid udecl)
+  let pattern = String.trim pattern in
+  let command = "Print " ^ pattern ^ if String.ends_with ~suffix:"." pattern then "" else "." in
+  let ast = parse_entry vs (Pvernac.main_entry (Some (Synterp.get_default_proof_mode ()))) command in
+  let is_query = function
+    (* [Print Table] only prints, though Rocq classifies it as a side effect *)
+    | { CAst.v = { Vernacexpr.expr = VernacSynPure (VernacPrintOption _) } } -> true
+    | ast -> Vernac_classifier.classify_vernac ast = Vernacextend.VtQuery in
+  match ast with
+  | Some ast when is_query ast ->
+    let entry = Document.get_entry ast in
+    (* The printing flags overridden by the user are re-applied on top of [vs],
+       as [interp_entry] restores the whole state of [vs]. *)
+    Vernacstate.unfreeze_full_state vs;
+    Protocol.PrintingOptions.apply printing;
+    let st = Vernacstate.freeze_full_state () in
+    let output = ref [] in
+    let feeder = Log.feedback_add_feeder_on_Message (fun _route _span doc lvl _loc _qf msg ->
+      if doc = query_doc_id && lvl <> Feedback.Debug then output := msg :: !output) in
+    Feedback.set_id_for_feedback query_doc_id Stateid.dummy;
+    Fun.protect ~finally:(fun () -> Feedback.del_feeder feeder) (fun () ->
+      ignore (Vernacinterp.interp_entry ~st entry));
+    Ok (pp_of_rocqpp @@ Pp.prlist_with_sep Pp.fnl (fun x -> x) (List.rev !output))
+  | _ -> CErrors.user_err Pp.(str "Not a query: " ++ str command)
 
 let get_completions ~vs =
   let settings = ExecutionManager.get_options () in
