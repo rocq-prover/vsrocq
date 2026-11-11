@@ -90,7 +90,10 @@ export function activate(context: ExtensionContext) {
             void
         >("prover/resetRocq");
         Client.writeToVsrocqChannel(uri.toString());
-        return client.sendRequest(req, params);
+        return client.sendRequest(req, params).then((res) => {
+            GoalPanel.resetGoalPanel();
+            return res;
+        });
     };
 
     const rocqTM = new VsRocqToolchainManager();
@@ -334,15 +337,9 @@ export function activate(context: ExtensionContext) {
         };
 
         registerVsrocqTextCommand("reset", (editor) => {
-            const uri = editor.document.uri;
-            resetRocq(uri).then(
-                (res) => {
-                    GoalPanel.resetGoalPanel();
-                },
-                (err) => {
-                    window.showErrorMessage(err);
-                },
-            );
+            resetRocq(editor.document.uri).catch((err) => {
+                window.showErrorMessage(err);
+            });
         });
         registerVsrocqTextCommand("query.search", (editor) =>
             launchQuery(editor, "search"),
