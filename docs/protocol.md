@@ -299,8 +299,6 @@ The `getDocumentProofs(uri: vscode.Uri)` method returns all proof blocks of a gi
 const response: DocumentProofsResponse = await api.getDocumentProofs(uri);
 ```
 
-The `resetRocq(uri)` method resets the Rocq state for the specified document. Useful for resetting the proof state and forcing a document to reload its dependencies.
-
 `DocumentProofsResponse` and its relevant types are defined as such:
 
 ```typescript
@@ -332,6 +330,13 @@ export interface ProofBlock {
 export interface DocumentProofsResponse {
     proofs: ProofBlock[];
 }
+```
+
+The `resetRocq(uri)` method resets the Rocq state for the specified document. Useful for resetting the proof state and forcing a document to reload its dependencies.
+
+```typescript
+// * dependencies of document at uri just changed *
+const response: ResetRocqResponse = await api.resetRocq(uri);
 ```
 
 The `onProofStateChanged` event fires every time the proof state updates, e.g., when the user steps through a proof.
