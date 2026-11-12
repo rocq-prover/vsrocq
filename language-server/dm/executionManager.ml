@@ -263,7 +263,7 @@ let view_task = function
   | PSkip { id } | PExec { id } | PSkippedProofTerminator { id }
   | PQuery { id } | PBlock { id } -> `Local id
   | PDelegate { opener_id; terminator_id; tasks } ->
-      let first = id_of_first_task ~default:opener_id tasks in
+      let first = id_of_first_task ~default:terminator_id tasks in
       let last = id_of_last_task ~default:terminator_id tasks in
       `Remote(opener_id, first, last, terminator_id)
 
