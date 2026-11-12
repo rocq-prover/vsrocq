@@ -134,6 +134,8 @@ export default class GoalPanel {
     //
     // /////////////////////////////////////////////////////////////////////////////
     public static resetGoalPanel() {
+        GoalPanel.currentPv = undefined;
+        GoalPanel._onProofStateChanged.fire({ proof: null, messages: [] });
         if (GoalPanel.currentPanel) {
             Client.writeToVsrocqChannel("[GoalPanel] Resetting goal panel");
             GoalPanel.currentPanel._reset();

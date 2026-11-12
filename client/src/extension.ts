@@ -81,6 +81,21 @@ export function activate(context: ExtensionContext) {
         return client.sendRequest(req, params);
     };
 
+    const resetRocq = (uri: Uri) => {
+        const textDocument = TextDocumentIdentifier.create(uri.toString());
+        const params: ResetRocqRequest = { textDocument };
+        const req = new RequestType<
+            ResetRocqRequest,
+            ResetRocqResponse,
+            void
+        >("prover/resetRocq");
+        Client.writeToVsrocqChannel(uri.toString());
+        return client.sendRequest(req, params).then((res) => {
+            GoalPanel.resetGoalPanel();
+            return res;
+        });
+    };
+
     const rocqTM = new VsRocqToolchainManager();
     // Resolve only after the server is running and configuration changes are
     // forwarded. Settings updated once activate() resolves then reach the server
@@ -322,23 +337,9 @@ export function activate(context: ExtensionContext) {
         };
 
         registerVsrocqTextCommand("reset", (editor) => {
-            const uri = editor.document.uri;
-            const textDocument = TextDocumentIdentifier.create(uri.toString());
-            const params: ResetRocqRequest = { textDocument };
-            const req = new RequestType<
-                ResetRocqRequest,
-                ResetRocqResponse,
-                void
-            >("prover/resetRocq");
-            Client.writeToVsrocqChannel(uri.toString());
-            client.sendRequest(req, params).then(
-                (res) => {
-                    GoalPanel.resetGoalPanel();
-                },
-                (err) => {
-                    window.showErrorMessage(err);
-                },
-            );
+            resetRocq(editor.document.uri).catch((err) => {
+                window.showErrorMessage(err);
+            });
         });
         registerVsrocqTextCommand("query.search", (editor) =>
             launchQuery(editor, "search"),
@@ -559,6 +560,7 @@ Path: \`${rocqTM.getVsRocqTopPath()}\`
 
     const externalApi = {
         getDocumentProofs,
+        resetRocq,
         onProofStateChanged: GoalPanel.onProofStateChanged,
     };
 
