@@ -125,7 +125,7 @@ let hover_of_sentence ~printing pattern = function
         Language.Hover.get_hover_contents env sigma ref_or_by_not
       with e ->
         let e, info = Exninfo.capture e in
-        log.error (fun () -> Printf.sprintf "hover on %s failed, showing nothing: %s" pattern (Pp.string_of_ppcmds (CErrors.iprint (e, info))));
+        log.debug (fun () -> Printf.sprintf "hover on %s failed, showing nothing: %s" pattern (Pp.string_of_ppcmds (CErrors.iprint (e, info))));
         None
 
 let hover ~printing document pos =
