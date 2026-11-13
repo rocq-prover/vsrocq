@@ -104,6 +104,8 @@ Welcome to the VsRocq FAQ! This document aims to answer common questions and hel
     If you want to stay on your current language server version, also turn off
     [automatic updates](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_extension-auto-update)
     for the VsRocq extension. Otherwise VS Code updates it and the mismatch comes back.
+    To find which extension versions accept your language server version, see
+    [Extension and language server compatibility](compatibility.md).
 
 1.  **How do I use different Rocq versions for different projects?**
 
