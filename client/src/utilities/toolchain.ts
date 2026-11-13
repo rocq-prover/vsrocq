@@ -9,6 +9,7 @@ import { getConfigurationOption } from "../configuration";
 export enum ToolChainErrorCode {
     notFound = 1,
     launchError = 2,
+    noOpam = 3,
 }
 
 export interface ToolchainError {
@@ -37,7 +38,7 @@ export default class VsRocqToolchainManager implements Disposable {
         Client.writeToVsrocqChannel("[Toolchain] Searching for vsrocqtop");
         return new Promise(
             (resolve, reject: (reason: ToolchainError) => void) => {
-                this.vsrocqtopCmd().then((vsrocqtopPath) => {
+                this.vsrocqtopCmd().then(async (vsrocqtopPath) => {
                     if (vsrocqtopPath) {
                         Client.writeToVsrocqChannel(
                             "[Toolchain] Found path: " + vsrocqtopPath,
@@ -55,6 +56,21 @@ export default class VsRocqToolchainManager implements Disposable {
                         Client.writeToVsrocqChannel(
                             "[Toolchain] Did not find vsrocqtop path",
                         );
+                        const opam = await which("opam", { nothrow: true });
+                        if (!opam) {
+                            // If there's no opam then it is likely a new (less experienced) user, so
+                            // we recommend installing the Rocq Platform, instead of opam and doing the
+                            // longer route. The Rocq Platform includes Rocq and the language server.
+                            Client.writeToVsrocqChannel(
+                                "[Toolchain] Did not find opam",
+                            );
+                            reject({
+                                status: ToolChainErrorCode.noOpam,
+                                message:
+                                    "We recommend installing the Rocq Platform, which includes Rocq and the language server. Once installed, restart VS Code.",
+                            });
+                            return;
+                        }
                         reject({
                             status: ToolChainErrorCode.notFound,
                             message:

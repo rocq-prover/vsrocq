@@ -110,7 +110,7 @@ export function activate(context: ExtensionContext) {
                 case ToolChainErrorCode.notFound:
                     window
                         .showErrorMessage(
-                            "No language server found",
+                            "No Rocq language server found",
                             { modal: true, detail: err.message },
                             {
                                 title: "Install the VsRocq language server (Recommended for Rocq >= 8.18)",
@@ -134,6 +134,25 @@ export function activate(context: ExtensionContext) {
                                 commands.executeCommand(
                                     "extension.open",
                                     "coq-community.vscoq1",
+                                );
+                            }
+                        });
+                    break;
+
+                case ToolChainErrorCode.noOpam:
+                    window
+                        .showErrorMessage(
+                            "No Rocq language server nor opam found",
+                            { modal: true, detail: err.message },
+                            { title: "Open installation page", id: 0 },
+                        )
+                        .then((act) => {
+                            if (act?.id === 0) {
+                                commands.executeCommand(
+                                    "vscode.open",
+                                    Uri.parse(
+                                        "https://rocq-prover.org/install",
+                                    ),
                                 );
                             }
                         });
