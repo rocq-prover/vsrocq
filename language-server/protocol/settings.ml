@@ -132,17 +132,19 @@ module Goals = struct
   end
 
   module PrettyPrint = struct
-    
-    type t = String | Pp
+
+    type t = String | Pp | Structured
 
     let t_of_yojson = function
     | `String "String" -> String
     | `String "Pp" -> Pp
+    | `String "Structured" -> Structured
     | _ -> Yojson.json_error "invalid value"
 
     let yojson_of_t = function
     | String -> `String "String"
     | Pp -> `String "Pp"
+    | Structured -> `String "Structured"
 
   end
 
