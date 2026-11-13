@@ -70,8 +70,8 @@ let init_entry_state : state = { stack = []; top = [] }
 let make_entry ?close_name ?outline_info ?(children: entry list = []) entry_kind (range: Range.t) : entry =
   { entry_kind; close_name; outline_info; range; children }
 
-let entry_of_loc (raw: RawDocument.t) loc : entry option =
-  Some (make_entry ConstrSubexpression (RawDocument.range_of_loc raw loc))
+let entry_of_loc (range_of_loc: Loc.t -> Range.t) loc : entry option =
+  Some (make_entry ConstrSubexpression (range_of_loc loc))
 
 let entry_of_sentence ?(entry_kind = Indentation) (document: Document.document) (sentence: Document.sentence) : entry option =
   Some (make_entry entry_kind (Document.range_of_id document sentence.id))
@@ -296,26 +296,26 @@ let proof_delimiter_of_ast (ast: Synterp.vernac_control_entry) : proof_delimiter
   | Vernacexpr.VernacSynPure Vernacexpr.VernacEndSubproof -> Some ProofSubproofEnd
   | _ -> None
 
-let loc_entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
+let loc_entries_of_constr (range_of_loc: Loc.t -> Range.t) (e: Constrexpr.constr_expr) : entry list =
   match e.CAst.loc with
   | None -> []
   | Some loc ->
-    match entry_of_loc raw loc with
+    match entry_of_loc range_of_loc loc with
     | None -> []
     | Some entry -> [entry]
 
-let entries_of_whole_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
-  loc_entries_of_constr raw e
+let entries_of_whole_constr (range_of_loc: Loc.t -> Range.t) (e: Constrexpr.constr_expr) : entry list =
+  loc_entries_of_constr range_of_loc e
 
 (** Extracts folding entries from selected Gallina subexpressions that are useful
     fold points. *)
-let entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry list =
+let entries_of_constr (range_of_loc: Loc.t -> Range.t) (e: Constrexpr.constr_expr) : entry list =
   let open Constrexpr in
   let open Constrexpr_ops in
   let rec collect () acc e =
     let acc = match e.CAst.v with
       | CCases _ | CIf _ | CLambdaN _ | CLetIn _ ->
-        List.rev_append (loc_entries_of_constr raw e) acc
+        List.rev_append (loc_entries_of_constr range_of_loc e) acc
       | _ -> acc
     in
     fold_constr_expr_with_binders skip_binder collect () acc e
@@ -323,14 +323,14 @@ let entries_of_constr (raw: RawDocument.t) (e: Constrexpr.constr_expr) : entry l
   in
   List.rev (collect () [] e)
 
-let entries_of_constr_opt (raw: RawDocument.t) : Constrexpr.constr_expr option -> entry list = function
+let entries_of_constr_opt (range_of_loc: Loc.t -> Range.t) : Constrexpr.constr_expr option -> entry list = function
   | None -> []
-  | Some e -> entries_of_constr raw e
+  | Some e -> entries_of_constr range_of_loc e
 
-let entries_of_binders (raw: RawDocument.t) binders : entry list =
+let entries_of_binders (range_of_loc: Loc.t -> Range.t) binders : entry list =
   binders
   |> List.concat_map Utilities.constrs_of_local_binder
-  |> List.concat_map (entries_of_constr raw)
+  |> List.concat_map (entries_of_constr range_of_loc)
 
 let count_indent (s: string) : int option =
   let rec loop offset indent =
@@ -381,45 +381,45 @@ let indentation_entries_of_sentence (document: Document.document) (sentence: Doc
   loop [] [] lines
 
 (** Extracts folds from a record field or local definition declaration. *)
-let entries_of_local_decl (raw: RawDocument.t) : _ -> entry list = function
+let entries_of_local_decl (range_of_loc: Loc.t -> Range.t) : _ -> entry list = function
   | Vernacexpr.AssumExpr (_, binders, ty) ->
-    entries_of_binders raw binders @ entries_of_constr raw ty
+    entries_of_binders range_of_loc binders @ entries_of_constr range_of_loc ty
   | Vernacexpr.DefExpr (_, binders, body, ty_opt) ->
-    entries_of_binders raw binders
-    @ entries_of_constr raw body
-    @ entries_of_constr_opt raw ty_opt
+    entries_of_binders range_of_loc binders
+    @ entries_of_constr range_of_loc body
+    @ entries_of_constr_opt range_of_loc ty_opt
 
 (** Extracts folds from an inductive body, including constructor types and
     record fields. *)
-let entries_of_inductive (raw: RawDocument.t) (((_coercion, (_name, _univs)), (params, extra_params), rtype, ctors), _notations) : entry list =
-  let param_entries = entries_of_binders raw params in
-  let extra_param_entries = Option.cata (entries_of_binders raw) [] extra_params in
-  let rtype_entries = entries_of_constr_opt raw rtype in
+let entries_of_inductive (range_of_loc: Loc.t -> Range.t) (((_coercion, (_name, _univs)), (params, extra_params), rtype, ctors), _notations) : entry list =
+  let param_entries = entries_of_binders range_of_loc params in
+  let extra_param_entries = Option.cata (entries_of_binders range_of_loc) [] extra_params in
+  let rtype_entries = entries_of_constr_opt range_of_loc rtype in
   let ctor_entries =
     match ctors with
     | Vernacexpr.Constructors constructors ->
       List.concat_map (fun (_, (_name, ty)) ->
-        entries_of_whole_constr raw ty @ entries_of_constr raw ty
+        entries_of_whole_constr range_of_loc ty @ entries_of_constr range_of_loc ty
       ) constructors
     | Vernacexpr.RecordDecl (_, fields, _) ->
-      List.concat_map (fun (decl, _attrs) -> entries_of_local_decl raw decl) fields
+      List.concat_map (fun (decl, _attrs) -> entries_of_local_decl range_of_loc decl) fields
   in
   param_entries @ extra_param_entries @ rtype_entries @ ctor_entries
 
-let entries_of_recursive_defs raw defs =
+let entries_of_recursive_defs range_of_loc defs =
   List.concat_map (fun def ->
-    entries_of_binders raw def.Vernacexpr.binders
-    @ entries_of_constr raw def.Vernacexpr.rtype
-    @ entries_of_constr_opt raw def.Vernacexpr.body_def
+    entries_of_binders range_of_loc def.Vernacexpr.binders
+    @ entries_of_constr range_of_loc def.Vernacexpr.rtype
+    @ entries_of_constr_opt range_of_loc def.Vernacexpr.body_def
   ) defs
 
 [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
-let entries_of_fixpoint raw = function
-  | Vernacexpr.VernacFixpoint (_, fixes) -> entries_of_recursive_defs raw fixes
+let entries_of_fixpoint range_of_loc = function
+  | Vernacexpr.VernacFixpoint (_, fixes) -> entries_of_recursive_defs range_of_loc fixes
   | _ -> []
 [%%else]
-let entries_of_fixpoint raw = function
-  | Vernacexpr.VernacFixpoint (_, (_, fixes)) -> entries_of_recursive_defs raw fixes
+let entries_of_fixpoint range_of_loc = function
+  | Vernacexpr.VernacFixpoint (_, (_, fixes)) -> entries_of_recursive_defs range_of_loc fixes
   | _ -> []
 [%%endif]
 
@@ -427,31 +427,35 @@ let entries_of_fixpoint raw = function
     located terms. *)
 let entries_of_vernac_ast (document: Document.document) (sentence: Document.sentence) (ast: Synterp.vernac_control_entry) : entry list =
   let raw = Document.raw_document document in
+  (* The locations in [ast] are behind the sentence if an edit moved it, see
+     [Document.ast_shift] *)
+  let shift = sentence.ast_shift in
+  let range_of_loc loc = RawDocument.range_of_loc raw (Loc.shift_loc shift shift loc) in
   match ast.v.expr with
   | Vernacexpr.VernacSynPure pure ->
     begin match pure with
     | Vernacexpr.VernacDefinition (_, _, body) ->
       begin match body with
       | Vernacexpr.ProveBody (binders, ty) ->
-        entries_of_binders raw binders
-        @ entries_of_constr raw ty
+        entries_of_binders range_of_loc binders
+        @ entries_of_constr range_of_loc ty
       | Vernacexpr.DefineBody (binders, _, body, rest) ->
-        entries_of_binders raw binders
-        @ entries_of_constr raw body
-        @ entries_of_constr_opt raw rest
+        entries_of_binders range_of_loc binders
+        @ entries_of_constr range_of_loc body
+        @ entries_of_constr_opt range_of_loc rest
       end
     | Vernacexpr.VernacStartTheoremProof (_, proofs) ->
       List.concat_map (fun (_name_decl, (binders, ty)) ->
-        entries_of_binders raw binders
-        @ entries_of_whole_constr raw ty
-        @ entries_of_constr raw ty
+        entries_of_binders range_of_loc binders
+        @ entries_of_whole_constr range_of_loc ty
+        @ entries_of_constr range_of_loc ty
       ) proofs
     | Vernacexpr.VernacFixpoint _ as pure ->
-      entries_of_fixpoint raw pure
+      entries_of_fixpoint range_of_loc pure
     | Vernacexpr.VernacCoFixpoint (_, cofixes) ->
-      entries_of_recursive_defs raw cofixes
+      entries_of_recursive_defs range_of_loc cofixes
     | Vernacexpr.VernacInductive (_, inds) ->
-      List.concat_map (entries_of_inductive raw) inds
+      List.concat_map (entries_of_inductive range_of_loc) inds
       @ Utilities.option_to_list (entry_of_sentence document sentence)
     | _ -> []
     end
