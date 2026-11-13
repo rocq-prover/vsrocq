@@ -148,6 +148,33 @@ export interface ResetRocqRequest {
 
 export interface ResetRocqResponse {}
 
+export interface DebugFlagsRequest {}
+
+export interface DebugFlag {
+    name: string;
+    enabled: boolean;
+}
+
+export interface DebugFlagsResponse {
+    flags: DebugFlag[];
+}
+
+export interface ToggleDebugFlagRequest {
+    name: string;
+}
+
+export interface ToggleDebugFlagResponse {
+    enabled: boolean;
+}
+
+export interface ToggleOptionRequest {
+    option: string;
+}
+
+export interface ToggleOptionResponse {
+    value: boolean;
+}
+
 export interface DocumentProofsRequest {
     textDocument: TextDocumentIdentifier;
 }
