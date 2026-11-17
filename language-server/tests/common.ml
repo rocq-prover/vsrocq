@@ -154,14 +154,14 @@ let () = CheckingManager.(set_options {
   preempt = true;
 })
 
-let rec handle_dm_events ?(on_view=fun _ -> ()) n (events : DocumentManager.event Sel.Todo.t) st =
+let rec handle_dm_events ?(on_view=fun _ -> ()) ?(after_event=fun () -> ()) ?(idle=0.3) n (events : DocumentManager.event Sel.Todo.t) st =
   if n <= 0 then (Stdlib.Format.eprintf "handle_dm_events run out of steps:\nTodo = %a\n" (Sel.Todo.pp DocumentManager.pp_event) events; Stdlib.exit 1)
   else if Sel.Todo.is_empty events then st, events
     
   else begin
     (*Stdlib.Format.eprintf "waiting %a\n%!" Sel.(pp_todo DocumentManager.pp_event) events;*)
     Stdlib.flush_all ();
-    let (ready, remaining) = Sel.pop_timeout ~stop_after_being_idle_for:0.3 events in
+    let (ready, remaining) = Sel.pop_timeout ~stop_after_being_idle_for:idle events in
     match ready with
     | None -> st, events
     | Some ev ->
@@ -171,8 +171,9 @@ let rec handle_dm_events ?(on_view=fun _ -> ()) n (events : DocumentManager.even
         | { Types.state = None; events = events' } -> st, events'
         | { Types.state = Some (st, view); events = events' } -> on_view view; st, events'
       in
+      after_event ();
       let todo = Sel.Todo.add remaining new_events in
-      handle_dm_events ~on_view (n-1) todo st
+      handle_dm_events ~on_view ~after_event ~idle (n-1) todo st
   end
  
 
@@ -261,6 +262,11 @@ let handle_dm_events_views e st =
   let views = ref [] in
   let st, _ = handle_dm_events ~on_view:(fun v -> views := v :: !views) 100 e st in
   st, List.rev !views
+
+(* Like [handle_dm_events], calling [after_event] after each event and
+   stopping after [idle] seconds without events *)
+let handle_dm_events_with ~idle ~after_event e st =
+  fst @@ handle_dm_events ~after_event ~idle 1000 e st
 
 let handle_dm_events e st = fst @@ handle_dm_events 100 e st
   

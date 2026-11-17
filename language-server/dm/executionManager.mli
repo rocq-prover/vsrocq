@@ -45,6 +45,11 @@ val destroy : state -> unit
 val get_options : unit -> options
 val set_options : options -> unit
 val set_default_options : unit -> unit
+
+(** Returns the number of proof workers started whose end has not been
+    handled yet *)
+val running_proof_workers : unit -> int
+
 val invalidate : state -> sentence_id -> state
 
 (* val error : state -> sentence_id -> (Loc.t option * Pp.t) option
