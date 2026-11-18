@@ -126,6 +126,12 @@ let write_value_job link (x:Job.t) = write_value_gen link x
 
 let log_worker = Log.mk_log ("worker." ^ Job.name)
 
+(* A worker is flagged as such so that the universes it creates, which can be
+   sent to the master, do not clash with the ones of the master or of other
+   workers *)
+let flag_worker () =
+  Flags.async_proofs_worker_id := Printf.sprintf "%s:%d" Job.name (Unix.getpid ())
+
 let install_feedback_worker ~feedback_cleanup link =
   feedback_cleanup ();
   ignore(install_feedback (fun (rid,id,fb) -> write_value link (Job_update (Job.appendFeedback (rid, id) fb))))
@@ -204,6 +210,7 @@ let fork_worker : feedback_cleanup:feedback_cleanup -> int option ref -> (role *
     let pid = fork () in
     if pid = 0 then begin
         (* Children process *)
+        flag_worker ();
         dup2 null stdin;
         dup2 null stdout;
         close chan;
@@ -350,6 +357,7 @@ let handle_event = function
 type options = int
 
 let setup_plumbing port =
+  flag_worker ();
   try
     let open Unix in
     Log.worker_initialization_begins ();
