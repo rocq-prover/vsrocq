@@ -236,6 +236,17 @@ module Request = struct
 
   end
 
+  module UniversesParams = struct
+
+    type t = {
+      textDocument : VersionedTextDocumentIdentifier.t;
+      position : Position.t;
+      global : bool; (* the global graph rather than the one of the proof *)
+      subgraph : string list option; [@yojson.option] (* for the global graph *)
+    } [@@deriving yojson]
+
+  end
+
   module SearchParams = struct
 
     type t = {
@@ -321,6 +332,7 @@ module Request = struct
   | Check : CheckParams.t -> pp t
   | Locate : LocateParams.t -> pp t
   | Print : PrintParams.t -> pp t
+  | Universes : UniversesParams.t -> UniverseGraph.t t
   | Search : SearchParams.t -> unit t
   | DocumentState : DocumentStateParams.t -> DocumentStateResult.t t
   | DocumentProofs : DocumentProofsParams.t -> DocumentProofsResult.t t
@@ -351,6 +363,9 @@ module Request = struct
     | "prover/print" ->
       let+ params = Lsp.Import.Json.message_params params PrintParams.t_of_yojson in
       Pack (Print params)
+    | "prover/universes" ->
+      let+ params = Lsp.Import.Json.message_params params UniversesParams.t_of_yojson in
+      Pack (Universes params)
     | "prover/documentState" ->
       let+ params = Lsp.Import.Json.message_params params DocumentStateParams.t_of_yojson in
       Pack (DocumentState params)
@@ -378,6 +393,7 @@ module Request = struct
       | Check _ -> yojson_of_pp resp
       | Locate _ -> yojson_of_pp resp
       | Print _ -> yojson_of_pp resp
+      | Universes _ -> UniverseGraph.yojson_of_t resp
       | Search _ -> yojson_of_unit resp
       | DocumentState _ -> DocumentStateResult.(yojson_of_t resp)
       | DocumentProofs _ -> DocumentProofsResult.(yojson_of_t resp)

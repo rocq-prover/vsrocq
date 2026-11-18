@@ -1,0 +1,189 @@
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    color: var(--vscode-foreground);
+    background-color: var(--vscode-editor-background);
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+}
+
+.toolbar select,
+.toolbar input {
+    color: var(--vscode-input-foreground);
+    background-color: var(--vscode-input-background);
+    border: 1px solid var(--vscode-input-border, transparent);
+    padding: 2px 4px;
+}
+
+.toolbar .subgraph {
+    flex: 1;
+    min-width: 200px;
+}
+
+.toolbar .subgraph input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.toolbar .filter {
+    width: 120px;
+}
+
+.toolbar .count {
+    opacity: 0.7;
+}
+
+button {
+    color: var(--vscode-button-secondaryForeground);
+    background-color: var(--vscode-button-secondaryBackground);
+    border: none;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+button.selected {
+    color: var(--vscode-button-foreground);
+    background-color: var(--vscode-button-background);
+}
+
+.message {
+    padding: 12px;
+    opacity: 0.8;
+}
+
+.graph {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+}
+
+.graph-canvas {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+}
+
+.graph-canvas:active {
+    cursor: grabbing;
+}
+
+.graph-controls {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.edge {
+    fill: none;
+    stroke: var(--vscode-foreground);
+    stroke-opacity: 0.6;
+    stroke-width: 1.2;
+}
+
+.edge-large {
+    stroke-dasharray: 5 3;
+}
+
+.arrow {
+    fill: var(--vscode-foreground);
+    fill-opacity: 0.6;
+}
+
+.node {
+    cursor: pointer;
+}
+
+.node rect {
+    fill: var(--vscode-editorWidget-background);
+    stroke: var(--vscode-editorWidget-border, var(--vscode-foreground));
+    stroke-width: 1;
+}
+
+.node text {
+    fill: var(--vscode-editor-foreground);
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+.node-flexible rect {
+    stroke-dasharray: 4 2;
+}
+
+.node-algebraic text {
+    font-style: italic;
+}
+
+.node-located text {
+    text-decoration: underline;
+}
+
+.node-match rect {
+    fill: var(--vscode-editor-findMatchHighlightBackground);
+}
+
+.node-selected rect {
+    stroke: var(--vscode-focusBorder);
+    stroke-width: 2;
+}
+
+.dimmed {
+    opacity: 0.25;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 4px 6px;
+    border-top: 1px solid var(--vscode-panel-border);
+    font-family: var(--vscode-font-family);
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.legend-large {
+    letter-spacing: 1px;
+}
+
+.legend-flexible {
+    border: 1px dashed var(--vscode-foreground);
+    padding: 0 4px;
+}
+
+.legend-algebraic {
+    font-style: italic;
+}
+
+.legend-located {
+    text-decoration: underline;
+}

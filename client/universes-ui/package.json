@@ -1,0 +1,22 @@
+{
+  "name": "universes-ui",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "vite",
+    "build": "tsc && vite build",
+    "build:dev": "tsc && vite build --mode development",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "elkjs": "0.9.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/vscode-webview": "^1.57.5",
+    "@vitejs/plugin-react": "^6.0.3"
+  }
+}

@@ -17,6 +17,7 @@
     "pp-display",
     "goal-view-ui",
     "search-ui",
+    "universes-ui",
     "."
   ],
   "dependencies": {
@@ -386,6 +387,18 @@
         "category": "Rocq",
         "title": "Printing: Reset flags",
         "description": "Use the Printing flags set in the current document again"
+      },
+      {
+        "command": "extension.rocq.universes.show",
+        "title": "Show Universes Graph",
+        "description": "Show the universes and constraints of the proof at the cursor as a graph",
+        "category": "Rocq"
+      },
+      {
+        "command": "extension.rocq.universes.print",
+        "title": "Print Universes Graph",
+        "description": "Show the global universe graph at the cursor",
+        "category": "Rocq"
       },
       {
         "command": "extension.rocq.interpretToPoint",
