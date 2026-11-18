@@ -168,6 +168,7 @@ After installation and activation of the extension:
 * `"vsrocq.goals.display": Tabs | List` -- Decide whether to display goals in separate tabs or as a list of collapsibles (defaults to `List`)
 * `"vsrocq.goals.messages.full": bool` -- A toggle to include warnings and errors in the proof view (defaults to `true`)
 * `"vsrocq.goals.maxDepth": int` -- A setting to determine at which point the goal display starts elliding. Defaults to 17. (since version >= 2.1.7)
+* `"vsrocq.query.printAboutInGoalView": bool` -- Show the output of the **Rocq: Print** and **Rocq: About** commands in the messages of the goal view, instead of in a new tab of the query panel (defaults to `false`)
 
 #### Proof checking
 * `"vsrocq.proof.mode": 0 | 1` -- Decide whether documents should be checked using the classic navigation commands (`0`, Manual) or continuously (`1`, Continuous). Defaults to `0`.

@@ -320,7 +320,7 @@ export default class SearchViewProvider implements vscode.WebviewViewProvider {
                         }
 
                         if (type === "print") {
-                            const params: CheckRocqRequest = {
+                            const params: PrintRocqRequest = {
                                 textDocument,
                                 pattern,
                                 position,

@@ -54,6 +54,10 @@ const defaultState = {
     queryPanelState: defaultQueryPanelState,
 };
 
+//the pattern of a print query is the rest of the Print command
+const tabTitle = (type: QueryType, pattern: string) =>
+    type === QueryType.print ? "Print " + pattern : type + ": " + pattern;
+
 const app = () => {
     const [history, setHistory] = useState<string[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
@@ -314,7 +318,7 @@ const app = () => {
         const newTab: QueryTab[] = [
             {
                 id: id,
-                title: type + ": " + pattern,
+                title: tabTitle(type, pattern),
                 pattern: pattern,
                 result: result,
                 type: type,
@@ -367,7 +371,7 @@ const app = () => {
                         id: id,
                         error: undefined,
                         result: initResult(type),
-                        title: type + ": " + pattern,
+                        title: tabTitle(type, pattern),
                     };
                 }
                 return tab;
