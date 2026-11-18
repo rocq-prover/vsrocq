@@ -39,7 +39,8 @@ type tab = { st : Dm.DocumentManager.state; visible : bool }
 
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
 
-let max_memory_usage  = ref 4000000000
+(* in megabytes, 4GB do not fit a 31 bits integer (wasm) *)
+let max_memory_usage_mb = ref 4000
 
 let full_diagnostics = ref false
 let full_messages = ref false
@@ -133,7 +134,7 @@ let do_configuration settings =
   };
   full_diagnostics := settings.diagnostics.full;
   full_messages := settings.goals.messages.full;
-  max_memory_usage := settings.memory.limit * 1000000000;
+  max_memory_usage_mb := settings.memory.limit * 1000;
   Dm.CheckingManager.set_options {
     Dm.CheckingManager.check_mode = settings.proof.mode;
     block_on_first_error = settings.proof.block;
@@ -339,14 +340,14 @@ let purge_invisible_tabs () =
 
 let consider_purge_invisible_tabs () =
   let usage = current_memory_usage () in
-  if usage > !max_memory_usage (* 4G *) then begin
+  if usage / 1000000 > !max_memory_usage_mb then begin
     purge_invisible_tabs ();
     let vst = get_init_state () in
     Vernacstate.unfreeze_full_state vst;
     Vernacstate.Interp.invalidate_cache ();
     Gc.compact ();
     let new_usage = current_memory_usage () in
-    log.info (fun () -> Printf.sprintf "memory footprint %d -> %d (limit %d)" usage new_usage !max_memory_usage);
+    log.info (fun () -> Printf.sprintf "memory footprint %d -> %d (limit %dMB)" usage new_usage !max_memory_usage_mb);
   end
 
 let textDocumentDidClose params =
