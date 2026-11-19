@@ -49,7 +49,16 @@ let log = Dm.Log.mk_log "lspManager"
 
 let conf_request_id = max_int
 
-let server_info = InitializeResult.create_serverInfo
+[%%import "vsrocq_config.mlh"]
+
+(* lsp 1.28 moved InitializeResult.create_serverInfo to ServerInfo.create *)
+[%%if lsp < (1, 28, 0)]
+let create_server_info = InitializeResult.create_serverInfo
+[%%else]
+let create_server_info = ServerInfo.create
+[%%endif]
+
+let server_info = create_server_info
   ~name:"vsrocq-language-server"
   ~version:"2.5.1"
   ()
@@ -311,13 +320,22 @@ let textDocumentDidOpen params =
     update_view uri st;
     []
 
+(* lsp 1.28 split TextDocumentContentChangeEvent into a partial change (with
+   a range) and a whole document change (without), we only handle the former *)
+[%%if lsp < (1, 28, 0)]
+let mk_text_edit TextDocumentContentChangeEvent.{ range; text } =
+  Option.get range, text
+[%%else]
+let mk_text_edit = function
+  | `TextDocumentContentChangePartial TextDocumentContentChangePartial.{ range; text } ->
+    range, text
+  | `TextDocumentContentChangeWholeDocument _ -> invalid_arg "option is None"
+[%%endif]
+
 let textDocumentDidChange params =
   let Lsp.Types.DidChangeTextDocumentParams.{ textDocument; contentChanges } = params in
   let uri = textDocument.uri in
   let@ { st; visible } = with_document "textDocumentDidChange" uri in
-  let mk_text_edit TextDocumentContentChangeEvent.{ range; text } =
-    Option.get range, text
-  in
   let text_edits = List.map mk_text_edit contentChanges in
   let st, events = Dm.DocumentManager.apply_text_edits st text_edits in
   replace_state (DocumentUri.to_path uri) st visible;
@@ -456,13 +474,20 @@ let documentFoldingRange params =
     let folding_ranges = Dm.DocumentManager.get_folding_ranges st in
     Ok(Some folding_ranges)
 
+(* lsp 1.28 made the result of SelectionRange optional *)
+[%%if lsp < (1, 28, 0)]
+let selection_ranges l = l
+[%%else]
+let selection_ranges l = Some l
+[%%endif]
+
 let documentSelectionRanges params =
   let Lsp.Types.SelectionRangeParams.{ textDocument = { uri }; positions } = params in
   match Hashtbl.find_opt states (DocumentUri.to_path uri) with
-  | None -> log.debug (fun () -> "[documentSelectionRanges] ignoring event on non existent document"); Ok []
+  | None -> log.debug (fun () -> "[documentSelectionRanges] ignoring event on non existent document"); Ok (selection_ranges [])
   | Some { st } ->
     log.debug (fun () -> "[documentSelectionRanges] getting selection ranges");
-    Ok (List.map (fun pos -> Dm.DocumentManager.get_selection_range st pos) positions)
+    Ok (selection_ranges (List.map (fun pos -> Dm.DocumentManager.get_selection_range st pos) positions))
 
 let documentSymbol params =
   let Lsp.Types.DocumentSymbolParams.{ textDocument = {uri} } = params in
@@ -601,6 +626,13 @@ let dispatch_request : type a. a Request.Client.t -> (a,error) result * events =
   | SetPrintingOption params -> rocqtopSetPrintingOption params
   | ResetPrintingOptions params -> rocqtopResetPrintingOptions params
 
+(* lsp 1.28 gave the Initialized notification its (empty) parameters *)
+[%%if lsp < (1, 28, 0)]
+let is_initialized = function Lsp.Client_notification.Initialized -> true | _ -> false
+[%%else]
+let is_initialized = function Lsp.Client_notification.Initialized _ -> true | _ -> false
+[%%endif]
+
 let dispatch_std_notification =
   let open Lsp.Client_notification in function
   | TextDocumentDidOpen params -> log_notification "textDocument/didOpen";
@@ -615,7 +647,7 @@ let dispatch_std_notification =
     textDocumentDidClose params
   | ChangeConfiguration params -> log_notification "workspace/didChangeConfiguration";
     workspaceDidChangeConfiguration params
-  | Initialized -> []
+  | n when is_initialized n -> []
   | Exit ->
     do_exit ()
   | UnknownNotification _ | _ -> log.debug (fun () -> "Received unknown notification"); []
