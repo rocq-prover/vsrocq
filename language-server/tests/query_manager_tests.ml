@@ -54,13 +54,17 @@ let%test_unit "dune interaction: project nested below workspace" =
   in
   let build = Stdlib.Filename.concat project "_build" in
   let cwd = Unix.getcwd () in
+  let rec remove_tree path =
+    match (Unix.lstat path).Unix.st_kind with
+    | Unix.S_DIR ->
+      Stdlib.Array.iter (fun name -> remove_tree (Stdlib.Filename.concat path name))
+        (Stdlib.Sys.readdir path);
+      Unix.rmdir path
+    | _ -> Unix.unlink path
+  in
   Stdlib.Fun.protect ~finally:(fun () ->
     Unix.chdir cwd;
-    if Stdlib.Sys.file_exists build then begin
-      Stdlib.Array.iter (fun name -> Stdlib.Sys.remove (Stdlib.Filename.concat build name))
-        (Stdlib.Sys.readdir build);
-      Unix.rmdir build
-    end;
+    if Stdlib.Sys.file_exists build then remove_tree build;
     Stdlib.Sys.remove (Stdlib.Filename.concat project "dune-project");
     Stdlib.Sys.remove (Stdlib.Filename.concat project "A.v");
     Unix.rmdir project;
