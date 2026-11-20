@@ -4,6 +4,7 @@ Option\.
 List\.
 Int\.
 Unix\.
+Yojson\.
 Lsp\.
 Memprof_limits\.Token\.
 Str\.
@@ -33,6 +34,7 @@ Future\.create_delegate
 Constrexpr_ops\.fold_constr_expr_with_binders
 
 # Ours #######################
+Dm\.DuneInteraction\.source_of_rules\.rule_of_yojson # ppx decoder, not Rocq state
 Protocol\.LspWrapper\.
 Protocol\.Printing\.
 Protocol\.PrintingOptions\.\(is_empty\|set\)$
