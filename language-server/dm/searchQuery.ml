@@ -42,16 +42,24 @@ let interp_search_restriction = ComSearch.interp_search_restriction
 let adapt_pr_search f = f
 [%%endif]
 
+let search_output_name_only () =
+  match Goptions.get_option_value ["Search"; "Output"; "Name"; "Only"] with
+  | Some read -> (match read () with Goptions.BoolValue b -> b | _ -> false)
+  | None -> false
+
 let interp_search ~id env sigma s r =
+  let name_only = search_output_name_only () in
   let pr_search ref _kind env sigma c =
-    let pr = pr_global ref in
-    let open Impargs in
-    let impls = implicits_of_global ref in
-    let impargs = select_stronger_impargs impls in
-    let impargs = List.map binding_kind_of_status impargs in
-    let pc = pr_ltype_env env sigma ~impargs c in
-    let name = pp_of_rocqpp pr in
-    let statement = pp_of_rocqpp pc in
+    let name = pp_of_rocqpp (pr_global ref) in
+    let statement =
+      if name_only then pp_of_rocqpp (Pp.mt ())
+      else
+        let open Impargs in
+        let impls = implicits_of_global ref in
+        let impargs = select_stronger_impargs impls in
+        let impargs = List.map binding_kind_of_status impargs in
+        pp_of_rocqpp (pr_ltype_env env sigma ~impargs c)
+    in
     Queue.push { id; name; statement } query_results_queue
   in
   let r = interp_search_restriction r in
