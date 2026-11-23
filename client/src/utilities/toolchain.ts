@@ -1,5 +1,5 @@
 import { exec } from "node:child_process";
-import { workspace } from "vscode";
+import { ExtensionContext, workspace } from "vscode";
 import { Disposable } from "vscode-languageclient";
 import { ServerOptions } from "vscode-languageclient/node";
 import which from "which";
@@ -25,6 +25,11 @@ export const parseRocqVersion = (output: string) => {
     return match ? match[1] : undefined;
 };
 
+// The documents handled by the language server
+export const documentSelector = [{ scheme: "file", language: "rocq" }];
+
+export const platform = () => `${process.arch} ${process.platform}`;
+
 export default class VsRocqToolchainManager implements Disposable {
     private _vsrocqtopPath: string = "";
     private _rocqVersion: string = "";
@@ -32,6 +37,9 @@ export default class VsRocqToolchainManager implements Disposable {
     private _rocqPath: string = "";
 
     public dispose(): void {}
+
+    // Commands depending on the platform (see web/toolchain.ts)
+    public registerCommands(_context: ExtensionContext): void {}
 
     public intialize(): Promise<void> {
         Client.writeToVsrocqChannel("[Toolchain] Searching for vsrocqtop");

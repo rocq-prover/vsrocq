@@ -61,6 +61,8 @@ import {
 } from "./protocol/types";
 import { QUICKFIX_COMMAND, RocqWarningQuickFix } from "./QuickFixProvider";
 import VsRocqToolchainManager, {
+    documentSelector,
+    platform,
     ToolchainError,
     ToolChainErrorCode,
 } from "./utilities/toolchain";
@@ -97,6 +99,7 @@ export function activate(context: ExtensionContext) {
     };
 
     const rocqTM = new VsRocqToolchainManager();
+    rocqTM.registerCommands(context);
     // Resolve only after the server is running and configuration changes are
     // forwarded. Settings updated once activate() resolves then reach the server
     // before any document is checked.
@@ -243,7 +246,7 @@ export function activate(context: ExtensionContext) {
 | VsRocq Extension Version   | ${clean_strings(extensions.getExtension("rocq-prover.vsrocq")?.packageJSON.version)} |
 | VsRocqTop Version | ${clean_strings(serverInfo?.version)} |
 | VsRocqTop Path  | \`${clean_strings(rocqTM.getVsRocqTopPath())}\` |
-| OS               | ${process.arch} ${process.platform} |
+| OS               | ${platform()} |
 | VSCode Version | ${version} |
 `;
     };
@@ -273,7 +276,7 @@ export function activate(context: ExtensionContext) {
         const config = getConfigurationOption();
 
         let clientOptions: LanguageClientOptions = {
-            documentSelector: [{ scheme: "file", language: "rocq" }],
+            documentSelector,
             initializationOptions: config,
         };
 
