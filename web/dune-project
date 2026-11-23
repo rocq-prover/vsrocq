@@ -1,0 +1,22 @@
+(lang dune 3.21)
+(name vsrocq-language-server-web)
+(license LGPL-2.1-only)
+(authors "The VsRocq development team")
+(maintainers "The VsRocq development team")
+(source (github rocq-prover/vsrocq))
+(generate_opam_files true)
+
+(package
+ (name vsrocq-language-server-web)
+ (synopsis "The VsRocq language server compiled to WebAssembly")
+ (description "The VsRocq language server compiled with wasm_of_ocaml, to run in a Web Worker
+(e.g. in VS Code for the web) or a node worker thread. It uses the libraries,
+plugins and .vo files of the Rocq installed in the same switch: plugins are
+loaded with Dynlink. Proof delegation is not available.")
+ (depends
+  vsrocq-language-server
+  rocq-web
+  zarith_stubs_js
+  (js_of_ocaml (>= 6.5))
+  (js_of_ocaml-ppx (>= 6.5))
+  (wasm_of_ocaml-compiler (>= 6.5))))
