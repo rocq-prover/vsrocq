@@ -35,7 +35,9 @@ let get_init_state () =
   | Some st -> st
   | None -> CErrors.anomaly Pp.(str "Initial state not available")
 
-type tab = { st : Dm.DocumentManager.state; visible : bool }
+(* the URI is kept since it can't be rebuilt from the path when its scheme
+   is not file (e.g. in VS Code for the web) *)
+type tab = { uri : DocumentUri.t; st : Dm.DocumentManager.state; visible : bool }
 
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
 
@@ -239,7 +241,11 @@ let update_view ?(update=Dm.Types.full_view_update) uri st =
     if update.diagnostics then publish_diagnostics uri st;
   )
 
-let replace_state path st visible = Hashtbl.replace states path { st; visible}
+let replace_state path st visible =
+  let uri = match Hashtbl.find_opt states path with
+    | Some { uri } -> uri
+    | None -> DocumentUri.of_path path in
+  Hashtbl.replace states path { uri; st; visible }
 
 (* Every handler that acts on a document starts by looking it up in [states].
    When the document is unknown the event is logged and dropped; what "dropped"
@@ -260,10 +266,9 @@ let with_document_request handler uri f = with_document_or ~default:(document_do
 let log_notification method_ = log.debug (fun () -> "Received notification: " ^ method_)
 
 let run_documents () =
-  let interpret_doc_in_bg path { st : Dm.DocumentManager.state ; visible } events =
+  let interpret_doc_in_bg path { uri; st : Dm.DocumentManager.state ; visible } events =
       let st = Dm.DocumentManager.reset_to_top st in
       let (st, events') = Dm.DocumentManager.interpret_in_background st in
-      let uri = DocumentUri.of_path path in
       replace_state path st visible;
       update_view uri st;
       let events' = inject_dm_events (uri, events') in
@@ -272,9 +277,8 @@ let run_documents () =
   Hashtbl.fold interpret_doc_in_bg states []
 
 let reset_observe_ids () =
-  let reset_doc_observe_id path {st : Dm.DocumentManager.state; visible} =
+  let reset_doc_observe_id path { uri; st : Dm.DocumentManager.state; visible } =
     let st = Dm.DocumentManager.reset_to_top st in
-    let uri = DocumentUri.of_path path in
     replace_state path st visible;
     update_view uri st
   in
@@ -299,7 +303,7 @@ let open_new_document uri text =
   let st, events = try Dm.DocumentManager.init vst ~opts:(Coqargs.injection_commands local_args) uri ~text with
     e -> raise e
   in
-  Hashtbl.add states (DocumentUri.to_path uri) { st ; visible = true; };
+  Hashtbl.add states (DocumentUri.to_path uri) { uri; st ; visible = true; };
   update_view uri st;
   inject_dm_events (uri, events)
 
