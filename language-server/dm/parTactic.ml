@@ -172,7 +172,9 @@ let interp_par ~pstate ~info ast ~abstract ~with_end_tac:_ = interp_par ~pstate 
 let interp_par = interp_par
 [%%endif]
 
-let () = ComTactic.set_par_implementation interp_par
+let () =
+  if DelegationManager.delegation_available then
+    ComTactic.set_par_implementation interp_par
 
 module TacticWorkerProcess = struct
   type options = TacticWorker.options

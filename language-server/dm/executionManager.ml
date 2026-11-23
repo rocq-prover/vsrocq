@@ -18,8 +18,6 @@ open Types
 
 let log = Log.mk_log "executionManager"
 
-let () = Memprof_limits.start_memprof_limits ()
-
 let success vernac_st = Success (Some vernac_st)
 let error loc qf msg vernac_st = Failure ((loc,msg), qf, (Some vernac_st))
 let error_no_resiliency loc qf msg = Failure ((loc,msg), qf, None)
@@ -130,7 +128,14 @@ let get_id_of_executed_task task =
 
 let options = ref default_options
 
-let set_options o = options := o
+let set_options o =
+  let o =
+    match o.delegation_mode with
+    | DelegateProofsToWorkers _ when not DelegationManager.delegation_available ->
+        log.info (fun () -> "proof delegation is not available, checking proofs in master");
+        { o with delegation_mode = CheckProofsInMaster }
+    | _ -> o in
+  options := o
 let set_default_options () = options := default_options
 let is_diagnostics_enabled () = !options.enableDiagnostics
 

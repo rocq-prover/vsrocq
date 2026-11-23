@@ -69,8 +69,7 @@ type event =
 
 type events = event Sel.Event.t list
 
-let lsp : event Sel.Event.t =
-  Sel.On.httpcle ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" Unix.stdin (function
+let decode_lsp_message = function
     | Ok buff ->
       begin
         log.debug (fun () -> "UI req ready");
@@ -89,15 +88,21 @@ let lsp : event Sel.Event.t =
         | exn -> log.error (fun () -> Printf.sprintf "cannot read from the client, exiting: %s" (Printexc.to_string exn))
         end;
         (* do not remove this line otherwise the server stays running in some scenarios *)
-        exit 0)
+        exit 0
 
+(* The I/O with the client is set by [init] *)
+let lsp_input : event Sel.Event.t option ref = ref None
+let lsp () =
+  match !lsp_input with
+  | Some e -> e
+  | None -> CErrors.anomaly Pp.(str "LspManager not initialized")
+
+let output : (string -> unit) ref = ref (fun _ -> assert false)
 
 let output_json obj =
   let msg  = Yojson.Safe.to_string ~std:true obj in
-  let size = String.length msg in
-  let s = Printf.sprintf "Content-Length: %d\r\n\r\n%s" size msg in
   log.debug (fun () -> "sent: " ^ Yojson.Safe.pretty_to_string ~std:true obj);
-  ignore(Unix.write_substring Unix.stdout s 0 (String.length s)) (* TODO ERROR *)
+  !output msg
 
 let output_notification notif =
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notif
@@ -635,9 +640,9 @@ let dispatch_notification =
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function
-  | Receive None -> [lsp]
+  | Receive None -> [lsp ()]
   | Receive (Some rpc) ->
-    lsp :: (* the event is recurrent *)
+    lsp () :: (* the event is recurrent *)
     begin try
       let json = Jsonrpc.Packet.yojson_of_t rpc in
       log.debug (fun () -> "received: " ^ Yojson.Safe.pretty_to_string ~std:true json);
@@ -712,6 +717,8 @@ let pr_event fmt = function
   | Notification _ -> Format.fprintf fmt "notif"
   | LogEvent _ -> Format.fprintf fmt "debug"
 
-let init () =
+let init ~input ~output:o =
+  lsp_input := Some (input decode_lsp_message);
+  output := o;
   init_state := Some (Vernacstate.freeze_full_state ());
-  [lsp]
+  [lsp ()]

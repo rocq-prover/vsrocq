@@ -49,6 +49,9 @@ module type Job = sig
   val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * Loc.t option * Quickfix.t list * Pp.t) -> update_request
 end
 
+(** [false] if workers cannot be spawned (e.g. wasm) *)
+val delegation_available : bool
+
 type job_handle
 
 val cancel_job : job_handle -> unit
