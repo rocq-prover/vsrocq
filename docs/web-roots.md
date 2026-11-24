@@ -291,7 +291,13 @@ Changes to `manifest.json` (written by `make-web-root.py`):
 ## Open questions
 
 - **Size of Rocq Platform roots**, and whether to split them (a root per
-  pick, or layered roots: a base Rocq root plus one per library).
+  pick, or layered roots: a base Rocq root plus one per library). For
+  reference, a root with Stdlib, mathcomp-analysis (and the mathcomp it
+  needs, Elpi and Hierarchy Builder) and Iris is 1312 files, 398 MB
+  (198 MB gzipped): mathcomp 132 MB, mathcomp-analysis 79 MB, Elpi and HB
+  68 MB (of which 8 MB of examples), Stdlib 46 MB, Rocq plugins 23 MB, the
+  programs 21 MB, Iris 16 MB, stdpp 10 MB. A Corelib root is 44 MB. In
+  the browser, only 6 MB are fetched at startup either way.
 - **Windows.** A root built on Linux, run by node on Windows: paths in
   `findlib.conf` (option (a)), or the `on_windows` path handling of the
   runtime (option (b)). This needs testing.

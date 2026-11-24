@@ -62,8 +62,11 @@ def main():
     # Rocq plugins and their dependencies
     pkgs = [l.split()[0] for l in run("ocamlfind", "list").splitlines() if l.strip()]
     roots = [p for p in pkgs if p.startswith("rocq-runtime.plugins.")]
+    # plugins can be subpackages (e.g. rocq-elpi.elpi, whose parent requires
+    # nothing), so look at all the packages; the libraries of the language
+    # server also require Rocq, but they are linked in the server
     for p in pkgs:
-        if "." in p or p.startswith("rocq-runtime"):
+        if p.startswith(("rocq-runtime", "vsrocq-language-server")):
             continue
         req = run("ocamlfind", "query", "-r", "-format", "%p", p).split()
         if "rocq-runtime.kernel" in req or "rocq-runtime.vernac" in req:
