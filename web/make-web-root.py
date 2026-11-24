@@ -18,19 +18,107 @@ It writes manifest.json at the root of the output:
   args      the command line of the server
   prefetch  files to fetch before starting the server
   packages  the versions of the installed opam packages
+  unloadable  the .vo and .cma files that cannot be loaded with 31-bit
+            integers (see check_int31), with the reason
+
+wasm_of_ocaml represents OCaml integers as 31-bit i31ref values. A file
+written by a native (63-bit) program that contains a larger integer, e.g.
+max_int in a .vo file or a large literal in the bytecode of a plugin,
+fails to load with "input_value: integer too large". Such files are
+reported, and --strict makes them an error.
 
 Usage: make-web-root.py [--prefix PREFIX] OUTDIR
 """
-import argparse, json, os, re, shutil, subprocess, sys
+import argparse, json, os, re, shutil, struct, subprocess, sys
 
 def run(*cmd):
     return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
+
+# OCaml's Marshal format (runtime/caml/intext.h)
+MAGIC_SMALL, MAGIC_BIG, MAGIC_COMPRESSED = 0x8495A6BE, 0x8495A6BF, 0x8495A6BD
+INT31 = 1 << 30
+
+def large_ints_in_marshal(buf, pos):
+    """Scan the marshaled value starting at pos; return (end, n) where n is
+    the number of integers that do not fit in 31 bits."""
+    magic = struct.unpack_from(">I", buf, pos)[0]
+    if magic == MAGIC_SMALL:
+        pos += 20
+    elif magic == MAGIC_BIG:
+        pos += 32
+    else:
+        raise ValueError("compressed marshaled data" if magic == MAGIC_COMPRESSED
+                         else "not marshaled data")
+    todo, n = 1, 0  # values still to read
+    while todo:
+        todo -= 1
+        c = buf[pos]; pos += 1
+        if c >= 0x80:                          # small block
+            todo += (c >> 4) & 0x7
+        elif c >= 0x40:                        # small int
+            pass
+        elif c >= 0x20:                        # small string
+            pos += c & 0x1F
+        elif c in (0x02, 0x03):                # int32, int64
+            w = 4 if c == 0x02 else 8
+            v = int.from_bytes(buf[pos:pos + w], "big", signed=True); pos += w
+            n += not (-INT31 <= v < INT31)
+        elif c in (0x00, 0x04): pos += 1       # int8, shared8
+        elif c in (0x01, 0x05): pos += 2       # int16, shared16
+        elif c == 0x06: pos += 4               # shared32
+        elif c == 0x14: pos += 8               # shared64
+        elif c == 0x08:                        # block32
+            todo += struct.unpack_from(">I", buf, pos)[0] >> 10; pos += 4
+        elif c == 0x13:                        # block64
+            todo += struct.unpack_from(">Q", buf, pos)[0] >> 10; pos += 8
+        elif c in (0x09, 0x0A, 0x15):          # string8, string32, string64
+            w = {0x09: 1, 0x0A: 4, 0x15: 8}[c]
+            pos += w + int.from_bytes(buf[pos:pos + w], "big")
+        elif c in (0x0B, 0x0C): pos += 8       # double
+        elif c in (0x0D, 0x0E): pos += 1 + 8 * buf[pos]  # double array8
+        elif c in (0x07, 0x0F):                # double array32
+            pos += 4 + 8 * struct.unpack_from(">I", buf, pos)[0]
+        elif c in (0x16, 0x17):                # double array64
+            pos += 8 + 8 * struct.unpack_from(">Q", buf, pos)[0]
+        elif c in (0x12, 0x18, 0x19):          # custom blocks
+            e = buf.index(0, pos); ident = buf[pos:e]; pos = e + 1
+            if c == 0x18:                      # custom_len
+                pos += 4 + 8 + struct.unpack_from(">Q", buf, pos + 4)[0]
+            elif ident == b"_j": pos += 8      # Int64
+            elif ident == b"_i": pos += 4      # Int32
+            elif ident == b"_n": pos += 1 + (4 if buf[pos] == 1 else 8)  # Nativeint
+            else:
+                raise ValueError(f"unknown custom block {ident!r}")
+        else:
+            raise ValueError(f"unknown code {c:#x}")
+    return pos, n
+
+def check_int31(path):
+    """None if the marshaled data in the file (.vo segments, .cma
+    descriptors and constants) only contains integers fitting in 31 bits,
+    else the reason."""
+    buf = open(path, "rb").read()
+    n, pos = 0, 0
+    magics = (MAGIC_SMALL.to_bytes(4, "big"), MAGIC_BIG.to_bytes(4, "big"))
+    while True:
+        starts = [i for i in (buf.find(m, pos) for m in magics) if i >= 0]
+        if not starts:
+            break
+        start = min(starts)
+        try:
+            pos, k = large_ints_in_marshal(buf, start)
+            n += k
+        except (ValueError, IndexError, struct.error):
+            pos = start + 4  # not a marshaled value after all
+    return f"{n} integers do not fit in 31 bits" if n else None
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--prefix", default=os.environ.get("OPAM_SWITCH_PREFIX"),
                     help="the prefix of the opam switch (default: $OPAM_SWITCH_PREFIX)")
     ap.add_argument("--dry-run", action="store_true", help="only print the sizes")
+    ap.add_argument("--strict", action="store_true",
+                    help="fail if a file cannot be loaded with 31-bit integers")
     ap.add_argument("out")
     a = ap.parse_args()
     if not a.prefix:
@@ -116,6 +204,17 @@ def main():
                 prefetch += [f for f in files if os.path.dirname(os.path.join(prefix, f)) == d
                              and f.endswith(".cma")]
 
+    # files that a program with 31-bit integers cannot load
+    unloadable = {}
+    for rel in sorted(files):
+        if rel.endswith((".vo", ".cma")):
+            reason = check_int31(os.path.join(prefix, rel))
+            if reason:
+                unloadable[rel] = reason
+    for rel, reason in unloadable.items():
+        print(f"warning: {rel} cannot be loaded with 31-bit integers: {reason}",
+              file=sys.stderr)
+
     srv = "lib/vsrocq-language-server-web"
     packages = dict(l.split()[:2] for l in run(
         "opam", "list", "--installed", "--short", "--columns=name,version").splitlines()
@@ -133,12 +232,17 @@ def main():
         "prefetch": sorted(set(prefetch)),
         "packages": packages,
         "files": dict(sorted(files.items())),
+        "unloadable": unloadable,
     }
 
     total = sum(files.values())
     pre = sum(files[f] for f in manifest["prefetch"])
     print(f"{len(files)} files, {total / 1e6:.1f} MB; prefetch {len(manifest['prefetch'])} files, "
           f"{pre / 1e6:.1f} MB")
+    if unloadable:
+        print(f"{len(unloadable)} files cannot be loaded with 31-bit integers", file=sys.stderr)
+        if a.strict:
+            sys.exit(1)
     if a.dry_run:
         return
     os.makedirs(a.out, exist_ok=True)

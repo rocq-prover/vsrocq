@@ -172,6 +172,11 @@ node $R/rocq_dep.bc.wasm.js -coqlib $(rocq c -where) file.v
 vsrocq-make-web-root /tmp/root     # a trimmed copy of the switch, 43 MB
 ```
 
+It warns about the `.vo` and `.cma` files that contain an integer that
+does not fit in 31 bits, which cannot be loaded (see "Known limitations"),
+and lists them in `manifest.json` (`unloadable`). `--strict` makes them an
+error.
+
 - `web/test/`: the LSP smoke test in a page (`serve.py` serves the root
   like GitHub Pages, with CORS only, and the page cross-origin isolated).
 - `web/test/rocq-c/run.sh`: compiles small files using Elpi, Hierarchy
