@@ -147,11 +147,95 @@ vsrocq-make-web-root /tmp/root     # a trimmed copy of the switch, 43 MB
   continuous mode: in manual mode, the default, only the errors found
   while parsing (e.g. a missing library) are reported until you step.
 
-The extension needs its webviews built (`npm run package` in `client/`,
-or `npm run build --workspaces`). In VS Code for the web, set
-`vsrocq.web.root` to the URL of the root (the directory containing
-`manifest.json`). `vsrocq.web.debug` logs the fetched files in the browser
-console.
+## Trying it as a user
+
+The extension is not on the Marketplace in this form, and no `.vsix` is
+involved: VS Code for the web loads an extension from a folder served over
+HTTP(S) (`client/`, whose `package.json` has the `browser` entry). You need:
+
+1. **The extension, built**:
+
+   ```sh
+   cd client && npm install && npm run build --workspaces && npm run build:web
+   ```
+
+2. **A root**, the URL of a directory containing `manifest.json`, served
+   with `Access-Control-Allow-Origin: *`. Either:
+   - locally: `vsrocq-make-web-root ~/vsrocq-root`, then
+     `python3 web/test/serve.py web/test ~/vsrocq-root`. The root is
+     `http://127.0.0.1:8001/`; port 8000 serves the test page, which you
+     don't need here;
+   - on GitHub Pages: push this branch to a GitHub repository, set
+     *Settings → Pages → Source* to *GitHub Actions*, and run the workflow
+     *Publish the web opam root* (Actions tab). The root is
+     `https://<owner>.github.io/<repo>/rocq-dev/`.
+
+3. **VS Code for the web with the extension**, either:
+   - **locally** (this is what the tests do):
+
+     ```sh
+     npx @vscode/test-web --coi --browser=chromium \
+       --extensionDevelopmentPath=$PWD/client /path/to/a/folder/of/v/files
+     ```
+
+     A browser opens on VS Code for the web, with that folder as its
+     workspace;
+   - **on vscode.dev** (not tested yet; see
+     [Test your web extension in vscode.dev](https://code.visualstudio.com/api/extension-guides/web-extensions#test-your-web-extension-in-vscode.dev)):
+     serve `client/` over HTTPS with a `Cross-Origin-Resource-Policy:
+     cross-origin` header (vscode.dev is cross-origin isolated, and the
+     extension starts a worker from that origin). With
+     [mkcert](https://github.com/FiloSottile/mkcert):
+
+     ```sh
+     mkcert -install && mkcert localhost      # localhost.pem, localhost-key.pem
+     cd client
+     echo '{"headers":[{"source":"**/*","headers":[{"key":"Cross-Origin-Resource-Policy","value":"cross-origin"}]}]}' > serve.json
+     npx serve --cors -l 5000 --ssl-cert ../localhost.pem --ssl-key ../localhost-key.pem
+     ```
+
+     Open <https://vscode.dev/?vscode-coi>, run **Developer: Install
+     Extension From Location...**, and give it `https://localhost:5000`.
+     Open a folder (or a GitHub repository) containing `.v` files. The
+     browser may ask for permission to access the local network
+     (`localhost`).
+
+4. **Open a folder that sets `vsrocq.web.root`.** The usual setup is a Rocq
+   project that commits the root in its `.vscode/settings.json` (as
+   `client/test-web/workspace` does):
+
+   ```json
+   {
+     "vsrocq.web.root": "https://<owner>.github.io/<repo>/rocq-dev/"
+   }
+   ```
+
+   - In **desktop VS Code**, with the VsRocq extension of this branch
+     installed as usual, nothing changes: the desktop extension ignores
+     `vsrocq.web.root` and runs the `vsrocqtop` of your opam switch
+     (`vsrocq.path`), with the libraries installed there.
+   - In **VS Code for the web**, the same folder (for example the GitHub
+     repository opened at `https://vscode.dev/github/<owner>/<repo>?vscode-coi`)
+     uses the root: Rocq, its libraries and plugins all come from there. The
+     `.v` and `.vo` files of the folder are visible to Rocq, and
+     **Rocq: Compile the project (web)** builds the `.vo` files (see "The
+     workspace" below). If VS Code opens the folder in Restricted Mode,
+     trust it: the extension does not declare support for untrusted
+     workspaces.
+
+   The project must be compatible with the Rocq of the root: the root
+   provides only what was installed in its switch (here Rocq's Corelib, no
+   Stdlib or other libraries). A project that needs more publishes its own
+   root, from a switch with those packages installed.
+
+   A root can also be set for all folders in the user settings. Then open a
+   `.v` file. The "VsRocq" output channel says which root is used.
+   `vsrocq.web.debug` logs the fetched files in the browser console. The
+   extension starts in manual mode: step with Alt+↓, or set
+   `"vsrocq.proof.mode": 1` for continuous checking.
+
+`?vscode-coi` (or `--coi` for `@vscode/test-web`) makes the page
+cross-origin isolated, which interruption needs (see below).
 
 ## The workspace
 
