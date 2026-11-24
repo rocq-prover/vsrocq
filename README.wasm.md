@@ -85,17 +85,19 @@ These are separate PRs. Until they are merged, use these branches.
   events and backend are in `sel.unix`; `sel.js` provides a backend and a
   driver (`Sel_js.run`) handling the events from the JavaScript event loop.
   Also adds the non-blocking `pop_ready`/`wait_ready`.
-- **Elpi**, branch `wasm-portable-depth` (on v4.1.1): the indexing depth
+- **Elpi**, branch `wasm-portable-depth` (on v4.1.1) of
+  [LPCIC/elpi](https://github.com/LPCIC/elpi/tree/wasm-portable-depth): the indexing depth
   of the inputs of builtin predicates is `2^30-1` instead of `max_int`.
   It is part of the compiled programs that rocq-elpi stores in `.vo`
   files, so native `.vo` files using Elpi (Elpi's apps, Hierarchy Builder,
   hence mathcomp) could not be read with 31-bit integers.
 - **micromega-plugin**
   ([rocq-community/micromega-plugin](https://github.com/rocq-community/micromega-plugin)),
-  branch `web`: hashes are masked with `0x3FFFFFFF` (the plugin used to be
-  part of Rocq, where the same change is made): the constant `0x7FFFFFFF`
-  does not fit in 31 bits, so the plugin (needed by mathcomp) could not be
-  loaded.
+  not published yet: in `src/persistent_cache.ml`, hashes are masked with
+  `0x3FFFFFFF` instead of `0x7FFFFFFF`, and `pcache_version` is bumped
+  (the plugin used to be part of Rocq, where the same change is made). The
+  constant `0x7FFFFFFF` does not fit in 31 bits, so the plugin (needed by
+  mathcomp) could not be loaded.
 
 ### Changes in vsrocq
 
@@ -132,6 +134,22 @@ opam pin add -n vsrocq-language-server ./language-server
 opam pin add -n vsrocq-language-server-web ./web
 opam install vsrocq-language-server-web
 ```
+
+For libraries beyond Corelib (Stdlib, mathcomp, Iris, ...), add the Rocq
+opam repositories to the switch (its Rocq is a development version), the
+patched Elpi and micromega-plugin, then install them:
+
+```sh
+opam repo add rocq-released https://rocq-prover.org/opam/released --this-switch
+opam repo add rocq-core-dev https://rocq-prover.org/opam/core-dev --this-switch
+opam repo add rocq-extra-dev https://rocq-prover.org/opam/extra-dev --this-switch
+opam pin add -n elpi.4.1.1 "git+https://github.com/LPCIC/elpi.git#wasm-portable-depth"
+git clone https://github.com/rocq-community/micromega-plugin.git   # then apply the patch above
+opam pin add -n rocq-micromega-plugin.dev ./micromega-plugin
+opam install rocq-mathcomp-analysis rocq-iris
+```
+
+`web/test/rocq-c/run.sh` then checks that they load.
 
 `.github/workflows/web-root.yml` does the same on GitHub Actions and
 publishes the root on GitHub Pages.
