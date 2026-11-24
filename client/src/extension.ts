@@ -49,6 +49,8 @@ import {
     sendTogglePrintingOption,
 } from "./printingOptions";
 import {
+    DebugFlagsRequest,
+    DebugFlagsResponse,
     DocumentProofsRequest,
     DocumentProofsResponse,
     ErrorAlertNotification,
@@ -58,6 +60,10 @@ import {
     ResetRocqResponse,
     RocqLogMessage,
     SearchRocqResult,
+    ToggleDebugFlagRequest,
+    ToggleDebugFlagResponse,
+    ToggleOptionRequest,
+    ToggleOptionResponse,
 } from "./protocol/types";
 import { QUICKFIX_COMMAND, RocqWarningQuickFix } from "./QuickFixProvider";
 import VsRocqToolchainManager, {
@@ -400,6 +406,92 @@ export function activate(context: ExtensionContext) {
                 viewColumn: ViewColumn.Two,
                 preserveFocus: true,
             });
+        });
+
+        // Toggling a flag overrides it, for the sentences executed afterwards
+        // in all the documents, whatever they set; toggling it again removes
+        // the override.
+        const reportToggle = (what: string, override: boolean | null) => {
+            const message =
+                override === null
+                    ? `${what} follows the documents again`
+                    : `${what} is now ${override ? "on" : "off"} (overridden)`;
+            Client.writeToVsrocqChannel(message);
+            window.showInformationMessage(message);
+        };
+        const reportToggleError = (what: string) => (err: any) => {
+            window.showErrorMessage(
+                `Could not toggle ${what}: ${err?.message ?? err}`,
+            );
+        };
+        const toggleOption = (option: string) => {
+            const req = new RequestType<
+                ToggleOptionRequest,
+                ToggleOptionResponse,
+                void
+            >("prover/toggleOption");
+            client
+                .sendRequest(req, { option })
+                .then(
+                    (res) => reportToggle(option, res.override),
+                    reportToggleError(option),
+                );
+        };
+        registerVsrocqCommand("toggle.ltacBacktrace", () =>
+            toggleOption("Ltac Backtrace"),
+        );
+        registerVsrocqCommand("toggle.mangleNames", () =>
+            toggleOption("Mangle Names"),
+        );
+        registerVsrocqCommand("toggle.searchOutputNameOnly", () =>
+            toggleOption("Search Output Name Only"),
+        );
+        registerVsrocqCommand("toggle.suggestProofUsing", () =>
+            toggleOption("Suggest Proof Using"),
+        );
+        registerVsrocqCommand("toggle.typeclassesDebug", () =>
+            toggleOption("Typeclasses Debug"),
+        );
+        registerVsrocqCommand("toggle.debug", async () => {
+            const flagsReq = new RequestType<
+                DebugFlagsRequest,
+                DebugFlagsResponse,
+                void
+            >("prover/debugFlags");
+            let flags;
+            try {
+                flags = (await client.sendRequest(flagsReq, {})).flags;
+            } catch (err) {
+                reportToggleError("Debug")(err);
+                return;
+            }
+            const pick = await window.showQuickPick(
+                flags.map((flag) => ({
+                    label: flag.name,
+                    description:
+                        (flag.enabled ? "on" : "off") +
+                        (flag.overridden ? " (overridden)" : ""),
+                })),
+                {
+                    placeHolder: "Debug flag to toggle",
+                    matchOnDescription: true,
+                },
+            );
+            if (!pick) {
+                return;
+            }
+            const what = `Debug "${pick.label}"`;
+            const req = new RequestType<
+                ToggleDebugFlagRequest,
+                ToggleDebugFlagResponse,
+                void
+            >("prover/toggleDebugFlag");
+            client
+                .sendRequest(req, { name: pick.label })
+                .then(
+                    (res) => reportToggle(what, res.override),
+                    reportToggleError(what),
+                );
         });
         registerVsrocqTextCommand("showManual", () => {
             const url = getRocqdocUrl(rocqTM.getRocqVersion());
