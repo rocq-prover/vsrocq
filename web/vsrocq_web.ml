@@ -37,6 +37,11 @@ let handle_event ev =
 
 let () =
   Coqinit.init_ocaml ();
+  (* Plugins are bytecode, loaded with Dynlink, which by default refuses
+     units declaring external primitives (e.g. atdgen-runtime, needed by
+     rocq-elpi). Native Dynlink does not check this, so Rocq never asks:
+     allow them; a missing primitive is reported when linking the plugin. *)
+  Dynlink.allow_unsafe_modules true;
   let cwd = Unix.getcwd () in
   let opts = Args.get_local_args (Args.Server_start cwd) in
   Coqinit.init_runtime ~usage:(Args.usage ()) opts;

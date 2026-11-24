@@ -85,6 +85,17 @@ These are separate PRs. Until they are merged, use these branches.
   events and backend are in `sel.unix`; `sel.js` provides a backend and a
   driver (`Sel_js.run`) handling the events from the JavaScript event loop.
   Also adds the non-blocking `pop_ready`/`wait_ready`.
+- **Elpi**, branch `wasm-portable-depth` (on v4.1.1): the indexing depth
+  of the inputs of builtin predicates is `2^30-1` instead of `max_int`.
+  It is part of the compiled programs that rocq-elpi stores in `.vo`
+  files, so native `.vo` files using Elpi (Elpi's apps, Hierarchy Builder,
+  hence mathcomp) could not be read with 31-bit integers.
+- **micromega-plugin**
+  ([rocq-community/micromega-plugin](https://github.com/rocq-community/micromega-plugin)),
+  branch `web`: hashes are masked with `0x3FFFFFFF` (the plugin used to be
+  part of Rocq, where the same change is made): the constant `0x7FFFFFFF`
+  does not fit in 31 bits, so the plugin (needed by mathcomp) could not be
+  loaded.
 
 ### Changes in vsrocq
 
@@ -101,6 +112,10 @@ These are separate PRs. Until they are merged, use these branches.
 - `web/`: the web server and its JavaScript glue, the root maker.
 - LspManager keeps the URI of the documents (it rebuilt `file:` URIs).
 - `client/`: the `browser` entry.
+- The web server, like `rocq c` in `rocq-web`, allows plugins whose
+  bytecode declares external primitives (`Dynlink.allow_unsafe_modules`):
+  bytecode `Dynlink` refuses them by default, native `Dynlink` does not
+  check. atdgen-runtime, needed by rocq-elpi, declares one.
 
 ## Building the switch
 
@@ -141,6 +156,10 @@ vsrocq-make-web-root /tmp/root     # a trimmed copy of the switch, 43 MB
 
 - `web/test/`: the LSP smoke test in a page (`serve.py` serves the root
   like GitHub Pages, with CORS only, and the page cross-origin isolated).
+- `web/test/rocq-c/run.sh`: compiles small files using Elpi, Hierarchy
+  Builder, mathcomp, mathcomp-analysis and Iris with the wasm `rocq c`,
+  under node, and checks their output. A file is skipped when its library
+  is not installed in the switch.
 - `client/test-web/`: the extension in VS Code for the web
   (`@vscode/test-web --headless`), on a root served on port 8001: a smoke
   test, and the compilation of a small project. Their folders set
@@ -275,8 +294,12 @@ worker clears it when it receives a message while idle. Rocq then raises
   e.g. `do 100000000 idtac` (`Tacticals.tclDO`).
 - **A JS stack overflow kills the worker** (a `RangeError`, not an OCaml
   `Stack_overflow`), e.g. on deep non-tail recursion in Ltac.
-- **`Corelib.Numbers.Cyclic.Int63.Sint63Axioms` can't be loaded**: it
-  contains the primitive integer `min_int`, which does not fit in 31 bits.
+- **`.vo` files containing an integer that does not fit in 31 bits can't
+  be loaded** (`input_value: integer too large`): in Corelib
+  `Numbers.Cyclic.Int63.Sint63Axioms`, in Stdlib `Numbers.Cyclic.Int63.Uint63`
+  and `Sint63` (primitive integers such as `min_int`). With the patches
+  above, no other `.vo` file of Stdlib, mathcomp, mathcomp-analysis, Elpi,
+  Hierarchy Builder, stdpp or Iris contains one.
 - **Compiling the project** needs `_RocqProject` at the root of the first
   workspace folder; only `-Q`, `-R`, `-I`, `-arg` and the `.v` files are
   used. Project-local OCaml plugins can't be built.
