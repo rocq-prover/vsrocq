@@ -9,6 +9,7 @@ import ResultSection from "./ResultSection";
 type ResultPageProps = {
     tab: QueryTab;
     queryTypeSelectHandler: (e: any) => void;
+    printFormSelectHandler: (e: any) => void;
     onTextInput: (e: any) => void; //FormEventHandler<HTMLInputElement>
     searchFieldKeyPressHandler: KeyboardEventHandler<HTMLInputElement>;
     toggleCollapsedHandler: (index: number) => void;
@@ -20,6 +21,7 @@ const page: FunctionComponent<ResultPageProps> = (props) => {
     const {
         tab,
         queryTypeSelectHandler,
+        printFormSelectHandler,
         onTextInput,
         searchFieldKeyPressHandler,
         toggleCollapsedHandler,
@@ -27,7 +29,7 @@ const page: FunctionComponent<ResultPageProps> = (props) => {
         copyNameHandler,
     } = props;
 
-    const { pattern, error, result, type } = tab;
+    const { pattern, error, result, type, printForm, focus } = tab;
 
     const errorSection = error ? <Error error={error} /> : null;
 
@@ -37,8 +39,11 @@ const page: FunctionComponent<ResultPageProps> = (props) => {
                 tabInput={{
                     pattern,
                     type,
+                    printForm,
                 }}
+                focus={focus}
                 queryTypeSelectHandler={queryTypeSelectHandler}
+                printFormSelectHandler={printFormSelectHandler}
                 onTextInput={onTextInput}
                 searchFieldKeyPressHandler={searchFieldKeyPressHandler}
             />

@@ -25,12 +25,16 @@ import Client from "../client";
 interface Query {
     type: string;
     pattern: string;
+    run: boolean;
 }
 
 export default class SearchViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "vsrocq.search";
 
     private _view?: vscode.WebviewView;
+    // whether the webview can handle queries: it is loaded again each time
+    // the view is shown, as it is not retained when hidden
+    private _ready = false;
     private _queries: Query[] = [];
 
     constructor(
@@ -46,6 +50,18 @@ export default class SearchViewProvider implements vscode.WebviewViewProvider {
         _token: vscode.CancellationToken,
     ) {
         this._view = webviewView;
+        this._ready = false;
+        webviewView.onDidChangeVisibility(() => {
+            if (!webviewView.visible) {
+                this._ready = false;
+            }
+        });
+        webviewView.onDidDispose(() => {
+            if (this._view === webviewView) {
+                this._view = undefined;
+                this._ready = false;
+            }
+        });
 
         webviewView.webview.options = {
             // Allow scripts in the webview
@@ -81,9 +97,10 @@ export default class SearchViewProvider implements vscode.WebviewViewProvider {
         this._view?.webview.postMessage({ command: "expandAll" });
     }
 
-    public launchQuery(pattern: string, type: string) {
-        const query = { pattern: pattern, type: type };
-        if (this._view && this._queries.length === 0) {
+    //[run] false opens the query in a new tab without running it
+    public launchQuery(pattern: string, type: string, run = true) {
+        const query = { pattern: pattern, type: type, run: run };
+        if (this._view && this._ready && this._queries.length === 0) {
             this._view?.webview.postMessage({ command: "query", query: query });
         } else {
             this._queries.push(query);
@@ -163,7 +180,9 @@ export default class SearchViewProvider implements vscode.WebviewViewProvider {
                 // Add more switch case statements here as more webview message commands
                 // are created within the webview context (i.e. inside media/main.js)
                 case "ready":
+                    this._ready = true;
                     this.dequeueQueries();
+                    return;
 
                 case "rocqQuery":
                     if (version && uri && position) {
@@ -320,7 +339,7 @@ export default class SearchViewProvider implements vscode.WebviewViewProvider {
                         }
 
                         if (type === "print") {
-                            const params: CheckRocqRequest = {
+                            const params: PrintRocqRequest = {
                                 textDocument,
                                 pattern,
                                 position,

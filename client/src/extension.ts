@@ -307,26 +307,35 @@ export function activate(context: ExtensionContext) {
         );
         context.subscriptions.push(statusBar);
 
-        const launchQuery = (editor: TextEditor, type: string) => {
+        //either the user selection or if no selection the word under the cursor,
+        //null for multiline selections
+        const queryTextAtCursor = (editor: TextEditor) => {
             const selection = editor.selection;
             const { end, start } = selection;
             if (end.line !== start.line) {
-                return;
-            } //don't allow for multiline selections
-            //either use the user selection or if no selection than infer the word under the cursor
+                return null;
+            }
             const wordAtCurorRange =
                 end.character !== start.character
                     ? selection
                     : editor.document.getWordRangeAtPosition(end);
+            return wordAtCurorRange
+                ? editor.document.getText(wordAtCurorRange)
+                : undefined;
+        };
+
+        const launchQuery = (editor: TextEditor, type: string) => {
+            const value = queryTextAtCursor(editor);
+            if (value === null) {
+                return;
+            } //don't allow for multiline selections
             //focus on the query panel
             commands.executeCommand("vsrocq.search.focus");
             //open a prompt with the given word as default
             window
                 .showInputBox({
                     prompt: type.charAt(0).toUpperCase() + type.slice(1),
-                    value: wordAtCurorRange
-                        ? editor.document.getText(wordAtCurorRange)
-                        : undefined,
+                    value: value,
                 })
                 .then((queryText) => {
                     //launch the query
@@ -353,9 +362,17 @@ export function activate(context: ExtensionContext) {
         registerVsrocqTextCommand("query.locate", (editor) =>
             launchQuery(editor, "locate"),
         );
-        registerVsrocqTextCommand("query.print", (editor) =>
-            launchQuery(editor, "print"),
-        );
+        //opens a print query in the query panel, where the form of Print is
+        //chosen, without running it
+        registerVsrocqTextCommand("query.print", (editor) => {
+            const pattern = queryTextAtCursor(editor) ?? "";
+            //once the panel has the focus, for its query field to get it
+            commands
+                .executeCommand("vsrocq.search.focus")
+                .then(() =>
+                    searchProvider.launchQuery(pattern, "print", false),
+                );
+        });
         registerVsrocqTextCommand("addQueryTab", () => searchProvider.addTab());
         registerVsrocqTextCommand("collapseAllQueries", () =>
             searchProvider.collapseAll(),

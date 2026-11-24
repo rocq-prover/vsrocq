@@ -154,6 +154,8 @@ val check : state -> Position.t -> pattern:string -> (pp,error) Result.t
 val locate : state -> Position.t -> pattern:string -> (pp, error) Result.t
 
 val print : state -> Position.t -> pattern:string -> (pp, error) Result.t
+(** runs the command [Print pattern] at the given position, eg. for [foo],
+    [Options] or [Assumptions foo] *)
 
 
 module Internal : sig

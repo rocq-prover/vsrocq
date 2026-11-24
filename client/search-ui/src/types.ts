@@ -55,12 +55,18 @@ export type QueryResultType =
 export interface Query {
     pattern: string;
     type: QueryType;
+    // false to open the tab without running the query
+    run?: boolean;
 }
 export interface QueryTab {
     id: string;
     title: string;
     pattern: string;
     type: QueryType;
+    // for a print query, the label of its Print form (see printForms.ts)
+    printForm?: string;
+    // set to a new value to focus the query field of the tab
+    focus?: string;
     result: QueryResultType;
     error?: QueryError;
     expanded?: boolean;
