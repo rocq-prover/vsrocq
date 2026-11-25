@@ -369,7 +369,6 @@ let setup_plumbing port =
     install_feedback_worker ~feedback_cleanup:(fun _ -> ()) link;
     install_debug_worker link;
     (* Unix.read_value does not exist, we use Sel *)
-    Sel.System_event.set_backend Sel_unix.backend;
     match Sel.(pop Todo.(add empty [Sel_unix.On.ocaml_value read_from (fun x -> x)])) with
     | Ok (job : Job.t), _ -> ((fun x -> write_value link (Job_update x)), job)
     | Error exn, _ ->

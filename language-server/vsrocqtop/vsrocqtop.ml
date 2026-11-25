@@ -25,7 +25,6 @@ let output msg =
   ignore(Unix.write_substring Unix.stdout s 0 (String.length s)) (* TODO ERROR *)
 
 let loop () =
-  Sel.System_event.set_backend Sel_unix.backend;
   let events = LspManager.init ~input ~output in
   let rec loop (todo : LspManager.event Sel.Todo.t) =
     (*log fun () -> "looking for next step";*)

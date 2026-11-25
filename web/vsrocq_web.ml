@@ -48,7 +48,6 @@ let () =
   Safe_typing.allow_delayed_constants := true;
   Loadpath.load_vos_libraries := true;
   Dm.ProverThread.set_external_interrupt interrupted;
-  Sel.System_event.set_backend Sel_js.backend;
   Sel_js.run handle_event (Sel.Todo.add Sel.Todo.empty (LspManager.init ~input ~output));
   Js.Unsafe.set Js.Unsafe.global "vsrocq" (object%js
     method push (s : Js.js_string Js.t) =
