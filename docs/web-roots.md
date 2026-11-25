@@ -10,8 +10,8 @@ static files: the language server, `rocq c`, `rocq dep`, the `.vo` files
 and the plugins of the packages of an opam switch. `vsrocq-make-web-root`
 makes one from a switch.
 
-The proposal is to publish web roots, for every Rocq release and for every
-Rocq Platform package pick, at a standard location with an index. VsRocq
+The proposal is to publish a web root for every Rocq Platform release, at a
+standard location with an index. VsRocq
 then offers one whenever no local Rocq is available:
 
 - on desktop, when no `vsrocqtop` is found;
@@ -46,14 +46,17 @@ runtime that runs in the browser, which is a different thing.
 
 ### What is published
 
-One web root per toolchain that users actually install:
+One web root per **Rocq Platform release**: an opam switch with the
+packages of that release (Rocq, Stdlib, and the libraries and plugins of
+the Platform), e.g. `platform-2025.08.0`. If a release offers several
+package picks (e.g. for two Rocq versions), each pick gets its own root.
+This is what users actually install, and what newcomers want: `From
+Stdlib Require Import ZArith.` just works.
 
-- **each Rocq release**: an opam switch with `rocq-core` at that version
-  and nothing else (Corelib only), e.g. `rocq-9.1.0`;
-- **each Rocq Platform package pick**: an opam switch with the packages of
-  that pick (Rocq, Stdlib, and the libraries and plugins of the Platform),
-  e.g. `platform-2025.08.0`. These are what most users want: `From Stdlib
-  Require Import ZArith.` just works.
+No roots are published for bare Rocq releases (Corelib only). A Corelib
+root is still useful for testing, and CI builds one (`rocq-dev`), but it
+is not in the standard index. A project that needs a newer Rocq than the
+latest Platform release needs a local installation, or a custom index.
 
 Each root is built by CI from an opam switch, with `vsrocq-make-web-root`,
 and is **immutable**: a fix produces a new root, with a new `id` (see
@@ -67,8 +70,8 @@ The roots live under one standard base URL, owned by the Rocq project
 
 ```
 <base>/index.json
-<base>/rocq-9.1.0/manifest.json, ...
 <base>/platform-2025.08.0/manifest.json, ...
+<base>/platform-2025.01.0/manifest.json, ...
 ```
 
 `index.json` lists the roots and what is needed to choose between them,
@@ -83,9 +86,9 @@ are illustrative):
       "id": "…", "rocq": "9.0.0", "platform": "2025.08.0",
       "packages": { "rocq-core": "9.0.0", "rocq-stdlib": "9.0.0", "…": "…" },
       "size": 312000000, "recommended": true },
-    { "name": "rocq-9.1.0", "url": "rocq-9.1.0/",
-      "id": "…", "rocq": "9.1.0", "packages": { "…": "…" },
-      "size": 44000000 }
+    { "name": "platform-2025.01.0", "url": "platform-2025.01.0/",
+      "id": "…", "rocq": "9.0.0", "platform": "2025.01.0",
+      "packages": { "…": "…" }, "size": 290000000 }
   ]
 }
 ```
@@ -106,7 +109,8 @@ The root must suit the project. VsRocq chooses, in order:
    "9.0"}`, `rocq-mathcomp-ssreflect`) select the roots that provide those
    packages at suitable versions. This reuses what the project already
    declares for opam. Nothing new is declared for web roots.
-3. **The recommended root** of the index (the latest Rocq Platform pick).
+3. **The recommended root** of the index (the latest Rocq Platform
+   release).
 
 When no root satisfies the constraints, VsRocq says so (e.g. "this project
 needs `rocq-equations`, which no published web root provides") and offers
@@ -129,7 +133,7 @@ When VsRocq starts and finds no `vsrocqtop` (neither `vsrocq.path` nor the
   hashes, and starts the server. A cached root starts with no network
   access.
 - *Choose another…* opens a quick pick listing the roots of the index,
-  with their Rocq version, Platform pick, size, and whether they satisfy
+  with their Rocq version, Platform release, size, and whether they satisfy
   the project's opam constraints.
 - *How to install Rocq* opens the installation instructions (the Rocq
   Platform). Installing Rocq is still the recommended path for regular
@@ -206,8 +210,9 @@ workspace mirror of the web build is not needed, and **Rocq: Compile the
 project** can write `.vo` files in place.
 
 Cons: the whole root is downloaded before the first start. That is fine
-for a Corelib root (44 MB), but a Rocq Platform root is much larger (to be
-measured), while a session typically reads a small fraction of it.
+for a Corelib root (44 MB), but a Rocq Platform root is several hundred
+MB (see [Smaller roots](#smaller-roots-without-opaque-proofs)), while a
+session typically reads a small fraction of it.
 
 ### Option (b): lazy loading in node
 
@@ -252,11 +257,147 @@ workers, which `lazyfs.js` uses, but node does not. It would block on
 
 ### Recommendation
 
-Start with (a), for Corelib roots, since it is simple. Move to (b) before
-publishing Rocq Platform roots, whose size makes a full download a poor
+Start with (a), since it is simple, and test it with the Corelib root.
+Move to (b) before the standard index goes public: the published roots
+are all Rocq Platform roots, whose size makes a full download a poor
 first experience. (b) also unifies desktop and web: one `lazyfs.js`,
-backed by a disk cache on desktop and by the browser's HTTP cache on the
-web.
+backed by a disk cache on desktop and by a browser cache on the web (see
+[Caching](#caching-lazy-loading-with-a-persistent-cache)).
+
+## Caching: lazy loading with a persistent cache
+
+Today, `lazyfs.js` fetches a file when it is opened, with a synchronous
+`XMLHttpRequest`, and keeps it in memory for the session. Across sessions
+it relies on the browser's HTTP cache, which synchronous XHRs do use.
+GitHub Pages serves every file with `Cache-Control: max-age=600` and an
+`ETag`, so after 10 minutes each file costs a revalidation round trip (a
+`304`) on its next use, and the browser may evict the files at any time.
+
+There is no ready-made implementation to adopt instead:
+
+- [ZenFS](https://github.com/zen-fs/core) (formerly BrowserFS) has a
+  `Fetch` backend driven by an `index.json`, like our manifest. Its cache
+  is an in-memory map. Its synchronous reads only work on cached data
+  (they throw `EAGAIN` and fetch in the background otherwise), so it
+  downloads every file at startup unless told not to. That does not suit
+  OCaml's synchronous `open_in` with a root of hundreds of MB.
+- Emscripten's [`createLazyFile`](https://emscripten.org/docs/porting/files/Synchronous-Virtual-XHR-Backed-File-System-Usage.html)
+  uses synchronous XHRs (in chunks, with range requests) and an in-memory
+  cache, like `lazyfs.js`. It is tied to Emscripten's FS. WasmFS has fetch
+  and OPFS backends, but they rely on Emscripten's pthreads proxying.
+- JupyterLite answers synchronous XHRs from a Service Worker backed by
+  IndexedDB. A web extension cannot register a Service Worker on the
+  vscode.dev origin, so that is not an option here.
+
+So `lazyfs.js` stays, and gains a persistent layer:
+
+- **Store:** the Origin Private File System (OPFS) in the worker, or Cache
+  Storage, under the root's `id`. Roots are immutable, so entries never
+  need revalidation, and a root is deleted as a whole.
+- **Reads stay synchronous:** OPFS reads through a
+  `FileSystemSyncAccessHandle` are synchronous, but opening a handle (and
+  everything in Cache Storage) is asynchronous. So the cache is filled
+  asynchronously, after a synchronous XHR has fetched a file, and read
+  asynchronously at startup: the worker records the files a session
+  opened (its *working set*), and the next start loads them from the
+  store, together with `manifest.prefetch`, before the server runs.
+  Misses fall back to a synchronous XHR, as today.
+- **Desktop (option (b)):** the same layer, backed by the cache directory
+  through `node:fs`, which is synchronous, so the working-set trick is not
+  needed there.
+- **Persistence:** `navigator.storage.persist()` asks the browser not to
+  evict the store. The quota is per origin (vscode.dev), and is shared
+  with VS Code's own storage.
+
+Range requests (GitHub Pages sends `Accept-Ranges: bytes`) would let
+`lazyfs.js` fetch only the segments of a `.vo` file that Rocq reads. In
+particular it could skip the opaque proofs, which Rocq reads only when it
+needs them (see below). That makes reads more complex (a file is no
+longer all or nothing), and stripping the proofs when the root is made
+gives the same saving more simply.
+
+## Smaller roots without opaque proofs
+
+A `.vo` file is made of segments (`lib/objFile.ml`): `summary`,
+`library`, `opaques` (the bodies of the constants ended by `Qed`), and
+`vmlibrary`. Rocq reads `opaques` only when it needs an opaque body:
+`Print` of such a constant, `Print Assumptions`, extraction. Checking a
+proof that uses a lemma only needs the lemma's statement.
+
+In the root with Stdlib, mathcomp-analysis and Iris (1225 `.vo` files,
+333 MB):
+
+| segment     | size     | share |
+|-------------|----------|-------|
+| `library`   | 243.0 MB | 73%   |
+| `opaques`   |  84.4 MB | 25%   |
+| `vmlibrary` |   4.6 MB |  1%   |
+| `summary`   |   0.5 MB |  0%   |
+
+The share depends on the library. Opaque proofs make up 25% of mathcomp
+(and analysis), 37% of Stdlib, about 50% of Iris and stdpp, and nothing in
+Elpi and HB. Compressed with gzip, they are 56 MB of 173 MB (33%), because
+proof terms compress less well than the rest. Stripping them takes the
+root from 398 MB to about 314 MB.
+
+### Stripping
+
+`make-web-root` replaces the `opaques` segment of each `.vo` file by an
+array of `None` of the same length. That value already means "the body is
+not available" (it is what a delayed proof looks like in `-vos` mode).
+
+**Checksums.** Each segment ends with its MD5, and the segment table at the
+end of the file repeats it. Both must be rewritten for the new `opaques`
+segment: Rocq compares them when it fetches the opaque table, and reports
+the file as corrupted otherwise. The digest that identifies a library,
+which the files that `Require` it record and check, is the MD5 of the
+`library` segment only (`intern_from_file` in `vernac/library.ml`).
+Stripping does not touch that segment, so the dependencies stay
+consistent and nothing else needs recompiling.
+
+**Behaviour.** Tested with a prototype on Stdlib, with the native
+`rocq c`:
+
+- `Require`, tactics (`lia`), `Check`, `Print` of transparent
+  definitions, and `Eval compute` work as before;
+- `Print Assumptions` reports the opaque bodies it cannot read ("Cannot
+  access the opaque body of `ZMicromega.ZTautoChecker_sound`, its
+  assumptions are unknown"), so its answer is incomplete;
+- `Print` of an opaque constant fails ("Cannot access opaque delayed
+  proof").
+
+That is acceptable for a browser IDE, but should be a choice made when
+the root is made (`--strip-opaques`), and recorded in the manifest
+(`"opaques": false`), so that VsRocq can say why `Print Assumptions`
+gives up. A root could also keep the stripped proofs as separate files,
+to be fetched on demand, at the cost of a patch to Rocq.
+
+**Bonus:** the integer that makes Stdlib's `Uint63.vo` unloadable with
+31-bit integers is in its `opaques` segment, so stripping makes that file
+loadable. The ones in `Sint63` and `Sint63Axioms` are in `library` and
+`vmlibrary`.
+
+### An OCaml `make-web-root`
+
+The prototype is in Python, and the 31-bit check already parses OCaml's
+Marshal format in Python. A tool written in OCaml, linked with
+`rocq-runtime`, would be more robust:
+
+- it reads and writes `.vo` files with Rocq's own `ObjFile`, which keeps
+  the segment hashes right by construction, and follows changes to the
+  format (the segment ids, `Coq_config.vo_version`);
+- it can unmarshal the `opaques` segment with its real type
+  (`Opaques.opaque_disk`) and keep its length, instead of relying on its
+  layout;
+- with findlib as a library, it can compute the plugins and their
+  dependencies directly, without running `ocamlfind` hundreds of times.
+
+It could ship in `rocq-web`, next to `rocq c`, so that it always matches
+the `.vo` format of the root it makes. Some parts would stay simpler in
+Python, or in a script around the tool: the opam queries (`packages`) and
+copying the files. The 31-bit check can stay as it is (it only reads the
+generic Marshal format), or become an attempt to load each file with the
+wasm build.
 
 ## Root format
 
@@ -267,9 +408,10 @@ Changes to `manifest.json` (written by `make-web-root.py`):
 - a `sha256` for each file, next to its size, which the desktop download
   checks;
 - `relocate`: the files that contain the prefix (option (a));
-- `rocq` (the Rocq version) and `platform` (the Rocq Platform pick, if
-  any), shown in the prompt and the status bar. `packages` (already
-  there) is copied to the index for choosing a root.
+- `rocq` (the Rocq version) and `platform` (the Rocq Platform release),
+  shown in the prompt and the status bar. `packages` (already there) is
+  copied to the index for choosing a root;
+- `opaques`: `false` if the opaque proofs were stripped.
 
 ## Security
 
@@ -278,9 +420,9 @@ Changes to `manifest.json` (written by `make-web-root.py`):
   the workspace mirror). A malicious root can at worst give wrong answers.
 - **Desktop:** the server runs in node, with `node:fs`, so it can read and
   write any file the user can, just like a `vsrocqtop`. Roots from the
-  standard index are trusted like the Rocq releases they are built from:
-  they come from the same publisher, and are checked against the hashes of
-  their manifest. A custom root (`vsrocq.web.root`, a custom index) is
+  standard index are trusted like the Rocq Platform releases they are
+  built from: they come from the same publisher, and are checked against
+  the hashes of their manifest. A custom root (`vsrocq.web.root`, a custom index) is
   trusted like a custom `vsrocq.path`: in a workspace setting, it is only
   used in a trusted workspace (Workspace Trust), after an explicit consent
   naming the URL. Restricting the worker (e.g. node's permission model,
@@ -290,14 +432,19 @@ Changes to `manifest.json` (written by `make-web-root.py`):
 
 ## Open questions
 
-- **Size of Rocq Platform roots**, and whether to split them (a root per
-  pick, or layered roots: a base Rocq root plus one per library). For
+- **Size of Rocq Platform roots**, and whether to split them (layered
+  roots: a base Rocq root plus one per library). For
   reference, a root with Stdlib, mathcomp-analysis (and the mathcomp it
   needs, Elpi and Hierarchy Builder) and Iris is 1312 files, 398 MB
   (198 MB gzipped): mathcomp 132 MB, mathcomp-analysis 79 MB, Elpi and HB
   68 MB (of which 8 MB of examples), Stdlib 46 MB, Rocq plugins 23 MB, the
   programs 21 MB, Iris 16 MB, stdpp 10 MB. A Corelib root is 44 MB. In
-  the browser, only 6 MB are fetched at startup either way.
+  the browser, only 6 MB are fetched at startup either way. Stripping the
+  opaque proofs saves 84 MB, and the Elpi examples (8 MB) are not needed.
+- **Compression.** Whether GitHub Pages compresses `.vo` files (served as
+  `application/octet-stream`) is to be checked. If it does not, a client
+  downloads the raw sizes above, and compressed files (decompressed in
+  the worker with `DecompressionStream`) would roughly halve them.
 - **Windows.** A root built on Linux, run by node on Windows: paths in
   `findlib.conf` (option (a)), or the `on_windows` path handling of the
   runtime (option (b)). This needs testing.
@@ -313,17 +460,20 @@ Changes to `manifest.json` (written by `make-web-root.py`):
 
 ## Work items
 
-1. `make-web-root.py`: `id`, `sha256`, `relocate`, `rocq`, `platform` in
-   the manifest.
-2. CI: build and publish a root per Rocq release and per Rocq Platform
-   pick, immutable, plus `index.json`, at the standard location.
-3. Client: the toolchain selector shared by the desktop and web entries
+1. `make-web-root`: `id`, `sha256`, `relocate`, `rocq`, `platform`,
+   `opaques` in the manifest; `--strip-opaques`; possibly rewritten in
+   OCaml and shipped in `rocq-web`.
+2. CI: build and publish a root per Rocq Platform release (per pick),
+   immutable, plus `index.json`, at the standard location.
+3. `lazyfs.js`: the persistent cache (OPFS or Cache Storage, working
+   set).
+4. Client: the toolchain selector shared by the desktop and web entries
    (index, opam constraints, user choice, status bar item, command).
-4. Desktop: the "Rocq is not installed" offer; download and cache with
+5. Desktop: the "Rocq is not installed" offer; download and cache with
    progress and hashes; start `worker.js` in a worker thread; option (a),
    then (b).
-5. Desktop: **Rocq: Compile the project** with `rocq-web` from the root
+6. Desktop: **Rocq: Compile the project** with `rocq-web` from the root
    (`runner.js` in a worker thread, on the real file system).
-6. Tests: the `client/test-web` tests with an index instead of
+7. Tests: the `client/test-web` tests with an index instead of
    `vsrocq.web.root`, plus a desktop test (`@vscode/test-electron`) with a
    local index and no `vsrocqtop` in the `PATH`.
