@@ -16,6 +16,9 @@ depends: [
   "vsrocq-language-server"
   "rocq-web"
   "zarith_stubs_js"
+  "rocq-runtime"
+  "ocamlfind"
+  "yojson"
   "js_of_ocaml" {>= "6.5"}
   "js_of_ocaml-ppx" {>= "6.5"}
   "wasm_of_ocaml-compiler" {>= "6.5"}

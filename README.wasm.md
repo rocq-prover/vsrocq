@@ -172,10 +172,24 @@ node $R/rocq_dep.bc.wasm.js -coqlib $(rocq c -where) file.v
 vsrocq-make-web-root /tmp/root     # a trimmed copy of the switch, 43 MB
 ```
 
-It warns about the `.vo` and `.cma` files that contain an integer that
-does not fit in 31 bits, which cannot be loaded (see "Known limitations"),
-and lists them in `manifest.json` (`unloadable`). `--strict` makes them an
-error.
+`vsrocq-make-web-root` (`web/make-web-root/`, written in OCaml and linked
+with Rocq, since it reads and writes `.vo` files) also:
+
+- warns about the `.vo` and `.cma` files that contain an integer that does
+  not fit in 31 bits, which cannot be loaded (see "Known limitations"),
+  and lists them in `manifest.json` (`unloadable`). `--strict` makes them
+  an error;
+- with `--strip-opaques`, removes the opaque proofs (the bodies of the
+  constants ended by `Qed`) from the `.vo` files. `Print` of such a
+  constant then fails, and `Print Assumptions` reports the proofs it
+  cannot read. See [docs/web-roots.md](docs/web-roots.md);
+- with `--compress`, publishes the `.vo`, `.cma` and `.cmo` files
+  compressed with gzip (`Foo.voz`, `Foo.cmaz`), which `lazyfs.js`
+  decompresses when it fetches them (`manifest.json`: `compressed`).
+
+For the switch with Stdlib, mathcomp-analysis and Iris the published root
+is 398 MB, 313 MB with `--strip-opaques`, 213 MB with `--compress`, and
+156 MB with both.
 
 - `web/test/`: the LSP smoke test in a page (`serve.py` serves the root
   like GitHub Pages, with CORS only, and the page cross-origin isolated).
@@ -320,7 +334,8 @@ worker clears it when it receives a message while idle. Rocq then raises
 - **`.vo` files containing an integer that does not fit in 31 bits can't
   be loaded** (`input_value: integer too large`): in Corelib
   `Numbers.Cyclic.Int63.Sint63Axioms`, in Stdlib `Numbers.Cyclic.Int63.Uint63`
-  and `Sint63` (primitive integers such as `min_int`). With the patches
+  and `Sint63` (primitive integers such as `min_int`). The one of `Uint63`
+  is in an opaque proof, hence `--strip-opaques` makes it loadable. With the patches
   above, no other `.vo` file of Stdlib, mathcomp, mathcomp-analysis, Elpi,
   Hierarchy Builder, stdpp or Iris contains one.
 - **Compiling the project** needs `_RocqProject` at the root of the first

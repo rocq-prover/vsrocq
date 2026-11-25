@@ -15,7 +15,3 @@
  (section lib)
  (files vsrocq_web.bc.wasm.js worker.js runner.js lazyfs.js node-bridge.js)
  (dirs vsrocq_web.bc.wasm.assets))
-
-(install
- (section bin)
- (files (make-web-root.py as vsrocq-make-web-root)))

@@ -49,7 +49,7 @@ jobs:
         run: opam install -y vsrocq-language-server-web
 
       - name: Make the root
-        run: opam exec -- vsrocq-make-web-root "_site/$ROOT_NAME"
+        run: opam exec -- vsrocq-make-web-root --compress "_site/$ROOT_NAME"
 
       - uses: actions/upload-pages-artifact@v3
         with:

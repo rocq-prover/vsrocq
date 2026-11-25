@@ -200,7 +200,7 @@ Download the whole root into the cache, and make the paths point there:
   (build information; to be checked) contain the prefix. The wasm
   programs do not.
 
-`make-web-root.py` already knows which files carry the prefix. It should
+`vsrocq-make-web-root` already knows which files carry the prefix. It should
 list them in the manifest (e.g. `"relocate": ["lib/findlib.conf"]`, and
 `args`), so that the client does not hard-code them.
 
@@ -377,31 +377,58 @@ to be fetched on demand, at the cost of a patch to Rocq.
 loadable. The ones in `Sint63` and `Sint63Axioms` are in `library` and
 `vmlibrary`.
 
-### An OCaml `make-web-root`
+### `vsrocq-make-web-root` in OCaml
 
-The prototype is in Python, and the 31-bit check already parses OCaml's
-Marshal format in Python. A tool written in OCaml, linked with
-`rocq-runtime`, would be more robust:
+`vsrocq-make-web-root` (`web/make-web-root/`) is written in OCaml and
+linked with `rocq-runtime`, and implements `--strip-opaques`:
 
 - it reads and writes `.vo` files with Rocq's own `ObjFile`, which keeps
   the segment hashes right by construction, and follows changes to the
-  format (the segment ids, `Coq_config.vo_version`);
-- it can unmarshal the `opaques` segment with its real type
-  (`Opaques.opaque_disk`) and keep its length, instead of relying on its
-  layout;
-- with findlib as a library, it can compute the plugins and their
-  dependencies directly, without running `ocamlfind` hundreds of times.
+  format (the segment ids, `Coq_config.vo_version`). The other segments
+  are copied byte for byte;
+- `Opaques.opaque_disk` is abstract, but it is an `option array`: the tool
+  unmarshals the segment as such and writes an array of `None` of the same
+  length;
+- with findlib as a library, it computes the plugins and their
+  dependencies directly, without running `ocamlfind` hundreds of times
+  (2 s instead of 10 s for the root above, and the same output as the
+  Python prototype it replaces).
 
-It could ship in `rocq-web`, next to `rocq c`, so that it always matches
-the `.vo` format of the root it makes. Some parts would stay simpler in
-Python, or in a script around the tool: the opam queries (`packages`) and
-copying the files. The 31-bit check can stay as it is (it only reads the
-generic Marshal format), or become an attempt to load each file with the
-wasm build.
+It must be built with the Rocq of the switch. It could move to `rocq-web`,
+next to `rocq c`. The 31-bit check parses the generic Marshal format.
+
+## Compressed files
+
+GitHub Pages compresses text formats (it gzips `image/svg+xml`, for
+example). `.vo` and `.cma` files have no registered media type, and are
+most likely served uncompressed (not checked yet on a published root). So
+`--compress` publishes the `.vo`, `.cma` and `.cmo` files compressed with
+gzip, at their path followed by `z` (`Foo.voz`), and lists them in the
+manifest (`compressed`, with their compressed size). The size in `files`
+remains the decompressed one, which `stat` reports.
+
+The decompression is in the file system layer: `lazyfs.js` fetches
+`Foo.voz` when the program opens `Foo.vo`, and decompresses it. Reads are
+synchronous, and the browser's `DecompressionStream` is asynchronous, so
+`lazyfs.js` has its own `gunzip` (inflate decoded as in zlib's `puff`,
+120 lines). It decompresses about 100 MB/s in V8, against 450 MB/s for
+node's zlib: 0.3 s for the 30 MB a session with mathcomp reads, much less
+than the download time. It was checked against zlib on the 1276 compressed
+files of the root above.
+
+| root (Stdlib, mathcomp-analysis, Iris) | published |
+|----------------------------------------|-----------|
+| as is                                  | 398 MB    |
+| `--strip-opaques`                      | 313 MB    |
+| `--compress`                           | 213 MB    |
+| `--strip-opaques --compress`           | 156 MB    |
+
+Compression also helps the persistent cache, which can store the
+compressed files.
 
 ## Root format
 
-Changes to `manifest.json` (written by `make-web-root.py`):
+Changes to `manifest.json` (written by `vsrocq-make-web-root`):
 
 - `version`, today the format version (`1`), becomes `format`. A new
   `id` is a content hash of the manifest's file list, and keys the cache;
@@ -441,10 +468,6 @@ Changes to `manifest.json` (written by `make-web-root.py`):
   programs 21 MB, Iris 16 MB, stdpp 10 MB. A Corelib root is 44 MB. In
   the browser, only 6 MB are fetched at startup either way. Stripping the
   opaque proofs saves 84 MB, and the Elpi examples (8 MB) are not needed.
-- **Compression.** Whether GitHub Pages compresses `.vo` files (served as
-  `application/octet-stream`) is to be checked. If it does not, a client
-  downloads the raw sizes above, and compressed files (decompressed in
-  the worker with `DecompressionStream`) would roughly halve them.
 - **Windows.** A root built on Linux, run by node on Windows: paths in
   `findlib.conf` (option (a)), or the `on_windows` path handling of the
   runtime (option (b)). This needs testing.
@@ -460,9 +483,9 @@ Changes to `manifest.json` (written by `make-web-root.py`):
 
 ## Work items
 
-1. `make-web-root`: `id`, `sha256`, `relocate`, `rocq`, `platform`,
-   `opaques` in the manifest; `--strip-opaques`; possibly rewritten in
-   OCaml and shipped in `rocq-web`.
+1. `vsrocq-make-web-root`: `id`, `sha256`, `relocate`, `rocq`,
+   `platform` in the manifest (`opaques`, `compressed`,
+   `--strip-opaques` and `--compress` are done).
 2. CI: build and publish a root per Rocq Platform release (per pick),
    immutable, plus `index.json`, at the standard location.
 3. `lazyfs.js`: the persistent cache (OPFS or Cache Storage, working
