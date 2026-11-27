@@ -12,14 +12,16 @@
 (*                                                                        *)
 (**************************************************************************)
 
-[%%import "vsrocq_config.mlh"]
-
 open Types
 
 let preempt = ref false
 let set_options ~preempt:x = preempt := x
 
 let log = Log.mk_log "proverThread"
+
+let () = Memprof_limits.start_memprof_limits ()
+
+let set_external_interrupt _ = ()
 
 type retry = bool
 module Queue = struct

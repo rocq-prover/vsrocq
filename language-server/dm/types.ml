@@ -109,7 +109,7 @@ type feedback_pipe = {
   doc_id : document_id; (* unique number used to interface with Rocq's Feedback *)
   rocq_feeder : rocq_feedback_listener;
   sel_feedback_queue : feedback_data Queue.t;
-  sel_cancellation_handle : Sel.Event.cancellation_handle;
+  sel_cancellation_handle : Sel_core.Event.cancellation_handle;
 }
 
 type sentence_checking_result =
@@ -134,7 +134,7 @@ let full_view_update = { highlights = true; diagnostics = true }
    always comes with a new state. [notification] is sent in all cases. *)
 type ('state,'event) handled_event = {
     state : ('state * view_update) option;
-    events: 'event Sel.Event.t list;
+    events: 'event Sel_core.Event.t list;
     notification: Protocol.ExtProtocol.Notification.Server.t option;
 }
 

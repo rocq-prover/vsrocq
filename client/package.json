@@ -37,6 +37,7 @@
   "homepage": "https://github.com/rocq-prover/vscoq/blob/main/README.md",
   "activationEvents": [],
   "main": "./dist/extension.js",
+  "browser": "./dist/web/extension.js",
   "contributes": {
     "languages": [
       {
@@ -130,6 +131,21 @@
             "type": "array",
             "default": [],
             "description": "vsrocqtop arguments"
+          },
+          "vsrocq.web.root": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "In VS Code for the web, or on a computer with `#vsrocq.useWasm#`: the URL of the published opam root providing Rocq and the language server compiled to WebAssembly (the directory containing `manifest.json`, see `vsrocq-make-web-root`)."
+          },
+          "vsrocq.useWasm": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "On a computer: instead of `vsrocqtop`, use the language server compiled to WebAssembly of the root `#vsrocq.web.root#`, run by the node of VS Code, as in VS Code for the web: Rocq and its libraries come from the root, which must be set. The server is downloaded once in the storage of the extension; the files of the libraries are fetched when Rocq reads them. It is slower than `vsrocqtop`. `#vsrocq.args#` are added to the arguments of the root."
+          },
+          "vsrocq.web.debug": {
+            "type": "boolean",
+            "default": false,
+            "description": "In VS Code for the web: log the files fetched by the language server in the console of the browser."
           }
         }
       },
@@ -314,6 +330,11 @@
     ],
     "commands": [
       {
+        "command": "extension.rocq.compileProject",
+        "category": "Rocq",
+        "title": "Compile the project (WebAssembly)"
+      },
+      {
         "command": "extension.rocq.showManual",
         "category": "Rocq",
         "title": "Docs: Show manual"
@@ -458,6 +479,10 @@
         {
           "command": "extension.rocq.printing.toggle",
           "when": "false"
+        },
+        {
+          "command": "extension.rocq.compileProject",
+          "when": "isWeb || config.vsrocq.useWasm"
         }
       ],
       "editor/title": [
@@ -1026,8 +1051,9 @@
     ]
   },
   "scripts": {
-    "build": "npm run gen-vscode-types && vite build",
-    "build:dev": "npm run gen-vscode-types && vite build --mode development",
+    "build": "npm run gen-vscode-types && vite build && vite build -c vite.config.web.ts",
+    "build:dev": "npm run gen-vscode-types && vite build --mode development && vite build -c vite.config.web.ts --mode development",
+    "build:web": "npm run gen-vscode-types && vite build -c vite.config.web.ts",
     "watch": "vite build --mode development --watch",
     "gen-vscode-types": "vscode-ext-gen --output src/package-json.ts --scope vsrocq",
     "package": "npm install && npm run build --workspaces",
@@ -1044,6 +1070,7 @@
     "@types/vscode": "~1.74.0",
     "@types/which": "^3.0.4",
     "@vscode/test-electron": "^3.1.0",
+    "@vscode/test-web": "^0.0.81",
     "@vscode/vsce": "^3.9.2",
     "expect": "^30.4.1",
     "glob": "^13.0.6",

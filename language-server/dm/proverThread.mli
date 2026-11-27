@@ -34,7 +34,7 @@ val eventually_run :
   doc_id:Types.document_id ->
   name:string ->
   (unit -> 'a) ->
-  'a Types.interruptible_result Sel.Promise.t
+  'a Types.interruptible_result Sel_core.Promise.t
 (** [eventually_run ~doc_id thunk] puts the [thunk] in the and promises
     to execute it eventually *)
 
@@ -56,4 +56,11 @@ val run :
 
 val interrupt : doc_id:Types.document_id -> unit
 (** [interrupt ~doc_id] interrupts the runnign thunk only if it runs for [~doc_id] *)
+
+val set_external_interrupt : (unit -> bool) -> unit
+(** Where threads are not available (wasm) the thunk runs in the main thread
+    and [interrupt] cannot be called while it runs. The function passed here
+    is polled while Rocq runs, if it returns [true] the running thunk is
+    interrupted. It is expected to consume the interruption request.
+    Ignored by the native implementation. *)
 

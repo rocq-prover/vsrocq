@@ -1,0 +1,9 @@
+; vsrocq-make-web-root: make a web root (a trimmed copy of the switch, to
+; be published as static files) from the opam switch. It reads and writes
+; .vo files with Rocq's ObjFile, hence it is built with the Rocq of the
+; switch.
+(executable
+ (name make_web_root)
+ (public_name vsrocq-make-web-root)
+ (package vsrocq-language-server-web)
+ (libraries unix str findlib yojson rocq-runtime.lib))

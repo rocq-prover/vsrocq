@@ -105,7 +105,7 @@ let mk_log name =
 let logs () = List.sort String.compare !logs
 
 type event = string
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 
 [%% if rocq = "8.18" || rocq = "8.19"  || rocq = "8.20"]
 let feedback_add_feeder_on_Message f =
@@ -131,9 +131,9 @@ let install_debug_feedback f =
 let rocq_debug_feedback_queue = Queue.create ()
 let main_debug_feeder = install_debug_feedback (fun txt -> Queue.push txt rocq_debug_feedback_queue)
    
-let debug : event Sel.Event.t =
-  Sel.On.queue ~name:"debug" ~priority:PriorityManager.feedback rocq_debug_feedback_queue (fun x -> x)
-let cancel_debug_event = Sel.Event.get_cancellation_handle debug
+let debug : event Sel_core.Event.t =
+  Sel_core.On.queue ~name:"debug" ~priority:PriorityManager.feedback rocq_debug_feedback_queue (fun x -> x)
+let cancel_debug_event = Sel_core.Event.get_cancellation_handle debug
 
 let lsp_initialization_done () =
   lsp_initialization_done := true;
@@ -143,7 +143,7 @@ let lsp_initialization_done () =
   [debug]
 
 let worker_initialization_begins () =
-  Sel.Event.cancel cancel_debug_event;
+  Sel_core.Event.cancel cancel_debug_event;
   Feedback.del_feeder main_debug_feeder;
     (* We do not want to inherit master's Feedback reader (feeder), otherwise we
     would output on the worker's stderr.

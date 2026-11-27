@@ -17,8 +17,15 @@
 
 let log = Dm.Log.mk_log "top"
 
+let input k =
+  Sel.On.httpcle ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" Unix.stdin k
+
+let output msg =
+  let s = Printf.sprintf "Content-Length: %d\r\n\r\n%s" (String.length msg) msg in
+  ignore(Unix.write_substring Unix.stdout s 0 (String.length s)) (* TODO ERROR *)
+
 let loop () =
-  let events = LspManager.init () in
+  let events = LspManager.init ~input ~output in
   let rec loop (todo : LspManager.event Sel.Todo.t) =
     (*log fun () -> "looking for next step";*)
     flush_all ();

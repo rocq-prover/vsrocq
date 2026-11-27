@@ -19,6 +19,7 @@ open Base
 open Types
 open Protocol.LspWrapper
 
+
 [%%if lsp < (1,19,0) ]
 let string_of_message x = x
 [%%else]

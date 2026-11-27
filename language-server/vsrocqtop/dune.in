@@ -1,7 +1,17 @@
+; The LSP server, independent from the way it talks to the client
+(library
+ (name vsrocq_server)
+ (public_name vsrocq-language-server.server)
+ (wrapped false)
+ (modules lspManager args)
+ (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel.core yojson dm lsp))
+
 (executable
  (name vsrocqtop)
  (public_name vsrocqtop)
+ (modules vsrocqtop)
  (flags :standard -linkall)
  (package vsrocq-language-server)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
- (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel yojson dm lsp))
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel vsrocq_server dm))

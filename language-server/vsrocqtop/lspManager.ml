@@ -35,11 +35,14 @@ let get_init_state () =
   | Some st -> st
   | None -> CErrors.anomaly Pp.(str "Initial state not available")
 
-type tab = { st : Dm.DocumentManager.state; visible : bool }
+(* the URI is kept since it can't be rebuilt from the path when its scheme
+   is not file (e.g. in VS Code for the web) *)
+type tab = { uri : DocumentUri.t; st : Dm.DocumentManager.state; visible : bool }
 
 let states : (string, tab) Hashtbl.t = Hashtbl.create 39
 
-let max_memory_usage  = ref 4000000000
+(* in megabytes, 4GB do not fit a 31 bits integer (wasm) *)
+let max_memory_usage_mb = ref 4000
 
 let full_diagnostics = ref false
 let full_messages = ref false
@@ -64,10 +67,9 @@ type event =
  | Notification of notification
  | LogEvent of Dm.Log.event
 
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 
-let lsp : event Sel.Event.t =
-  Sel.On.httpcle ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" Unix.stdin (function
+let decode_lsp_message = function
     | Ok buff ->
       begin
         log.debug (fun () -> "UI req ready");
@@ -86,27 +88,33 @@ let lsp : event Sel.Event.t =
         | exn -> log.error (fun () -> Printf.sprintf "cannot read from the client, exiting: %s" (Printexc.to_string exn))
         end;
         (* do not remove this line otherwise the server stays running in some scenarios *)
-        exit 0)
+        exit 0
 
+(* The I/O with the client is set by [init] *)
+let lsp_input : event Sel_core.Event.t option ref = ref None
+let lsp () =
+  match !lsp_input with
+  | Some e -> e
+  | None -> CErrors.anomaly Pp.(str "LspManager not initialized")
+
+let output : (string -> unit) ref = ref (fun _ -> assert false)
 
 let output_json obj =
   let msg  = Yojson.Safe.to_string ~std:true obj in
-  let size = String.length msg in
-  let s = Printf.sprintf "Content-Length: %d\r\n\r\n%s" size msg in
   log.debug (fun () -> "sent: " ^ Yojson.Safe.pretty_to_string ~std:true obj);
-  ignore(Unix.write_substring Unix.stdout s 0 (String.length s)) (* TODO ERROR *)
+  !output msg
 
 let output_notification notif =
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notif
 
-let inject_dm_event uri x : event Sel.Event.t =
-  Sel.Event.map (fun e -> DocumentManagerEvent(uri,e)) x
+let inject_dm_event uri x : event Sel_core.Event.t =
+  Sel_core.Event.map (fun e -> DocumentManagerEvent(uri,e)) x
 
-let inject_notification x : event Sel.Event.t =
-  Sel.Event.map (fun x -> Notification(x)) x
+let inject_notification x : event Sel_core.Event.t =
+  Sel_core.Event.map (fun x -> Notification(x)) x
 
-let inject_debug_event x : event Sel.Event.t =
-  Sel.Event.map (fun x -> LogEvent x) x
+let inject_debug_event x : event Sel_core.Event.t =
+  Sel_core.Event.map (fun x -> LogEvent x) x
 
 let inject_dm_events (uri,l) =
   List.map (inject_dm_event uri) l
@@ -133,7 +141,7 @@ let do_configuration settings =
   };
   full_diagnostics := settings.diagnostics.full;
   full_messages := settings.goals.messages.full;
-  max_memory_usage := settings.memory.limit * 1000000000;
+  max_memory_usage_mb := settings.memory.limit * 1000;
   Dm.CheckingManager.set_options {
     Dm.CheckingManager.check_mode = settings.proof.mode;
     block_on_first_error = settings.proof.block;
@@ -193,7 +201,7 @@ let do_initialize params =
   } in
   log.info (fun () -> "---------------- initialized --------------");
   let debug_events = Dm.Log.lsp_initialization_done () |> inject_debug_events in
-  Ok initialize_result, debug_events@[Sel.now @@ LspManagerEvent (send_configuration_request ())]
+  Ok initialize_result, debug_events@[Sel_core.now @@ LspManagerEvent (send_configuration_request ())]
 
 let do_shutdown () = Ok(()), []
 
@@ -238,7 +246,11 @@ let update_view ?(update=Dm.Types.full_view_update) uri st =
     if update.diagnostics then publish_diagnostics uri st;
   )
 
-let replace_state path st visible = Hashtbl.replace states path { st; visible}
+let replace_state path st visible =
+  let uri = match Hashtbl.find_opt states path with
+    | Some { uri } -> uri
+    | None -> DocumentUri.of_path path in
+  Hashtbl.replace states path { uri; st; visible }
 
 (* Every handler that acts on a document starts by looking it up in [states].
    When the document is unknown the event is logged and dropped; what "dropped"
@@ -259,10 +271,9 @@ let with_document_request handler uri f = with_document_or ~default:(document_do
 let log_notification method_ = log.debug (fun () -> "Received notification: " ^ method_)
 
 let run_documents () =
-  let interpret_doc_in_bg path { st : Dm.DocumentManager.state ; visible } events =
+  let interpret_doc_in_bg path { uri; st : Dm.DocumentManager.state ; visible } events =
       let st = Dm.DocumentManager.reset_to_top st in
       let (st, events') = Dm.DocumentManager.interpret_in_background st in
-      let uri = DocumentUri.of_path path in
       replace_state path st visible;
       update_view uri st;
       let events' = inject_dm_events (uri, events') in
@@ -271,9 +282,8 @@ let run_documents () =
   Hashtbl.fold interpret_doc_in_bg states []
 
 let reset_observe_ids () =
-  let reset_doc_observe_id path {st : Dm.DocumentManager.state; visible} =
+  let reset_doc_observe_id path { uri; st : Dm.DocumentManager.state; visible } =
     let st = Dm.DocumentManager.reset_to_top st in
-    let uri = DocumentUri.of_path path in
     replace_state path st visible;
     update_view uri st
   in
@@ -298,7 +308,7 @@ let open_new_document uri text =
   let st, events = try Dm.DocumentManager.init vst ~opts:(Coqargs.injection_commands local_args) uri ~text with
     e -> raise e
   in
-  Hashtbl.add states (DocumentUri.to_path uri) { st ; visible = true; };
+  Hashtbl.add states (DocumentUri.to_path uri) { uri; st ; visible = true; };
   update_view uri st;
   inject_dm_events (uri, events)
 
@@ -339,14 +349,14 @@ let purge_invisible_tabs () =
 
 let consider_purge_invisible_tabs () =
   let usage = current_memory_usage () in
-  if usage > !max_memory_usage (* 4G *) then begin
+  if usage / 1000000 > !max_memory_usage_mb then begin
     purge_invisible_tabs ();
     let vst = get_init_state () in
     Vernacstate.unfreeze_full_state vst;
     Vernacstate.Interp.invalidate_cache ();
     Gc.compact ();
     let new_usage = current_memory_usage () in
-    log.info (fun () -> Printf.sprintf "memory footprint %d -> %d (limit %d)" usage new_usage !max_memory_usage);
+    log.info (fun () -> Printf.sprintf "memory footprint %d -> %d (limit %dMB)" usage new_usage !max_memory_usage_mb);
   end
 
 let textDocumentDidClose params =
@@ -630,9 +640,9 @@ let dispatch_notification =
   | Std notif -> dispatch_std_notification notif
 
 let handle_lsp_event = function
-  | Receive None -> [lsp]
+  | Receive None -> [lsp ()]
   | Receive (Some rpc) ->
-    lsp :: (* the event is recurrent *)
+    lsp () :: (* the event is recurrent *)
     begin try
       let json = Jsonrpc.Packet.yojson_of_t rpc in
       log.debug (fun () -> "received: " ^ Yojson.Safe.pretty_to_string ~std:true json);
@@ -707,6 +717,8 @@ let pr_event fmt = function
   | Notification _ -> Format.fprintf fmt "notif"
   | LogEvent _ -> Format.fprintf fmt "debug"
 
-let init () =
+let init ~input ~output:o =
+  lsp_input := Some (input decode_lsp_message);
+  output := o;
   init_state := Some (Vernacstate.freeze_full_state ());
-  [lsp]
+  [lsp ()]
