@@ -1,0 +1,17 @@
+; The vsrocq language server for the web (runs in a Web Worker or a node
+; worker thread). See worker.js for the JavaScript side, and node-bridge.js
+; to run it on stdio like vsrocqtop.
+(executable
+ (name vsrocq_web)
+ (modes wasm)
+ (link_flags (:standard -linkall))
+ (preprocess (pps js_of_ocaml-ppx))
+ (wasm_of_ocaml (compilation_mode whole_program) (flags (:standard --dynlink)))
+ (libraries zarith_stubs_js rocq-web.stubs rocq-web.host rocq-runtime.sysinit rocq-runtime.tactics
+   sel.core sel.js vsrocq-language-server.dm vsrocq-language-server.dm.web
+   vsrocq-language-server.server js_of_ocaml wasm_of_ocaml-compiler.dynlink))
+
+(install
+ (section lib)
+ (files vsrocq_web.bc.wasm.js worker.js runner.js lazyfs.js node-bridge.js)
+ (dirs vsrocq_web.bc.wasm.assets))
