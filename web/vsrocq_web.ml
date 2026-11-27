@@ -14,7 +14,7 @@ let log = Dm.Log.mk_log "web"
 let inbox : string Queue.t = Queue.create ()
 
 let input k =
-  Sel.On.queue ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" inbox
+  Sel_core.On.queue ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" inbox
     (fun s -> k (Ok (Bytes.of_string s)))
 
 let output msg =
@@ -48,7 +48,7 @@ let () =
   Safe_typing.allow_delayed_constants := true;
   Loadpath.load_vos_libraries := true;
   Dm.ProverThread.set_external_interrupt interrupted;
-  Sel_js.run ~handle_event ~init:(Sel.Todo.add Sel.Todo.empty (LspManager.init ~input ~output)) ();
+  Sel_js.run ~handle_event ~init:(Sel_core.Todo.add Sel_core.Todo.empty (LspManager.init ~input ~output)) ();
   Js.Unsafe.set Js.Unsafe.global "vsrocq" (object%js
     method push (s : Js.js_string Js.t) =
       Queue.push (Js.to_string s) inbox;

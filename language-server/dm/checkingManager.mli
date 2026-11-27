@@ -44,7 +44,7 @@ val cancel_execution : state -> unit
 
 val get_observe_id : state -> sentence_id option
 
-val refresh_proof_view : state -> event Sel.Event.t list
+val refresh_proof_view : state -> event Sel_core.Event.t list
 (** [refresh_proof_view state] sends the proof view at the observe_id again *)
 val reset_overview : state -> document -> sentence_id option -> state
 val overview : state -> exec_overview
@@ -56,21 +56,21 @@ val executed_ranges :
   document -> state -> exec_overview
 
 val observe_id_range : document -> state -> Range.t option
-val interpret_to_end : unit -> event Sel.Event.t list
-val interpret_to_next : unit -> event Sel.Event.t list
-val interpret_to_previous : unit -> event Sel.Event.t list
+val interpret_to_end : unit -> event Sel_core.Event.t list
+val interpret_to_next : unit -> event Sel_core.Event.t list
+val interpret_to_previous : unit -> event Sel_core.Event.t list
 
 val interpret_to_position :
   Position.t ->
-  event Sel.Event.t list
+  event Sel_core.Event.t list
 
 val interpret_in_background :
   document ->
   state ->
-  state * event Sel.Event.t list
+  state * event Sel_core.Event.t list
 
 val invalidate : state -> sentence_id -> state
-val validate_document : document -> state -> state * event Sel.Event.t list
+val validate_document : document -> state -> state * event Sel_core.Event.t list
 val vernac_state_of_sentence : document -> sentence_id -> Vernacstate.t option
 
 val get_messages :

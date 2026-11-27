@@ -178,11 +178,11 @@ let worker_available ~jobs ~fork_action ~feedback_cleanup : delegation Sel.Event
 
 (* When a worker is spawn, we enqueue this event, since eventually it will die *)
 let worker_ends pid : delegation Sel.Event.t =
-  Sel_unix.On.death_of ~pid (fun reason -> WorkerEnd(pid,reason))
+  Sel.On.death_of ~pid (fun reason -> WorkerEnd(pid,reason))
 
 (* When a worker is spawn, we enqueue this event, since eventually will make progress *)
 let worker_progress link : delegation Sel.Event.t =
-  Sel_unix.On.ocaml_value link.read_from (function
+  Sel.On.ocaml_value link.read_from (function
     | Error e -> WorkerIOError e
     | Ok (update_request:worker_message) -> WorkerProgress { link; update_request; })
 
@@ -369,7 +369,7 @@ let setup_plumbing port =
     install_feedback_worker ~feedback_cleanup:(fun _ -> ()) link;
     install_debug_worker link;
     (* Unix.read_value does not exist, we use Sel *)
-    match Sel.(pop Todo.(add empty [Sel_unix.On.ocaml_value read_from (fun x -> x)])) with
+    match Sel.(pop Todo.(add empty [Sel.On.ocaml_value read_from (fun x -> x)])) with
     | Ok (job : Job.t), _ -> ((fun x -> write_value link (Job_update x)), job)
     | Error exn, _ ->
       log_worker.error (fun () -> "error receiving job: " ^ Printexc.to_string exn);

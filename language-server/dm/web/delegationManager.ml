@@ -40,13 +40,13 @@ module type Worker = sig
   val resize_pool : int -> unit
   type delegation
   val pr_event : delegation -> Pp.t
-  type events = delegation Sel.Event.t list
+  type events = delegation Sel_core.Event.t list
   val handle_event : delegation -> (job_update_request option * events)
   val worker_available :
-    jobs:((job_handle * Sel.Event.cancellation_handle * job_t) Queue.t) ->
+    jobs:((job_handle * Sel_core.Event.cancellation_handle * job_t) Queue.t) ->
     fork_action:(job_t -> send_back:(job_update_request -> unit) -> unit) ->
     feedback_cleanup:(unit -> unit) ->
-    delegation Sel.Event.t
+    delegation Sel_core.Event.t
   type options
   [%%if rocq = "8.18" || rocq = "8.19" || rocq = "8.20"]
   val parse_options : string list -> options * string list
@@ -67,7 +67,7 @@ module MakeWorker (Job : Job) = struct
 
   type delegation = |
   let pr_event : delegation -> Pp.t = function _ -> .
-  type events = delegation Sel.Event.t list
+  type events = delegation Sel_core.Event.t list
   let handle_event : delegation -> (job_update_request option * events) = function _ -> .
 
   let not_available () =

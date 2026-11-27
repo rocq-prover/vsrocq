@@ -13,7 +13,7 @@
 (**************************************************************************)
 
 type event
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 
 val handle_event : event -> events
 val pr_event : Format.formatter -> event -> unit
@@ -22,6 +22,6 @@ val pr_event : Format.formatter -> event -> unit
     one message from the client and [k] decodes it, and [output] sends
     a JSON message to the client. *)
 val init :
-  input:(((Bytes.t, exn) result -> event) -> event Sel.Event.t) ->
+  input:(((Bytes.t, exn) result -> event) -> event Sel_core.Event.t) ->
   output:(string -> unit) ->
-  event Sel.Event.t list
+  event Sel_core.Event.t list

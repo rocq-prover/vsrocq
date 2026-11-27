@@ -34,7 +34,7 @@ type state
 type event
 val pp_event : Format.formatter -> event -> unit
 
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 
 val is_parsing : state -> bool
 
@@ -120,7 +120,7 @@ val handle_event : event -> state -> (state,event) handled_event
     on whether execution has halted due to an error and returns a boolean flag stating whether the view
     should be updated *)
 
-val search : state -> id:string -> Position.t -> string -> notification Sel.Event.t list
+val search : state -> id:string -> Position.t -> string -> notification Sel_core.Event.t list
 
 val printing_options : state -> Position.t -> PrintingOptions.printing_option list
 (** the [Printing] flags in the state at the given position, with the user overrides applied *)
@@ -164,7 +164,7 @@ module Internal : sig
   val string_of_state : state -> string
   val observe_id : state -> sentence_id option
   val folding_entries : state -> DocumentEntries.entries option
-  val inject_doc_events : Document.event Sel.Event.t list -> event Sel.Event.t list
+  val inject_doc_events : Document.event Sel_core.Event.t list -> event Sel_core.Event.t list
   val get_proof : state -> sentence_id option -> ProofState.t option
   val validate_document : state -> Document.parsing_end_info -> state
 

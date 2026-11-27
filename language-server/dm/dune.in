@@ -7,7 +7,7 @@
  (default_implementation vsrocq-language-server.dm.native)
  (preprocess (pps ppx_blob ppx_optcomp ppx_yojson_conv -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
  (preprocessor_deps vsrocq_config.mlh (glob_files_rec indices/**.json))
- (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.parsing lsp sel unix protocol language))
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac @@ROCQ_RUNTIME@@.parsing lsp sel.core unix protocol language))
 
 (executable
  (name vsrocqtop_proof_worker)

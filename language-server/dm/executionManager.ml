@@ -114,7 +114,7 @@ type state = {
   delegations : delegation_info SM.t;
   feedback_pipe : feedback_pipe; (* for relying stuff from the workers *)
   (* Why is this imperative? *)
-  jobs : (DelegationManager.job_handle * Sel.Event.cancellation_handle * ProofJob.t) Queue.t;
+  jobs : (DelegationManager.job_handle * Sel_core.Event.cancellation_handle * ProofJob.t) Queue.t;
 }
 
 let get_id_of_executed_task task =
@@ -147,11 +147,11 @@ module ProofWorker = DelegationManager.MakeWorker(ProofJob)
 type event =
   | ProofWorkerEvent of ProofWorker.delegation
 
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 let pr_event = function
   | ProofWorkerEvent event -> ProofWorker.pr_event event
 
-let inject_proof_event = Sel.Event.map (fun x -> ProofWorkerEvent x)
+let inject_proof_event = Sel_core.Event.map (fun x -> ProofWorkerEvent x)
 let inject_proof_events st l =
   (st, List.map inject_proof_event l)
 
@@ -339,7 +339,7 @@ let is_remotely_executed st id = SM.mem id st.delegations
   
 (* TODO: kill all Delegated... *)
 let destroy  { jobs } =
-  Queue.iter (fun (h,c,_) -> DelegationManager.cancel_job h; Sel.Event.cancel c) jobs
+  Queue.iter (fun (h,c,_) -> DelegationManager.cancel_job h; Sel_core.Event.cancel c) jobs
 
 let last_opt l = try Some (CList.last l).id with Failure _ -> None
 
@@ -427,7 +427,7 @@ type execution_result_ = {
 type internal = (Vernacstate.t * sentence_checking_result) interruptible_result
 type execution_result =
   | Done of execution_result_
-  | WillDo of internal Sel.Promise.t * (internal Sel.Promise.state -> execution_result_)
+  | WillDo of internal Sel_core.Promise.t * (internal Sel_core.Promise.state -> execution_result_)
 
 let interrupt_execution { feedback_pipe = { doc_id } } = ProverThread.interrupt ~doc_id
 
@@ -436,8 +436,8 @@ let promise_execution ~doc_id ~state_id ~st ~error_recovery ast =
     interp_ast ~doc_id ~state_id ~st ~error_recovery ast) in
   let promise_to_result p =
     match p with
-    | Sel.Promise.Rejected e -> raise e (* bug in vsrocq *)
-    | Sel.Promise.Fulfilled result ->
+    | Sel_core.Promise.Rejected e -> raise e (* bug in vsrocq *)
+    | Sel_core.Promise.Fulfilled result ->
       match result with
       | Terminated (vs, v) ->
           let updates = [state_id, v] in
@@ -537,7 +537,7 @@ let execute st document vs task : state * execution_result =
               ~fork_action:worker_main
               ~feedback_cleanup:(fun () -> Utilities.feedback_pipe_cleanup st.feedback_pipe)
         in
-        Queue.push (job_handle, Sel.Event.get_cancellation_handle e, job) st.jobs;
+        Queue.push (job_handle, Sel_core.Event.get_cancellation_handle e, job) st.jobs;
         st, Done { updates; vs = last_vs; events = [inject_proof_event e]; exec_error = None }
       | _ ->
         (* If executing the proof opener failed, we skip the proof *)
@@ -587,7 +587,7 @@ let invalidate st id =
     if terminator_id != id then
       Queue.push job st.jobs
     else begin
-      Sel.Event.cancel cancellation;
+      Sel_core.Event.cancel cancellation;
       removed := List.map (fun { ProofJob.id } -> id) tasks :: !removed
     end) old_jobs;
   let st = List.fold_left invalidate1 st (List.concat !removed) in

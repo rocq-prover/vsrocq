@@ -32,7 +32,7 @@ type parsing_end_info = {
 type event
 val pp_event : Format.formatter -> event -> unit
 
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 
 val raw_document : document -> RawDocument.t
 

@@ -35,7 +35,7 @@ val is_diagnostics_enabled: unit -> bool
 (** Execution state, includes the cache *)
 type state
 type event
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 type errored_sentence = (sentence_id * Loc.t option) option
 
 val pr_event : event -> Pp.t
@@ -81,7 +81,7 @@ type execution_result_ = {
 type internal
 type execution_result =
   | Done of execution_result_
-  | WillDo of internal Sel.Promise.t * (internal Sel.Promise.state -> execution_result_)
+  | WillDo of internal Sel_core.Promise.t * (internal Sel_core.Promise.state -> execution_result_)
 
 val execute : state -> Document.document -> Vernacstate.t -> prepared_task -> state * execution_result
 

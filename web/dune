@@ -8,7 +8,7 @@
  (preprocess (pps js_of_ocaml-ppx))
  (wasm_of_ocaml (compilation_mode whole_program) (flags (:standard --dynlink)))
  (libraries zarith_stubs_js rocq-web.stubs rocq-runtime.sysinit rocq-runtime.tactics
-   sel sel.js vsrocq-language-server.dm vsrocq-language-server.dm.web
+   sel.core sel.js vsrocq-language-server.dm vsrocq-language-server.dm.web
    vsrocq-language-server.server js_of_ocaml wasm_of_ocaml-compiler.dynlink))
 
 (install

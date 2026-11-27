@@ -56,16 +56,16 @@ let pp_event fmt = function
   | InteractionManagerEvent event -> Stdlib.Format.fprintf fmt "InteractionManagerEvent event: "; CheckingManager.pp_event fmt event
   | LocalFeedback _ -> Stdlib.Format.fprintf fmt "LocalFeedback"
 
-let inject_im_event x = Sel.Event.map (fun e -> InteractionManagerEvent e) x
+let inject_im_event x = Sel_core.Event.map (fun e -> InteractionManagerEvent e) x
 let inject_im_events events = List.map inject_im_event events
 
-let inject_doc_event x = Sel.Event.map (fun e -> DocumentEvent e) x
+let inject_doc_event x = Sel_core.Event.map (fun e -> DocumentEvent e) x
 let inject_doc_events events = List.map inject_doc_event events
 
 let mk_parsing_begin_event () =
-  Sel.now ~undup:(=) ~priority:PriorityManager.launch_parsing ParseBegin
+  Sel_core.now ~undup:(=) ~priority:PriorityManager.launch_parsing ParseBegin
 
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 
 let is_parsing st =  st.document_state = Parsing
 
@@ -291,8 +291,8 @@ let start_library ~doc_id uri ~opts init_vs =
     Vernacstate.freeze_full_state ()) |> Result.fold ~ok:(fun x -> x) ~error:(fun x -> CErrors.user_err x)
 [%%endif]
 
-let local_feedback feedback_queue : event Sel.Event.t =
-  Sel.On.queue_all ~name:"feedback" ~priority:PriorityManager.feedback feedback_queue
+let local_feedback feedback_queue : event Sel_core.Event.t =
+  Sel_core.On.queue_all ~name:"feedback" ~priority:PriorityManager.feedback feedback_queue
     (fun x xs -> LocalFeedback(x :: xs))
 
 let install_feedback_listener doc_id send =
@@ -305,7 +305,7 @@ let init_feedback_pipe ~doc_id =
   let sel_feedback_queue = Queue.create () in
   let rocq_feeder = install_feedback_listener doc_id (fun x -> Queue.push x sel_feedback_queue) in
   let feedback = local_feedback sel_feedback_queue in
-  let sel_cancellation_handle = Sel.Event.get_cancellation_handle feedback in
+  let sel_cancellation_handle = Sel_core.Event.get_cancellation_handle feedback in
   let feedback_pipe = {doc_id;sel_feedback_queue;rocq_feeder;sel_cancellation_handle;} in
   feedback_pipe, feedback
 

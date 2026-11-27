@@ -59,8 +59,8 @@ let exec ~name ~timeout f =
 let try_run ~doc_id:_ ~name ~timeout f = exec ~name ~timeout f
 
 let eventually_run ~doc_id:_ ~name f =
-  let promise, r = Sel.Promise.make () in
-  Sel.Promise.fulfill r (exec ~name ~timeout:infinity f);
+  let promise, r = Sel_core.Promise.make () in
+  Sel_core.Promise.fulfill r (exec ~name ~timeout:infinity f);
   promise
 
 let run ~doc_id:_ ~name f =

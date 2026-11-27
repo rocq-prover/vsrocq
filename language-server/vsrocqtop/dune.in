@@ -5,7 +5,7 @@
  (wrapped false)
  (modules lspManager args)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
- (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel yojson dm lsp))
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel.core yojson dm lsp))
 
 (executable
  (name vsrocqtop)
@@ -14,4 +14,4 @@
  (flags :standard -linkall)
  (package vsrocq-language-server)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
- (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel sel.unix vsrocq_server dm))
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.tactics sel vsrocq_server dm))

@@ -18,7 +18,7 @@
 let log = Dm.Log.mk_log "top"
 
 let input k =
-  Sel_unix.On.httpcle ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" Unix.stdin k
+  Sel.On.httpcle ~priority:Dm.PriorityManager.lsp_message ~name:"lsp" Unix.stdin k
 
 let output msg =
   let s = Printf.sprintf "Content-Length: %d\r\n\r\n%s" (String.length msg) msg in

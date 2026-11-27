@@ -13,7 +13,7 @@
 (**************************************************************************)
 open Protocol.LspWrapper
 
-val query_feedback : notification Sel.Event.t
+val query_feedback : notification Sel_core.Event.t
 
 [%%if rocq = "8.18"]
 val interp_search :
@@ -22,7 +22,7 @@ val interp_search :
   Evd.evar_map ->
   (bool * Vernacexpr.search_request) list ->
   Vernacexpr.search_restriction ->
-  notification Sel.Event.t list
+  notification Sel_core.Event.t list
 [%%else]
 val interp_search :
   id:string ->
@@ -30,5 +30,5 @@ val interp_search :
   Evd.evar_map ->
   (bool * Vernacexpr.search_request) list ->
   Libnames.qualid list Vernacexpr.search_restriction ->
-  notification Sel.Event.t list
+  notification Sel_core.Event.t list
 [%%endif]

@@ -5,4 +5,4 @@
  (public_name vsrocq-language-server.dm.native)
  (implements dm)
  (preprocess (pps ppx_optcomp -- -cookie "ppx_optcomp.env=env ~rocq:(Defined \"@@ROCQVERSION@@\")"))
- (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac sel sel.unix str threads memprof-limits))
+ (libraries @@ROCQ_RUNTIME@@.sysinit @@ROCQ_RUNTIME@@.vernac sel str threads memprof-limits))

@@ -34,7 +34,7 @@ val eventually_run :
   doc_id:Types.document_id ->
   name:string ->
   (unit -> 'a) ->
-  'a Types.interruptible_result Sel.Promise.t
+  'a Types.interruptible_result Sel_core.Promise.t
 (** [eventually_run ~doc_id thunk] puts the [thunk] in the and promises
     to execute it eventually *)
 

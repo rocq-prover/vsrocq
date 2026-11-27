@@ -67,7 +67,7 @@ type event =
  | Notification of notification
  | LogEvent of Dm.Log.event
 
-type events = event Sel.Event.t list
+type events = event Sel_core.Event.t list
 
 let decode_lsp_message = function
     | Ok buff ->
@@ -91,7 +91,7 @@ let decode_lsp_message = function
         exit 0
 
 (* The I/O with the client is set by [init] *)
-let lsp_input : event Sel.Event.t option ref = ref None
+let lsp_input : event Sel_core.Event.t option ref = ref None
 let lsp () =
   match !lsp_input with
   | Some e -> e
@@ -107,14 +107,14 @@ let output_json obj =
 let output_notification notif =
   output_json @@ Jsonrpc.Notification.yojson_of_t @@ Notification.Server.to_jsonrpc notif
 
-let inject_dm_event uri x : event Sel.Event.t =
-  Sel.Event.map (fun e -> DocumentManagerEvent(uri,e)) x
+let inject_dm_event uri x : event Sel_core.Event.t =
+  Sel_core.Event.map (fun e -> DocumentManagerEvent(uri,e)) x
 
-let inject_notification x : event Sel.Event.t =
-  Sel.Event.map (fun x -> Notification(x)) x
+let inject_notification x : event Sel_core.Event.t =
+  Sel_core.Event.map (fun x -> Notification(x)) x
 
-let inject_debug_event x : event Sel.Event.t =
-  Sel.Event.map (fun x -> LogEvent x) x
+let inject_debug_event x : event Sel_core.Event.t =
+  Sel_core.Event.map (fun x -> LogEvent x) x
 
 let inject_dm_events (uri,l) =
   List.map (inject_dm_event uri) l
@@ -201,7 +201,7 @@ let do_initialize params =
   } in
   log.info (fun () -> "---------------- initialized --------------");
   let debug_events = Dm.Log.lsp_initialization_done () |> inject_debug_events in
-  Ok initialize_result, debug_events@[Sel.now @@ LspManagerEvent (send_configuration_request ())]
+  Ok initialize_result, debug_events@[Sel_core.now @@ LspManagerEvent (send_configuration_request ())]
 
 let do_shutdown () = Ok(()), []
 
