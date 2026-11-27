@@ -1,7 +1,8 @@
 import { exec } from "node:child_process";
 import { ExtensionContext, workspace } from "vscode";
 import { Disposable } from "vscode-languageclient";
-import { ServerOptions } from "vscode-languageclient/node";
+import * as path from "node:path";
+import { ServerOptions, TransportKind } from "vscode-languageclient/node";
 import which from "which";
 import Client from "../client";
 import { getConfigurationOption } from "../configuration";
@@ -30,18 +31,31 @@ export const documentSelector = [{ scheme: "file", language: "rocq" }];
 
 export const platform = () => `${process.arch} ${process.platform}`;
 
+// With vsrocq.useWasm, the root (vsrocq.web.root) providing the server and
+// the libraries: the server, compiled to WebAssembly, is run by the node of
+// VS Code (web/node-server.js), as in VS Code for the web
+interface WasmRoot {
+    url: string;
+    manifest: { args: string[]; packages: { [name: string]: string } };
+}
+
 export default class VsRocqToolchainManager implements Disposable {
     private _vsrocqtopPath: string = "";
     private _rocqVersion: string = "";
     private _versionFullOutput: string = "";
     private _rocqPath: string = "";
+    private _context: ExtensionContext | undefined;
+    private _wasm: WasmRoot | undefined;
 
     public dispose(): void {}
 
     // Commands depending on the platform (see web/toolchain.ts)
-    public registerCommands(_context: ExtensionContext): void {}
+    public registerCommands(context: ExtensionContext): void {
+        this._context = context;
+    }
 
     public intialize(): Promise<void> {
+        if (getConfigurationOption("useWasm")) return this.initializeWasm();
         Client.writeToVsrocqChannel("[Toolchain] Searching for vsrocqtop");
         return new Promise(
             (resolve, reject: (reason: ToolchainError) => void) => {
@@ -74,8 +88,53 @@ export default class VsRocqToolchainManager implements Disposable {
         );
     }
 
+    private async initializeWasm(): Promise<void> {
+        let url = getConfigurationOption("web", "root") as string;
+        if (!url) {
+            throw {
+                status: ToolChainErrorCode.notFound,
+                message:
+                    "vsrocq.useWasm is set: set vsrocq.web.root to the URL of a published opam root providing the language server compiled to WebAssembly.",
+            } as ToolchainError;
+        }
+        if (!url.endsWith("/")) url += "/";
+        Client.writeToVsrocqChannel("[Toolchain] Using the WebAssembly server of " + url);
+        let manifest: WasmRoot["manifest"];
+        try {
+            const r = await fetch(url + "manifest.json");
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            manifest = (await r.json()) as WasmRoot["manifest"];
+        } catch (e) {
+            throw {
+                status: ToolChainErrorCode.notFound,
+                message: `Cannot read ${url}manifest.json: ${e}`,
+            } as ToolchainError;
+        }
+        this._wasm = { url, manifest };
+        const p = manifest.packages;
+        this._vsrocqtopPath = url + "  (WebAssembly)";
+        this._rocqPath = url;
+        this._rocqVersion = p["rocq-runtime"] ?? "unknown";
+        this._versionFullOutput = `The Rocq Prover, version ${p["rocq-runtime"]} (WebAssembly, OCaml ${p["ocaml"]})`;
+        Client.writeToVsrocqChannel(
+            "[Toolchain] Rocq " + this._rocqVersion + ", language server " +
+                p["vsrocq-language-server"],
+        );
+    }
+
     public getServerConfiguration(): ServerOptions {
         const args = getConfigurationOption("args") as string[];
+        if (this._wasm && this._context) {
+            const module = this._context.asAbsolutePath(path.join("web", "node-server.js"));
+            const cache = path.join(this._context.globalStorageUri.fsPath, "wasm");
+            const server = {
+                module,
+                args: [this._wasm.url, cache, ...args],
+                transport: TransportKind.stdio,
+                options: { cwd: workspace.rootPath },
+            };
+            return { run: server, debug: server };
+        }
         const serverOptions: ServerOptions = {
             command: this._vsrocqtopPath,
             args,

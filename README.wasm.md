@@ -269,7 +269,17 @@ HTTP(S) (`client/`, whose `package.json` has the `browser` entry). You need:
    - In **desktop VS Code**, with the VsRocq extension of this branch
      installed as usual, nothing changes: the desktop extension ignores
      `vsrocq.web.root` and runs the `vsrocqtop` of your opam switch
-     (`vsrocq.path`), with the libraries installed there.
+     (`vsrocq.path`), with the libraries installed there. Unless
+     `"vsrocq.useWasm": true`: then it uses the server of the root,
+     compiled to WebAssembly, as in the browser, and nothing needs to be
+     installed. `client/web/node-server.js` (in the `.vsix`), run by the
+     node of VS Code, downloads the server of the root in the storage of
+     the extension and runs it in a worker thread
+     (`client/web/node-worker.js`), where the files below the prefix of
+     the root are the ones of the root, fetched when Rocq reads them (the
+     `lazyfs.js` of the root, its synchronous XHR implemented with
+     `Atomics.wait` while the main thread fetches), and the other files
+     the ones of the computer. It is slower than `vsrocqtop`.
    - In **VS Code for the web**, the same folder (for example the GitHub
      repository opened at `https://vscode.dev/github/<owner>/<repo>?vscode-coi`)
      uses the root: Rocq, its libraries and plugins all come from there. The

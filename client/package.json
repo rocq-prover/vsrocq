@@ -135,7 +135,12 @@
           "vsrocq.web.root": {
             "type": "string",
             "default": "",
-            "markdownDescription": "In VS Code for the web: the URL of the published opam root providing Rocq and the language server compiled to WebAssembly (the directory containing `manifest.json`, see `vsrocq-make-web-root`)."
+            "markdownDescription": "In VS Code for the web, or on a computer with `#vsrocq.useWasm#`: the URL of the published opam root providing Rocq and the language server compiled to WebAssembly (the directory containing `manifest.json`, see `vsrocq-make-web-root`)."
+          },
+          "vsrocq.useWasm": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "On a computer: instead of `vsrocqtop`, use the language server compiled to WebAssembly of the root `#vsrocq.web.root#`, run by the node of VS Code, as in VS Code for the web: Rocq and its libraries come from the root, which must be set. The server is downloaded once in the storage of the extension; the files of the libraries are fetched when Rocq reads them. It is slower than `vsrocqtop`. `#vsrocq.args#` are added to the arguments of the root."
           },
           "vsrocq.web.debug": {
             "type": "boolean",
