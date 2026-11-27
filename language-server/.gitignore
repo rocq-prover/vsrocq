@@ -1,6 +1,8 @@
 _build/
 _opam/
 dm/dune
+dm/native/dune
+dm/web/dune
 language/dune
 protocol/dune
 vsrocqtop/dune

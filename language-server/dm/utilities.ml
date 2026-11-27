@@ -50,7 +50,7 @@ let fresh_doc_id () = incr doc_id; !doc_id
 let feedback_pipe_cleanup { rocq_feeder; sel_feedback_queue; sel_cancellation_handle } =
   Feedback.del_feeder rocq_feeder;
   Queue.clear sel_feedback_queue;
-  Sel.Event.cancel sel_cancellation_handle
+  Sel_core.Event.cancel sel_cancellation_handle
 
 (** Returns the vernac state after the sentence *)
 let get_vernac_state (checked : sentence_checking_result option) =

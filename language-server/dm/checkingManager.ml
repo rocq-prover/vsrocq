@@ -71,7 +71,7 @@ type event =
       task : ExecutionManager.prepared_task;
       tasks : ExecutionManager.prepared_task list;
       block : bool;
-      proof_view_event : event Sel.Event.t list;
+      proof_view_event : event Sel_core.Event.t list;
     }
   | ExecutionManagerEvent of ExecutionManager.event
   | InterpretTo of Settings.Mode.t * interp_target
@@ -93,31 +93,31 @@ let pp_event fmt = function
   | ExecutePromise { id } ->
       Stdlib.Format.fprintf fmt "ExecutePromise %d" (Stateid.to_int id)
 
-let inject_em_event x = Sel.Event.map (fun e -> ExecutionManagerEvent e) x
+let inject_em_event x = Sel_core.Event.map (fun e -> ExecutionManagerEvent e) x
 let inject_em_events events = List.map inject_em_event events
-let mk_interp_to_event mode tgt = [ Sel.now ~priority:PriorityManager.interp_to (InterpretTo (mode, tgt)) ]
-let mk_observe_event id = Sel.now ~priority:PriorityManager.execution (Observe id)
+let mk_interp_to_event mode tgt = [ Sel_core.now ~priority:PriorityManager.interp_to (InterpretTo (mode, tgt)) ]
+let mk_observe_event id = Sel_core.now ~priority:PriorityManager.execution (Observe id)
 
 let mk_move_cursor_event id =
   let priority = PriorityManager.move_cursor in
-  Sel.now ~priority @@ SendMoveCursor id
+  Sel_core.now ~priority @@ SendMoveCursor id
 
-let mk_proof_view_event id = Sel.now ~priority:PriorityManager.proof_view (SendProofView (Some id))
-let mk_proof_view_event_empty = Sel.now ~priority:PriorityManager.proof_view (SendProofView None)
+let mk_proof_view_event id = Sel_core.now ~priority:PriorityManager.proof_view (SendProofView (Some id))
+let mk_proof_view_event_empty = Sel_core.now ~priority:PriorityManager.proof_view (SendProofView None)
 
 let mk_execution_event background event =
   let priority = if background then None else Some PriorityManager.execution in
-  Sel.now ?priority event
+  Sel_core.now ?priority event
 
 let mk_execution_promise_event background id started proof_view_event p k task tasks block =
   let priority = if background then None else Some (-100) in
-  Sel.On.promise ?priority p (fun result -> ExecutePromise { result = k result; id; started; task; tasks; block; proof_view_event; })
+  Sel_core.On.promise ?priority p (fun result -> ExecutePromise { result = k result; id; started; task; tasks; block; proof_view_event; })
 
 let mk_block_on_error_event last_range error_id background =
   let update_goal_view = [ mk_proof_view_event error_id ] in
   if background then update_goal_view
   else
-    let red_flash = [ Sel.now ~undup:(=) ~priority:PriorityManager.move_cursor @@ SendBlockOnError error_id ] in
+    let red_flash = [ Sel_core.now ~undup:(=) ~priority:PriorityManager.move_cursor @@ SendBlockOnError error_id ] in
     let move_cursor = match last_range with Some last_range -> [ mk_move_cursor_event last_range ] | None -> [] in
     red_flash @ move_cursor @ update_goal_view
 
@@ -126,7 +126,7 @@ type observe_id = Id of Types.sentence_id | Top
 type state = {
   overview : exec_overview;
   observe_id : observe_id;
-  exec_event_cancel_handle : Sel.Event.cancellation_handle option;
+  exec_event_cancel_handle : Sel_core.Event.cancellation_handle option;
   execution_state : ExecutionManager.state;
   doc_id : document_id;
 }
@@ -379,11 +379,11 @@ let state_before_error document state error_id loc =
       let state = observe_before_error document state error_id in
       (state, Some error_range)
 
-let observe document st ~background id ~block_on_first_error : state * event Sel.Event.t list =
+let observe document st ~background id ~block_on_first_error : state * event Sel_core.Event.t list =
   match Document.get_sentence document id with
   | None -> (st, [] (* TODO error? *))
   | Some { id } -> (
-      Option.iter Sel.Event.cancel st.exec_event_cancel_handle;
+      Option.iter Sel_core.Event.cancel st.exec_event_cancel_handle;
       let vst_for_next_task, tasks, execution_state, error_id =
         ExecutionManager.build_tasks_for document (Document.schedule document) st.execution_state id
       in
@@ -397,7 +397,7 @@ let observe document st ~background id ~block_on_first_error : state * event Sel
                 mk_execution_event background
                   (Execute { id; vst_for_next_task; task; tasks; started = Unix.gettimeofday () })
               in
-              let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
+              let exec_event_cancel_handle = Some (Sel_core.Event.get_cancellation_handle event) in
               ({ st with exec_event_cancel_handle }, [ event ])
           | Some (error_id, loc), true ->
               log.debug (fun () -> "observe " ^ Stateid.to_string id ^" faces error " ^ Stateid.to_string error_id);
@@ -539,7 +539,7 @@ let post_execute document st id started background proof_view_event task tasks b
   | [] -> execution_finished st id started ~diagnostics (inject_em_events events @ block_events)
   | task :: tasks ->
       let event = mk_execution_event background (Execute { id; vst_for_next_task; task; tasks; started }) in
-      let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
+      let exec_event_cancel_handle = Some (Sel_core.Event.get_cancellation_handle event) in
       let state = Some ({ st with exec_event_cancel_handle }, { highlights = true; diagnostics }) in
       let events = proof_view_event @ inject_em_events events @ block_events @ [ event ] in
       { state; events; notification = None }
@@ -572,7 +572,7 @@ let execute document st id vst_for_next_task started task tasks background block
         updates, post_execute document st id started background proof_view_event task tasks block vst_for_next_task events exec_error ~diagnostics
       | WillDo (promise, k) ->
         let event = mk_execution_promise_event background id started proof_view_event promise k task tasks block in
-        let exec_event_cancel_handle = Some (Sel.Event.get_cancellation_handle event) in
+        let exec_event_cancel_handle = Some (Sel_core.Event.get_cancellation_handle event) in
         let st = { st with exec_event_cancel_handle } in
         [], { state = Some (st, no_view_update); events = [event];  notification=None }
 
@@ -695,10 +695,10 @@ let handle_event ~uri ~printing document st ev =
       ([], make_handled_event ~state:(state, highlight_if_manual mode) ~events ())
 
 let cancel_execution st =
-  Option.iter Sel.Event.cancel st.exec_event_cancel_handle
+  Option.iter Sel_core.Event.cancel st.exec_event_cancel_handle
 
 let interrupt_execution st =
-  Option.iter Sel.Event.cancel st.exec_event_cancel_handle;
+  Option.iter Sel_core.Event.cancel st.exec_event_cancel_handle;
   ExecutionManager.interrupt_execution st.execution_state
 
 module Internal = struct

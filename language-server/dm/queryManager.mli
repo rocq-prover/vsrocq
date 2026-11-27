@@ -53,7 +53,7 @@ val search :
   vs:Vernacstate.t ->
   id:string ->
   string ->
-  Protocol.LspWrapper.notification Sel.Event.t list
+  Protocol.LspWrapper.notification Sel_core.Event.t list
 
 val hover :
   printing:Protocol.PrintingOptions.t ->

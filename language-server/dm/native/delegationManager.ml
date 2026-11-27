@@ -20,6 +20,8 @@ let log = Log.mk_log "delegationManager"
 
 type sentence_id = Stateid.t
 
+let delegation_available = true
+
 type link = {
   write_to :  Unix.file_descr;
   read_from:  Unix.file_descr;

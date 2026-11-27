@@ -132,19 +132,19 @@ let interp_par ~pstate ~info ast ~abstract : Declare.Proof.t =
        let e =
          TacticWorker.worker_available ~feedback_cleanup:(fun _ -> ()) (* not really correct, since there is a cleanup to be done, but it concern a sel loop which is dead (we don't come back to it), so we can ignore the problem *)
            ~jobs:queue ~fork_action:worker_solve_one_goal in
-       Queue.push (job_id, Sel.Event.get_cancellation_handle e, job) queue;
+       Queue.push (job_id, Sel_core.Event.get_cancellation_handle e, job) queue;
         e, job_id
       ) 0) in
   let rec wait acc evs =
-    log.debug (fun () -> "waiting for events: " ^ string_of_int @@ Sel.Todo.size evs);
-    let more_ready, evs = Sel.pop_opt evs in
+    log.debug (fun () -> "waiting for events: " ^ string_of_int @@ Sel_core.Todo.size evs);
+    let more_ready, evs = Sel_core.pop_opt evs in
     match more_ready with
     | None ->
-        if Sel.Todo.is_empty evs then (log.debug (fun () -> "done waiting for tactic workers"); acc)
+        if Sel_core.Todo.is_empty evs then (log.debug (fun () -> "done waiting for tactic workers"); acc)
         else wait acc evs (* should be assert false *)
     | Some ev ->
       let result, more_events = TacticWorker.handle_event ev in
-      let evs = Sel.Todo.add evs more_events in
+      let evs = Sel_core.Todo.add evs more_events in
       match result with
       | None -> wait acc evs
       | Some(TacticJob.UpdateSolution(ev,TacticJob.Solved(c,u))) ->
@@ -160,7 +160,7 @@ let interp_par ~pstate ~info ast ~abstract : Declare.Proof.t =
           log.debug (fun () -> "got error for " ^ Pp.string_of_ppcmds @@ Evar.print ev);
           List.iter DelegationManager.cancel_job job_ids;
           CErrors.user_err err in
-  let results = wait [] Sel.Todo.(add empty events) in
+  let results = wait [] Sel_core.Todo.(add empty events) in
   Declare.Proof.map pstate ~f:(fun p ->
     let p,_,() = Proof.run_tactic (Global.env()) (assign_tac ~abstract results) p in
     p)
@@ -172,7 +172,9 @@ let interp_par ~pstate ~info ast ~abstract ~with_end_tac:_ = interp_par ~pstate 
 let interp_par = interp_par
 [%%endif]
 
-let () = ComTactic.set_par_implementation interp_par
+let () =
+  if DelegationManager.delegation_available then
+    ComTactic.set_par_implementation interp_par
 
 module TacticWorkerProcess = struct
   type options = TacticWorker.options

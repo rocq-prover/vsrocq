@@ -33,7 +33,7 @@ depends: [
   "memprof-limits"
   "result" { >= "1.5" }
   "lsp" { >= "1.15" & < "1.28" }
-  "sel" {>= "0.8.0"}
+  "sel" {>= "0.10.0"}
 ]
 conflicts: [
     "vscoq-language-server" {< "2.2.7~"}

@@ -49,6 +49,9 @@ module type Job = sig
   val appendFeedback : Feedback.route_id * sentence_id -> (Feedback.level * Loc.t option * Quickfix.t list * Pp.t) -> update_request
 end
 
+(** [false] if workers cannot be spawned (e.g. wasm) *)
+val delegation_available : bool
+
 type job_handle
 
 val cancel_job : job_handle -> unit
@@ -65,7 +68,7 @@ module type Worker = sig
    (** Event for the main loop *)
    type delegation
    val pr_event : delegation -> Pp.t
-   type events = delegation Sel.Event.t list
+   type events = delegation Sel_core.Event.t list
    
    (** handling an event may require an update to a sentence in the exec state,
        e.g. when a feedback is received *)
@@ -76,10 +79,10 @@ module type Worker = sig
       - if we can fork, job is passed to fork_action
       - otherwise Job.binary_name is spawn and the job sent to it *)
    val worker_available :
-     jobs:((job_handle * Sel.Event.cancellation_handle * job_t) Queue.t) ->
+     jobs:((job_handle * Sel_core.Event.cancellation_handle * job_t) Queue.t) ->
      fork_action:(job_t -> send_back:(job_update_request -> unit) -> unit) ->
      feedback_cleanup:(unit -> unit) ->
-     delegation Sel.Event.t
+     delegation Sel_core.Event.t
    
    (* for worker toplevels *)
    type options

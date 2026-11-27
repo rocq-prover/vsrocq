@@ -20,8 +20,8 @@ open Protocol.LspWrapper
 vsrocq process, which does not allow for real asynchronous processing of results. *)
 let query_results_queue = Queue.create ()
 
-let query_feedback : notification Sel.Event.t =
-  Sel.On.queue query_results_queue (fun x -> QueryResultNotification x)
+let query_feedback : notification Sel_core.Event.t =
+  Sel_core.On.queue query_results_queue (fun x -> QueryResultNotification x)
 
 [%%if rocq = "8.18"]
 open Vernacexpr
