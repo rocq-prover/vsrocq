@@ -3,7 +3,7 @@
 // to WebAssembly, run by the node of VS Code. Started by vscode-languageclient,
 // it speaks LSP on stdin/stdout, like vsrocqtop.
 //
-//   node node-server.js ROOT CACHE [server args...]
+//   node node-server.js ROOT CACHE [server args...] [--stdio] [--clientProcessId=N]
 //
 // ROOT is the URL of the root, CACHE a directory where the server (its .js
 // and .wasm files) and the glue of the root (lazyfs.js) are downloaded, so
@@ -21,7 +21,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 
-const [root0, cacheBase, ...userArgs] = process.argv.slice(2);
+// vscode-languageclient adds the transport (--stdio) and the process id of
+// the client (--clientProcessId=N): they are not for the server
+const [root0, cacheBase, ...userArgs] = process.argv.slice(2).filter(
+  (a) => !/^--(stdio|node-ipc|socket|pipe|clientProcessId)\b/.test(a),
+);
 const root = root0.endsWith("/") ? root0 : root0 + "/";
 const log = (s) => process.stderr.write(`[vsrocq wasm] ${s}\n`);
 
