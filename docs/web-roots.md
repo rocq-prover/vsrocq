@@ -496,7 +496,8 @@ Changes to `manifest.json` (written by `vsrocq-make-web-root`):
    progress and hashes; start `worker.js` in a worker thread; option (a),
    then (b).
 6. Desktop: **Rocq: Compile the project** with `rocq-web` from the root
-   (`runner.js` in a worker thread, on the real file system).
+   (`runner.js` in a worker thread, on the real file system). Done for
+   `vsrocq.useWasm` (`client/web/node-server.js --run`).
 7. Tests: the `client/test-web` tests with an index instead of
    `vsrocq.web.root`, plus a desktop test (`@vscode/test-electron`) with a
    local index and no `vsrocqtop` in the `PATH`.

@@ -4,6 +4,7 @@
 // it speaks LSP on stdin/stdout, like vsrocqtop.
 //
 //   node node-server.js ROOT CACHE [server args...] [--stdio] [--clientProcessId=N]
+//   node node-server.js ROOT CACHE --run c|dep [args...]
 //
 // ROOT is the URL of the root, CACHE a directory where the server (its .js
 // and .wasm files) and the glue of the root (lazyfs.js) are downloaded, so
@@ -15,6 +16,11 @@
 //
 // To interrupt Rocq, the shared interrupt flag is set when the client sends
 // prover/interrupt or edits a document, as in the browser.
+//
+// With --run, it runs instead a program of the root, rocq c or rocq dep
+// (manifest.rocq), with the arguments after "rocq c" or "rocq dep", in the
+// same way: its standard output and error are the ones of this process, and
+// it exits with the exit code of the program.
 "use strict";
 const { Worker, MessageChannel } = require("node:worker_threads");
 const fs = require("node:fs");
@@ -23,9 +29,11 @@ const crypto = require("node:crypto");
 
 // vscode-languageclient adds the transport (--stdio) and the process id of
 // the client (--clientProcessId=N): they are not for the server
-const [root0, cacheBase, ...userArgs] = process.argv.slice(2).filter(
+let [root0, cacheBase, ...userArgs] = process.argv.slice(2).filter(
   (a) => !/^--(stdio|node-ipc|socket|pipe|clientProcessId)\b/.test(a),
 );
+let run;
+if (userArgs[0] === "--run") [, run, ...userArgs] = userArgs;
 const root = root0.endsWith("/") ? root0 : root0 + "/";
 const log = (s) => process.stderr.write(`[vsrocq wasm] ${s}\n`);
 
@@ -63,12 +71,14 @@ async function main() {
   const lazyfs = path.join(dir, "lazyfs.js");
   fs.writeFileSync(lazyfs, await get(manifest.lazyfs));
   const { gunzip } = require(lazyfs);
-  // the server and its assets
-  fs.rmSync(path.join(dir, manifest.server), { force: true });
-  const assets = manifest.server.replace(/\.js$/, ".assets/");
+  // the program (the server, or rocq c or dep) and its assets
+  const program = run ? manifest.rocq?.[run] : manifest.server;
+  if (!program) throw new Error(`no program rocq ${run} in ${root}`);
+  fs.rmSync(path.join(dir, program), { force: true });
+  const assets = program.replace(/\.js$/, ".assets/");
   const rels = Object.keys(manifest.files).filter((r) => r.startsWith(assets));
-  for (const rel of [manifest.server, ...rels]) await download(manifest, rel, dir, gunzip);
-  log(`server of ${root} in ${dir} (${Date.now() - t0}ms)`);
+  for (const rel of [program, ...rels]) await download(manifest, rel, dir, gunzip);
+  if (!run) log(`server of ${root} in ${dir} (${Date.now() - t0}ms)`);
 
   const interrupt = new SharedArrayBuffer(4);
   const flag = new Int32Array(interrupt);
@@ -90,10 +100,10 @@ async function main() {
   });
 
   const worker = new Worker(path.join(__dirname, "node-worker.js"), {
-    argv: [...manifest.args, ...userArgs],
+    argv: run ? userArgs : [...manifest.args, ...userArgs],
     workerData: {
       root, manifest, interrupt, fetched, port: port2,
-      server: path.join(dir, manifest.server), lazyfs,
+      server: path.join(dir, program), lazyfs, run: !!run,
     },
     transferList: [port2],
     stdout: true,
@@ -110,6 +120,13 @@ async function main() {
     process.stdout.write(b);
   });
   worker.on("error", (e) => { log(`worker error: ${e?.stack ?? e}`); process.exit(1); });
+  if (run) {
+    // let the output be flushed before exiting
+    worker.stdout.unpipe(process.stderr);
+    worker.stdout.pipe(process.stdout);
+    worker.on("exit", (c) => { process.exitCode = c; port1.close(); });
+    return;
+  }
   worker.on("exit", (c) => process.exit(c));
 
   const interrupting = /"method"\s*:\s*"(prover\/interrupt|textDocument\/didChange)"/;

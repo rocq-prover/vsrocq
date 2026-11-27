@@ -332,7 +332,7 @@
       {
         "command": "extension.rocq.compileProject",
         "category": "Rocq",
-        "title": "Compile the project (web)"
+        "title": "Compile the project (WebAssembly)"
       },
       {
         "command": "extension.rocq.showManual",
@@ -482,7 +482,7 @@
         },
         {
           "command": "extension.rocq.compileProject",
-          "when": "isWeb"
+          "when": "isWeb || config.vsrocq.useWasm"
         }
       ],
       "editor/title": [

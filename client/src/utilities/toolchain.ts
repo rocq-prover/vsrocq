@@ -1,4 +1,4 @@
-import { exec } from "node:child_process";
+import { exec, fork } from "node:child_process";
 import { ExtensionContext, workspace } from "vscode";
 import { Disposable } from "vscode-languageclient";
 import * as path from "node:path";
@@ -6,6 +6,7 @@ import { ServerOptions, TransportKind } from "vscode-languageclient/node";
 import which from "which";
 import Client from "../client";
 import { getConfigurationOption } from "../configuration";
+import { registerCompileCommand, WorkspaceMirror } from "../web/project";
 
 export enum ToolChainErrorCode {
     notFound = 1,
@@ -52,6 +53,46 @@ export default class VsRocqToolchainManager implements Disposable {
     // Commands depending on the platform (see web/toolchain.ts)
     public registerCommands(context: ExtensionContext): void {
         this._context = context;
+        // With vsrocq.useWasm, Rocq: Compile the project runs rocq dep and
+        // rocq c of the root (node-server.js --run), as in the browser. They
+        // read and write the files of the computer: no mirror is needed
+        registerCompileCommand(context, new WorkspaceMirror(), () => this.makeRunWorker(),
+            () => this._wasm?.manifest.args ?? []);
+    }
+
+    // A "worker" running a rocq command of the root (see runRocq in
+    // web/project.ts): a node process, whose result is sent as a message
+    private makeRunWorker() {
+        const wasm = this._wasm;
+        const context = this._context;
+        if (!wasm || !context) {
+            throw new Error(
+                "compiling the project needs vsrocq.useWasm (and vsrocq.web.root): with vsrocqtop, use make or dune",
+            );
+        }
+        const module = context.asAbsolutePath(path.join("web", "node-server.js"));
+        const cache = path.join(context.globalStorageUri.fsPath, "wasm");
+        let child: ReturnType<typeof fork> | undefined;
+        const worker = {
+            onmessage: null as ((e: { data: any }) => void) | null,
+            onerror: null as ((e: any) => void) | null,
+            postMessage(m: any) {
+                const args: string[] = m.init.run.args;
+                let stdout = "", stderr = "";
+                child = fork(module, [wasm.url, cache, "--run", ...args], {
+                    silent: true,
+                    cwd: workspace.workspaceFolders?.[0]?.uri.fsPath,
+                    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+                });
+                child.stdout?.on("data", (d) => { stdout += d; });
+                child.stderr?.on("data", (d) => { stderr += d; });
+                child.on("error", (e) => worker.onerror?.(e));
+                child.on("close", (code) =>
+                    worker.onmessage?.({ data: { exit: code ?? 255, stdout, stderr, written: [] } }));
+            },
+            terminate() { child?.kill(); },
+        };
+        return worker;
     }
 
     public intialize(): Promise<void> {

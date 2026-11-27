@@ -284,7 +284,7 @@ HTTP(S) (`client/`, whose `package.json` has the `browser` entry). You need:
      repository opened at `https://vscode.dev/github/<owner>/<repo>?vscode-coi`)
      uses the root: Rocq, its libraries and plugins all come from there. The
      `.v` and `.vo` files of the folder are visible to Rocq, and
-     **Rocq: Compile the project (web)** builds the `.vo` files (see "The
+     **Rocq: Compile the project (WebAssembly)** builds the `.vo` files (see "The
      workspace" below). If VS Code opens the folder in Restricted Mode,
      trust it: the extension does not declare support for untrusted
      workspaces.
@@ -311,13 +311,17 @@ In VS Code for the web:
   of the workspace are mirrored in the file system of the server, at the
   path of their URI, and kept up to date: a document can `Require` the
   compiled files of its project;
-- **Rocq: Compile the project (web)** reads `_RocqProject` (or
+- **Rocq: Compile the project (WebAssembly)** reads `_RocqProject` (or
   `_CoqProject`) at the root of the workspace, runs `rocq dep`, then
   `rocq c` on the files whose `.vo` is missing or out of date, in
   dependency order, each in a fresh worker (`runner.js`). The `.vo` files
   are written in the workspace (with a GitHub repository, as uncommitted
   changes), the output goes to the "Rocq Compile" channel. The open Rocq
   documents are then reset, so that they use the new `.vo` files.
+  In desktop VS Code with `vsrocq.useWasm`, the same command runs the
+  `rocq dep` and `rocq c` of the root in node processes
+  (`client/web/node-server.js --run`), on the files of the computer: the
+  `.vo` files are written next to the `.v` files.
 
 ## Interruption
 

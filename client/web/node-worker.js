@@ -1,13 +1,14 @@
 // The worker thread of node-server.js: runs the wasm language server of a
-// published root, with the file system of the computer, except below the
-// prefix of the root (the prefix of the switch it was made from), where the
-// files are the ones of the root, fetched when they are read (lazyfs.js of
-// the root, as in the browser). The command line is the worker's argv.
+// published root, or one of its programs (rocq c, rocq dep: workerData.run),
+// with the file system of the computer, except below the prefix of the root
+// (the prefix of the switch it was made from), where the files are the ones
+// of the root, fetched when they are read (lazyfs.js of the root, as in the
+// browser). The command line is the worker's argv.
 "use strict";
 const { workerData, parentPort, receiveMessageOnPort } = require("node:worker_threads");
 const nodefs = require("node:fs");
 
-const { root, manifest, interrupt, fetched, port, server, lazyfs } = workerData;
+const { root, manifest, interrupt, fetched, port, server, lazyfs, run } = workerData;
 const flag = new Int32Array(interrupt);
 const done = new Int32Array(fetched);
 
@@ -36,9 +37,9 @@ const lfs = makeLazyFs(manifest, root, {
 
 // The file system of the server: the root below its prefix, the computer
 // elsewhere. The file descriptors of the root are shifted by ROOT_FD, so
-// that they do not collide with the ones of the computer. Writes to the
-// standard output go to stderr: in a worker thread, fd 1 is the stdout of
-// the process, the protocol.
+// that they do not collide with the ones of the computer. For the server,
+// writes to the standard output go to stderr: in a worker thread, fd 1 is
+// the stdout of the process, the protocol.
 const prefix = lfs.prefix;
 const inRoot = (p) =>
   typeof p === "string" && (p === prefix || p.startsWith(prefix + "/"));
@@ -48,7 +49,7 @@ const byPath = (name) => (p, ...args) =>
 const byFd = (name) => (fd, ...args) =>
   fd >= ROOT_FD
     ? lfs.fs[name](fd - ROOT_FD, ...args)
-    : nodefs[name](fd === 1 ? 2 : fd, ...args);
+    : nodefs[name](fd === 1 && !run ? 2 : fd, ...args);
 const fs = { constants: nodefs.constants };
 for (const name of ["existsSync", "statSync", "lstatSync", "accessSync",
   "readdirSync", "opendirSync", "mkdirSync", "rmdirSync", "unlinkSync",
@@ -70,6 +71,11 @@ fs.renameSync = (a, b) => {
 };
 fs.linkSync = (a, b) => (inRoot(a) ? lfs.fs : nodefs).linkSync(a, b);
 globalThis.jsoo_fs = fs;
+
+if (run) {
+  lfs.prefetch(manifest.prefetch).then(() => require(server));
+  return;
+}
 
 // The LSP glue of the server (see vsrocq_web.ml)
 let ready = false;
