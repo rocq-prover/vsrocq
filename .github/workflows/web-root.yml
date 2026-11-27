@@ -1,0 +1,69 @@
+# Build Rocq and the language server compiled to WebAssembly in an opam
+# switch, and publish a trimmed copy of the switch (vsrocq-make-web-root) on
+# GitHub Pages, at https://<owner>.github.io/<repo>/<ROOT_NAME>/.
+# Set vsrocq.web.root to that URL in VS Code for the web.
+name: Publish the web opam root
+
+on:
+  workflow_dispatch:
+
+env:
+  OCAML: "5.4.1"
+  ROOT_NAME: rocq-dev
+  # Until they are merged upstream, the patches come from these branches
+  ROCQ: "git+https://github.com/gares/coq.git#web"
+  SEL: "git+https://github.com/gares/sel.git#v0.10.0"
+  JSOO: "git+https://github.com/gares/js_of_ocaml.git#web-6.5"
+  # wasm support of zarith_stubs_js is not released yet
+  ZARITH_STUBS_JS: "git+https://github.com/janestreet/zarith_stubs_js.git#master"
+  BINARYEN: "120"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install binaryen
+        run: |
+          curl -sSL https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN}/binaryen-version_${BINARYEN}-x86_64-linux.tar.gz | tar xz
+          echo "$PWD/binaryen-version_${BINARYEN}/bin" >> "$GITHUB_PATH"
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ env.OCAML }}
+
+      - name: Pin the packages
+        run: |
+          opam pin add -n -y wasm_of_ocaml-compiler.6.5.0 "$JSOO"
+          opam pin add -n -y sel.0.10.0 "$SEL"
+          opam pin add -n -y zarith_stubs_js "$ZARITH_STUBS_JS"
+          for p in rocq-runtime rocq-core rocq-web; do opam pin add -n -y $p "$ROCQ"; done
+          opam pin add -n -y vsrocq-language-server ./language-server
+          opam pin add -n -y vsrocq-language-server-web ./web
+
+      - name: Install
+        run: opam install -y vsrocq-language-server-web
+
+      - name: Make the root
+        run: opam exec -- vsrocq-make-web-root --compress "_site/$ROOT_NAME"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
