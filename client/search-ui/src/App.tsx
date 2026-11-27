@@ -10,6 +10,7 @@ import { v4 as uuid } from "uuid";
 
 import "./App.css";
 import SearchPage from "./components/templates/SearchPage";
+import { printForm, printPattern } from "./printForms";
 
 import { useStateCallback } from "./utilities/hooks";
 import { vscode } from "./utilities/vscode";
@@ -52,6 +53,30 @@ const defaultState = {
     history: [],
     historyIndex: -1,
     queryPanelState: defaultQueryPanelState,
+};
+
+//the pattern of a print query is the rest of the Print command
+const tabTitle = (type: QueryType, pattern: string, form?: string) =>
+    type === QueryType.print
+        ? "Print " + printPattern(form, pattern)
+        : type + ": " + pattern;
+
+// The text sent for the query of a tab, or null when its Print form lacks
+// its argument
+const queryText = (tab: QueryTab) => {
+    if (tab.type !== QueryType.print) {
+        return tab.pattern;
+    }
+    if (
+        printForm(tab.printForm).argument === "required" &&
+        tab.pattern.trim() === ""
+    ) {
+        return null;
+    }
+    return printPattern(
+        tab.printForm,
+        printForm(tab.printForm).argument === "none" ? "" : tab.pattern,
+    );
 };
 
 const app = () => {
@@ -308,14 +333,16 @@ const app = () => {
     };
 
     const handleImmediateQueryNotification = (notification: Query) => {
-        const { pattern, type } = notification;
+        const { pattern, type, run } = notification;
         const result = initResult(type);
         const id = uuid();
         const newTab: QueryTab[] = [
             {
                 id: id,
-                title: type + ": " + pattern,
+                title: run === false ? "New Tab" : tabTitle(type, pattern),
                 pattern: pattern,
+                // a query to complete, eg. by Rocq: Print...
+                focus: run === false ? id : undefined,
                 result: result,
                 type: type,
             },
@@ -326,6 +353,9 @@ const app = () => {
                 return { currentTab: newTabs.length - 1, tabs: newTabs };
             },
             () => {
+                if (run === false) {
+                    return;
+                }
                 vscode.postMessage({
                     command: "rocqQuery",
                     text: pattern,
@@ -353,8 +383,15 @@ const app = () => {
         }
     };
 
-    const launchQuery = (index: number) => {
-        const { pattern, type } = queryPanelState.tabs[index];
+    const launchQuery = (
+        index: number,
+        query: QueryTab = queryPanelState.tabs[index],
+    ) => {
+        const { pattern, type } = query;
+        const text = queryText(query);
+        if (text === null) {
+            return;
+        }
 
         setHistory((history) => [pattern].concat(history));
 
@@ -365,9 +402,11 @@ const app = () => {
                     return {
                         ...tab,
                         id: id,
+                        printForm: query.printForm,
+                        focus: undefined,
                         error: undefined,
                         result: initResult(type),
-                        title: type + ": " + pattern,
+                        title: tabTitle(type, pattern, query.printForm),
                     };
                 }
                 return tab;
@@ -377,10 +416,24 @@ const app = () => {
 
         vscode.postMessage({
             command: "rocqQuery",
-            text: pattern,
+            text: text,
             id: id,
             type: type,
         });
+    };
+
+    // Picking a Print form that takes no argument runs it
+    const printFormSelectHandler = (index: number) => (e: any) => {
+        const form = e.target.value as string;
+        const tab = { ...queryPanelState.tabs[index], printForm: form };
+        if (printForm(form).argument === "none") {
+            launchQuery(index, tab);
+        } else {
+            setQueryPanelState((state) => ({
+                ...state,
+                tabs: state.tabs.map((t, i) => (i === index ? tab : t)),
+            }));
+        }
     };
 
     const searchFieldKeyPressHandler: (
@@ -617,6 +670,7 @@ const app = () => {
                 changeTabHandler={changeTabHandler}
                 deleteTabHandler={deleteTabHandler}
                 tabInputHandler={tabInputHandler}
+                printFormSelectHandler={printFormSelectHandler}
             />
         </main>
     );

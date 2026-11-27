@@ -1,3 +1,8 @@
 .SearchField {
     width: 100%;
 }
+
+/* only there to find the text field, it does not change the layout */
+.Wrapper {
+    display: contents;
+}

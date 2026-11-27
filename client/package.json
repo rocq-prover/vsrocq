@@ -365,8 +365,8 @@
       },
       {
         "command": "extension.rocq.query.print",
-        "title": "Print",
-        "description": "Print the definition of the term at the cursor",
+        "title": "Print...",
+        "description": "Open a Print query in the query panel, for a name at the cursor or another form of Print (Options, Assumptions, Universes, ...)",
         "category": "Rocq"
       },
       {

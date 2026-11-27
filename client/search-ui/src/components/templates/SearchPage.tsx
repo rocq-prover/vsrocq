@@ -28,6 +28,7 @@ type SearchPageProps = {
         index: number,
         field: string,
     ) => ChangeEventHandler<HTMLInputElement>;
+    printFormSelectHandler: (index: number) => (e: any) => void;
 };
 
 const searchPage: FunctionComponent<SearchPageProps> = (props) => {
@@ -40,6 +41,7 @@ const searchPage: FunctionComponent<SearchPageProps> = (props) => {
         toggleCollapsedHandler,
         deleteSearchResultHander,
         tabInputHandler,
+        printFormSelectHandler,
     } = props;
 
     const { tabs, currentTab } = state;
@@ -51,6 +53,7 @@ const searchPage: FunctionComponent<SearchPageProps> = (props) => {
                     <ResultPage
                         tab={tab}
                         queryTypeSelectHandler={tabInputHandler(index, "type")}
+                        printFormSelectHandler={printFormSelectHandler(index)}
                         onTextInput={tabInputHandler(index, "pattern")}
                         searchFieldKeyPressHandler={(e) =>
                             searchFieldKeyPressHandler(index, e)
