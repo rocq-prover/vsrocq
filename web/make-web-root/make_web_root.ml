@@ -261,9 +261,15 @@ let () =
     let req = deep [p] in
     List.mem "rocq-runtime.kernel" req || List.mem "rocq-runtime.vernac" req) pkgs in
   let closure = List.sort_uniq compare (roots @ deep roots) in
-  (* the packages linked in the programs: only their META is needed *)
-  let linked = deep (["rocq-runtime.toplevel"; "rocq-runtime.tactics"] @
-    List.filter (fun p -> List.mem p pkgs) ["vsrocq-language-server.server"]) in
+  (* the packages linked in all the programs loading plugins, the language
+     server and rocq c: only their META is needed. A package linked in the
+     server only (e.g. ppx_deriving.runtime, a dependency of the server and
+     of plugins) is loaded by rocq c *)
+  let linked_in ps = deep (List.filter (fun p -> List.mem p pkgs) ps) in
+  let server = linked_in ["rocq-runtime.sysinit"; "rocq-runtime.tactics";
+    "vsrocq-language-server.server"] in
+  let rocq_c = linked_in ["rocq-runtime.toplevel"] in
+  let linked = List.filter (fun p -> List.mem p rocq_c) server in
   let dirs = List.fold_left (fun dirs p ->
     let d = Findlib.package_directory p in
     let meta = (Fl_package_base.query p).Fl_package_base.package_meta in
