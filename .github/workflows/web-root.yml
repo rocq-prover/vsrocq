@@ -12,7 +12,7 @@ env:
   ROOT_NAME: rocq-dev
   # Until they are merged upstream, the patches come from these branches
   ROCQ: "git+https://github.com/gares/coq.git#web"
-  SEL: "git+https://github.com/gares/sel.git#web"
+  SEL: "git+https://github.com/gares/sel.git#v0.10.0"
   JSOO: "git+https://github.com/gares/js_of_ocaml.git#web-6.5"
   # wasm support of zarith_stubs_js is not released yet
   ZARITH_STUBS_JS: "git+https://github.com/janestreet/zarith_stubs_js.git#master"
@@ -39,7 +39,7 @@ jobs:
       - name: Pin the packages
         run: |
           opam pin add -n -y wasm_of_ocaml-compiler.6.5.0 "$JSOO"
-          opam pin add -n -y sel "$SEL"
+          opam pin add -n -y sel.0.10.0 "$SEL"
           opam pin add -n -y zarith_stubs_js "$ZARITH_STUBS_JS"
           for p in rocq-runtime rocq-core rocq-web; do opam pin add -n -y $p "$ROCQ"; done
           opam pin add -n -y vsrocq-language-server ./language-server

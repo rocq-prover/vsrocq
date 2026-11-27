@@ -79,12 +79,16 @@ These are separate PRs. Until they are merged, use these branches.
     `globalThis.jsoo_fs` (the API of `node:fs`), the command line given
     as `globalThis.jsoo_argv`, like `globalThis.jsoo_env`, and reports the
     exit code to `globalThis.jsoo_exit`.
-- **sel**, branch `web` of [gares/sel](https://github.com/gares/sel/tree/web),
-  [gares/sel#19](https://github.com/gares/sel/pull/19): `sel` is Unix-free,
-  the system events are an extension point (`Sel.System_event`); the Unix
-  events and backend are in `sel.unix`; `sel.js` provides a backend and a
-  driver (`Sel_js.run`) handling the events from the JavaScript event loop.
-  Also adds the non-blocking `pop_ready`/`wait_ready`.
+- **sel** [v0.10.0](https://github.com/gares/sel/releases/tag/v0.10.0)
+  ([gares/sel#19](https://github.com/gares/sel/pull/19),
+  [#21](https://github.com/gares/sel/pull/21)), not in opam yet: the system
+  agnostic part is the virtual library `sel.core` (module `Sel_core`), whose
+  system events are an extension point (`Sel_core.System_event`). It has two
+  implementations: `sel`, the Unix one with the API of v0.8 (`Sel` includes
+  `Sel_core` and the Unix events, `Sel.On.line`…), and `sel.js`, which
+  provides a backend and a driver (`Sel_js.run`) handling the events from
+  the JavaScript event loop. Also adds the non-blocking
+  `pop_ready`/`wait_ready`.
 - **Elpi**, branch `wasm-portable-depth` (on v4.1.1) of
   [LPCIC/elpi](https://github.com/LPCIC/elpi/tree/wasm-portable-depth): the indexing depth
   of the inputs of builtin predicates is `2^30-1` instead of `max_int`.
@@ -101,9 +105,10 @@ These are separate PRs. Until they are merged, use these branches.
 
 ### Changes in vsrocq
 
-- dm uses the Unix-free `sel` (`dm/native` also uses `sel.unix`);
-  `vsrocqtop` installs the backend of `sel.unix`, the web server runs the
-  events with `Sel_js.run`.
+- the libraries shared by `vsrocqtop` and the web server (dm, dm.web, the
+  server) use `sel.core` (`Sel_core`); the native code (`dm/native`,
+  `vsrocqtop`, the tests) uses `sel` (`Sel`), as before; the web server
+  links `sel.js` and runs the events with `Sel_js.run`.
 - `ProverThread` and `DelegationManager` are virtual
   modules, `dm/native` (threads, memprof-limits, processes) and `dm/web`
   (Rocq runs synchronously and polls for interruptions through
@@ -127,7 +132,7 @@ You need binaryen ≥ 119 (`wasm-opt`) and node ≥ 22.
 opam switch create vsrocq-wasm 5.4.1
 eval $(opam env --switch=vsrocq-wasm --set-switch)
 opam pin add -n wasm_of_ocaml-compiler.6.5.0 "git+https://github.com/gares/js_of_ocaml.git#web-6.5"
-opam pin add -n sel "git+https://github.com/gares/sel.git#web"
+opam pin add -n sel.0.10.0 "git+https://github.com/gares/sel.git#v0.10.0"
 opam pin add -n zarith_stubs_js "git+https://github.com/janestreet/zarith_stubs_js.git#master"
 for p in rocq-runtime rocq-core rocq-web; do opam pin add -n $p "git+https://github.com/gares/coq.git#web"; done
 opam pin add -n vsrocq-language-server ./language-server
